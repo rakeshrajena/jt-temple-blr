@@ -55,6 +55,13 @@ try {
         && abs($during - $before) < 0.001,
         'a new batch waits and is left out of the approved total'
     );
+    $issued = (int) db_value('SELECT issued_unix FROM food_coupon_batches WHERE id = ?', [(int) $first['id']]);
+    $now = time();
+    check(
+        $issued >= $now - 5 && $issued <= $now + 5
+        && coupon_code($issued, (int) $first['start']) === sprintf('CU-%d-%04d', $issued, (int) $first['start']),
+        'a coupon serial is CU, the POSIX time, and a 4-digit number'
+    );
 
     $grown = update_coupon_batch((int) $first['id'], 'Step coupon', 25, 3, $adminId);
     $afterEdit = db_one('SELECT quantity, total_value, end_sl_no, start_sl_no FROM food_coupon_batches WHERE id = ?', [(int) $first['id']]);

@@ -1203,7 +1203,8 @@ function action_serve_receipt(string $filename): void
 {
     login_required();
     $filename = basename($filename);
-    if (preg_match('/^RCPT-\d{4}-\d{4}\.pdf$/', $filename) !== 1) {
+    $receiptNumber = str_ends_with($filename, '.pdf') ? substr($filename, 0, -4) : '';
+    if (!receipt_number_is_valid($receiptNumber) || $filename !== $receiptNumber . '.pdf') {
         http_response_code(404);
         echo 'Not found.';
         return;
@@ -1480,7 +1481,7 @@ function receipt_path(string $receiptNumber): string
 
 function receipt_file_exists(string $receiptNumber): bool
 {
-    return preg_match('/^RCPT-\d{4}-\d{4}$/', $receiptNumber) === 1 && is_file(receipt_path($receiptNumber));
+    return receipt_number_is_valid($receiptNumber) && is_file(receipt_path($receiptNumber));
 }
 
 /** @param list<array<string, mixed>> $rows */
@@ -1676,6 +1677,7 @@ function action_decide_approval(int $id): void
     }
     $next = approval_next_status($decision);
     $pdo = db();
+    $couponBatch = null;
     $pdo->beginTransaction();
     try {
         if (in_array($decision, ['approve', 'send_back', 'reject'], true)) {
@@ -1710,17 +1712,10 @@ function action_decide_approval(int $id): void
             apply_approved_stock((int) $row['subject_id']);
         }
         if ($row['subject_type'] === 'coupon' && $decision === 'approve') {
-            $batch = db_one('SELECT * FROM food_coupon_batches WHERE id = ?', [(int) $row['subject_id']]);
-            if ($batch === null) {
+            $couponBatch = db_one('SELECT * FROM food_coupon_batches WHERE id = ?', [(int) $row['subject_id']]);
+            if ($couponBatch === null) {
                 throw new RuntimeException('Coupon batch is missing.');
             }
-            generate_coupon_batch_pdf(
-                (int) $batch['id'],
-                (string) $batch['coupon_name'],
-                (float) $batch['cost'],
-                (int) $batch['start_sl_no'],
-                (int) $batch['quantity']
-            );
         }
         if ($row['subject_type'] === 'opening' && $decision === 'reject') {
             db_exec(
@@ -1742,6 +1737,21 @@ function action_decide_approval(int $id): void
         error_log('[jt_blr] approval: ' . $e->getMessage());
         flash('error', 'The decision could not be saved.');
         redirect(url('approvals'));
+    }
+    if (is_array($couponBatch)) {
+        try {
+            generate_coupon_batch_pdf(
+                (int) $couponBatch['id'],
+                (string) $couponBatch['coupon_name'],
+                (float) $couponBatch['cost'],
+                (int) $couponBatch['start_sl_no'],
+                (int) $couponBatch['quantity']
+            );
+        } catch (Throwable $e) {
+            error_log('[jt_blr] coupon sheet: ' . $e->getMessage());
+            flash('error', 'The batch is approved. Print it again to build the coupon sheet.');
+            redirect(url('approvals'));
+        }
     }
     flash('success', 'Marked ' . $next . '.');
     redirect(url('approvals'));
@@ -2615,10 +2625,14 @@ function action_settings(string $method): void
     }
     if ($method === 'POST' && post_string('form', 20) === 'brand') {
         try {
+            $receiptWatermark = $_POST['watermark_receipt'] ?? '';
+            $couponWatermark = $_POST['watermark_coupon'] ?? '';
             $error = save_brand_identity(
                 post_string('app_name', 80),
                 $_FILES['logo'] ?? null,
-                isset($_POST['use_default_logo'])
+                isset($_POST['use_default_logo']),
+                is_string($receiptWatermark) ? trim($receiptWatermark) : '',
+                is_string($couponWatermark) ? trim($couponWatermark) : ''
             );
         } catch (Throwable $e) {
             error_log('[jt_blr] brand: ' . $e->getMessage());
@@ -2632,7 +2646,7 @@ function action_settings(string $method): void
                 error_log('[jt_blr] brand documents: ' . $e->getMessage());
             }
         }
-        flash($error !== null ? 'error' : 'success', $error ?? 'Temple name and logo saved.');
+        flash($error !== null ? 'error' : 'success', $error ?? 'Temple name, logo, and watermark saved.');
         redirect(url('settings') . '#identity');
     }
     if ($method === 'POST') {
@@ -2767,6 +2781,7 @@ function send_pdf(string $path, string $filename, bool $download = false): never
 function send_file(string $path, string $filename, string $type, bool $deleteAfter = false, bool $download = true): never
 {
     header('Content-Type: ' . $type);
+    header('Cache-Control: private, no-store');
     header('Content-Disposition: ' . ($download ? 'attachment' : 'inline') . '; filename="' . $filename . '"');
     header('Content-Length: ' . (string) filesize($path));
     header('X-Content-Type-Options: nosniff');

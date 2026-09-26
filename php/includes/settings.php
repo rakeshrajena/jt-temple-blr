@@ -477,7 +477,32 @@ function messaging_for_page(): array
 
 const BRAND_NAME_KEY = 'brand_name';
 const BRAND_LOGO_KEY = 'brand_logo';
+const BRAND_RECEIPT_WATERMARK_KEY = 'watermark_receipt';
+const BRAND_COUPON_WATERMARK_KEY = 'watermark_coupon';
 const BRAND_LOGO_MAX_BYTES = 2097152;
+
+function brand_watermark_error(string $raw): ?string
+{
+    if (preg_match('/^(100|[1-9]?[0-9])$/', trim($raw)) !== 1) {
+        return 'Enter a watermark level from 0 to 100.';
+    }
+    return null;
+}
+
+function brand_watermark_level(string $document): int
+{
+    $key = $document === 'coupon' ? BRAND_COUPON_WATERMARK_KEY : BRAND_RECEIPT_WATERMARK_KEY;
+    $raw = brand_setting($key);
+    if (brand_watermark_error($raw) !== null) {
+        return 22;
+    }
+    return (int) $raw;
+}
+
+function brand_watermark_opacity(string $document): float
+{
+    return brand_watermark_level($document) / 100;
+}
 
 function brand_setting(string $key): string
 {
@@ -587,7 +612,13 @@ function inspect_brand_logo(string $path, string $originalName): array
  *
  * @param mixed $file
  */
-function save_brand_identity(string $name, mixed $file, bool $useDefaultLogo): ?string
+function save_brand_identity(
+    string $name,
+    mixed $file,
+    bool $useDefaultLogo,
+    ?string $receiptWatermark = null,
+    ?string $couponWatermark = null
+): ?string
 {
     $name = trim($name);
     if ($name === '') {
@@ -598,6 +629,14 @@ function save_brand_identity(string $name, mixed $file, bool $useDefaultLogo): ?
     }
     if (preg_match('/[\x00-\x1F\x7F<>]/u', $name) === 1) {
         return 'The temple name cannot contain those characters.';
+    }
+    if ($receiptWatermark !== null || $couponWatermark !== null) {
+        if (brand_watermark_error((string) $receiptWatermark) !== null) {
+            return 'Enter a receipt watermark from 0 to 100.';
+        }
+        if (brand_watermark_error((string) $couponWatermark) !== null) {
+            return 'Enter a coupon watermark from 0 to 100.';
+        }
     }
 
     $upload = brand_upload($file);
@@ -621,12 +660,17 @@ function save_brand_identity(string $name, mixed $file, bool $useDefaultLogo): ?
     $written = null;
     try {
         brand_upsert(BRAND_NAME_KEY, $name);
+        if ($receiptWatermark !== null && $couponWatermark !== null) {
+            brand_upsert(BRAND_RECEIPT_WATERMARK_KEY, (string) (int) $receiptWatermark);
+            brand_upsert(BRAND_COUPON_WATERMARK_KEY, (string) (int) $couponWatermark);
+        }
         if ($extension !== null && $upload['path'] !== null) {
             $written = brand_write_logo($upload['path'], $extension, $upload['uploaded']);
             brand_upsert(BRAND_LOGO_KEY, 'logo.' . $extension);
             brand_remove_other_logos('logo.' . $extension);
         } elseif ($useDefaultLogo) {
             brand_remove_other_logos('');
+            brand_clear_print_png();
             db_exec('DELETE FROM app_settings WHERE setting_key = ?', [BRAND_LOGO_KEY]);
         }
         if ($own) {

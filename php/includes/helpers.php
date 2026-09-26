@@ -157,7 +157,7 @@ function dash(mixed $value): string
 function receipt_link(mixed $number): string
 {
     $number = trim((string) $number);
-    if (preg_match('/^RCPT-\d{4}-\d{4}$/', $number) !== 1) {
+    if (!receipt_number_is_valid($number)) {
         return '';
     }
     $href = url('receipts/' . $number . '.pdf');

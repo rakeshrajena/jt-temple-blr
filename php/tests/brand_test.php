@@ -27,7 +27,13 @@ $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42m
 $temps = [];
 $extraFiles = [];
 $brandDir = APP_ROOT . '/storage/brand';
-$beforeFiles = glob($brandDir . DIRECTORY_SEPARATOR . 'logo.*') ?: [];
+$beforeFiles = glob($brandDir . DIRECTORY_SEPARATOR . 'logo*') ?: [];
+$brandBackup = [];
+foreach ($beforeFiles as $existing) {
+    if (is_file($existing)) {
+        $brandBackup[basename($existing)] = (string) file_get_contents($existing);
+    }
+}
 $hostBefore = load_messaging_settings()['smtp_host'];
 $nameBefore = app_display_name();
 $logoBefore = brand_setting(BRAND_LOGO_KEY);
@@ -80,6 +86,18 @@ try {
         $mail = save_messaging_settings($current + ['clear_smtp_password' => ''], $current);
         check($mail === null && app_display_name() === 'Temple Test', 'saving messages leaves the temple name in place');
 
+        $marked = save_brand_identity('Temple Test', null, false, '15', '40');
+        check(
+            $marked === null
+            && brand_watermark_level('receipt') === 15
+            && brand_watermark_level('coupon') === 40,
+            'receipt and coupon watermarks save from 0 to 100'
+        );
+        $rejected = save_brand_identity('Temple Test', null, false, '140', '40');
+        check($rejected !== null && brand_watermark_level('receipt') === 15, 'a receipt watermark above 100 is refused');
+        $rejectedCoupon = save_brand_identity('Temple Test', null, false, '15', '-1');
+        check($rejectedCoupon !== null && brand_watermark_level('coupon') === 40, 'a coupon watermark below 0 is refused');
+
         $restored = save_brand_identity('Temple Test', null, true);
         check($restored === null && !brand_has_custom_logo(), 'the built-in logo can be restored');
     } finally {
@@ -88,13 +106,16 @@ try {
         }
     }
 
-    $raster = brand_logo_raster();
+    $svg = (string) file_get_contents(APP_ROOT . '/static/logo.svg');
+    $builtIn = brand_rasterize_svg($svg, 128);
     check(
-        is_array($raster) && $raster['width'] === 128 && $raster['height'] === 128 && strlen($raster['rgb']) === 128 * 128 * 3,
+        is_array($builtIn) && $builtIn['width'] === 128 && strlen($builtIn['rgb']) === 128 * 128 * 3,
         'the built-in logo becomes an image'
     );
     $center = 64 * 128 + 64;
-    check(ord($raster['alpha'][$center] ?? "\0") > 0, 'the logo mark is visible in the middle');
+    check(ord($builtIn['alpha'][$center] ?? "\0") > 0, 'the logo mark is visible in the middle');
+    $raster = brand_logo_raster();
+    check(is_array($raster) && $raster['width'] > 0 && $raster['height'] > 0, 'the saved logo can be drawn on a document');
 
     $png = brand_decode_png($pngPath);
     check(is_array($png) && $png['width'] === 1 && $png['height'] === 1, 'a PNG logo is read from the image itself');
@@ -111,17 +132,24 @@ try {
         'purpose' => 'General',
         'payment_mode' => 'Cash',
     ], ['name' => 'Sample Devotee', 'phone' => '', 'pan_number' => ''], 'RCPT-BRAND-CHECK');
-    $extraFiles[] = generate_coupon_batch_pdf(987654, 'Mahaprasad', 50, 1, 1);
+    $extraFiles[] = generate_coupon_batch_pdf(987654, 'Mahaprasad', 50, 1, 1, 1758920820);
     $receiptPdf = (string) file_get_contents($receiptPath);
     $couponPdf = (string) file_get_contents($couponPath);
     $temple = app_display_name();
+    $receiptMark = brand_watermark_opacity('receipt');
+    $couponMark = brand_watermark_opacity('coupon');
     check(
-        str_contains($receiptPdf, $temple) && str_contains($receiptPdf, '/Subtype /Image') && str_contains($receiptPdf, '/GS014 gs'),
-        'a receipt prints the temple name and a light logo watermark'
+        str_contains($receiptPdf, $temple)
+        && str_contains($receiptPdf, '/Subtype /Image')
+        && ($receiptMark <= 0.0 || $receiptMark >= 0.999 || str_contains($receiptPdf, ' gs')),
+        'a receipt prints the temple name and a logo watermark'
     );
     check(
-        str_contains($couponPdf, $temple) && str_contains($couponPdf, '/Subtype /Image') && str_contains($couponPdf, '/GS014 gs'),
-        'a coupon prints the temple name and a light logo watermark'
+        str_contains($couponPdf, $temple)
+        && str_contains($couponPdf, 'CU-1758920820-0001')
+        && str_contains($couponPdf, '/Subtype /Image')
+        && ($couponMark <= 0.0 || $couponMark >= 0.999 || str_contains($couponPdf, ' gs')),
+        'a coupon prints the temple name, the serial, and a logo watermark'
     );
     $mail = smtp_data_payload('Temple', 'seva@temple.test', 'devotee@example.com', 'Hello', "Namaskar\nSample");
     check(
@@ -138,11 +166,14 @@ try {
             unlink($temp);
         }
     }
-    $afterFiles = glob($brandDir . DIRECTORY_SEPARATOR . 'logo.*') ?: [];
-    foreach (array_diff($afterFiles, $beforeFiles) as $created) {
-        if (is_file($created)) {
+    $afterFiles = glob($brandDir . DIRECTORY_SEPARATOR . 'logo*') ?: [];
+    foreach ($afterFiles as $created) {
+        if (is_file($created) && !array_key_exists(basename($created), $brandBackup)) {
             unlink($created);
         }
+    }
+    foreach ($brandBackup as $name => $bytes) {
+        file_put_contents($brandDir . DIRECTORY_SEPARATOR . $name, $bytes);
     }
 }
 

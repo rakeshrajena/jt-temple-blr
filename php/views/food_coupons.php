@@ -36,7 +36,7 @@
         <?= e($b['coupon_name']) ?><br>
         <span style="color:var(--ink-soft);font-size:12px;"><?= e($b['created_date']) ?> · <?= e(dash($b['created_by_name'])) ?></span>
       </td>
-      <td><?= e((string) $b['start_sl_no']) ?> – <?= e((string) $b['end_sl_no']) ?><br><span style="color:var(--ink-soft);font-size:12px;"><?= e((string) $b['quantity']) ?> coupons</span></td>
+      <td><?= e(coupon_code((int) ($b['issued_unix'] ?? 0), (int) $b['start_sl_no'])) ?> – <?= e(coupon_code((int) ($b['issued_unix'] ?? 0), (int) $b['end_sl_no'])) ?><br><span style="color:var(--ink-soft);font-size:12px;"><?= e((string) $b['quantity']) ?> coupons</span></td>
       <td><?= e(money($b['cost'])) ?> each<br><?= e(money($b['total_value'], 2)) ?> total</td>
       <td>
         <?php

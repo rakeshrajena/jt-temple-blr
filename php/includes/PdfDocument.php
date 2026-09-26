@@ -142,6 +142,29 @@ final class PdfDocument
         $this->ops .= sprintf("%.2F 0 0 %.2F %.2F %.2F cm\n/Im%d Do\nQ\n", $w, $h, $x, $y, $index);
     }
 
+    /** Draws a Code 128 module string. 1 is a bar and 0 is a space. */
+    public function bars(float $x, float $y, float $width, float $height, string $modules): void
+    {
+        $count = strlen($modules);
+        if ($count < 1 || $width <= 0.0 || $height <= 0.0) {
+            return;
+        }
+        $module = $width / $count;
+        $this->setFill(0, 0, 0);
+        $index = 0;
+        while ($index < $count) {
+            if ($modules[$index] !== '1') {
+                $index++;
+                continue;
+            }
+            $start = $index;
+            while ($index < $count && $modules[$index] === '1') {
+                $index++;
+            }
+            $this->rect($x + ($start * $module), $y, ($index - $start) * $module, $height, false, true);
+        }
+    }
+
     public function fitText(string $text, float $size, float $maxWidth, bool $bold = false): string
     {
         $text = trim($text);

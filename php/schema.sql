@@ -301,6 +301,7 @@ CREATE TABLE food_coupon_batches (
     total_value     DECIMAL(12,2) NOT NULL,
     created_date    DATE NOT NULL,
     created_by      INT,
+    issued_unix     INT UNSIGNED NULL,
     FOREIGN KEY (created_by) REFERENCES users(id)
 ) ENGINE=InnoDB;
 

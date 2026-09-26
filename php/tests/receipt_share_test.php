@@ -105,6 +105,47 @@ check(
     'a receipt file name cannot leave the receipts folder'
 );
 
+$pdo = db();
+$pdo->beginTransaction();
+try {
+    $donorId = (int) db_value('SELECT id FROM donors ORDER BY id LIMIT 1');
+    $userId = (int) db_value('SELECT id FROM users ORDER BY id LIMIT 1');
+    $highest = db_one(
+        "SELECT receipt_number FROM donations
+         WHERE receipt_number LIKE 'RCPT-2026-%'
+         ORDER BY CAST(SUBSTRING_INDEX(receipt_number, '-', -1) AS UNSIGNED) DESC
+         LIMIT 1"
+    );
+    $parts = $highest === null ? ['0'] : explode('-', (string) $highest['receipt_number']);
+    $high = ((int) end($parts)) + 50;
+    $later = $high - 10;
+    db_exec(
+        'INSERT INTO donations (donor_id, donation_type, amount, purpose, donation_date, payment_mode, receipt_number, receipt_generated, created_by)
+         VALUES (?,?,?,?,?,?,?,?,?)',
+        [$donorId, 'Cash', 10, 'General', '2026-09-27', 'Cash', sprintf('RCPT-2026-%04d', $high), 1, $userId]
+    );
+    db_exec(
+        'INSERT INTO donations (donor_id, donation_type, amount, purpose, donation_date, payment_mode, receipt_number, receipt_generated, created_by)
+         VALUES (?,?,?,?,?,?,?,?,?)',
+        [$donorId, 'Cash', 10, 'General', '2026-09-27', 'Cash', sprintf('RCPT-2026-%04d', $later), 1, $userId]
+    );
+    $next = next_receipt_number($pdo);
+    $expectedSerial = sprintf('%04d', $high + 1);
+    check(
+        preg_match('/^RCPT-(\d{10})-' . $expectedSerial . '$/', $next, $match) === 1
+        && abs((int) $match[1] - time()) <= 5,
+        'the next receipt number is the POSIX time plus the next 4-digit serial'
+    );
+    check(receipt_number_is_valid('RCPT-1758920820-0001'), 'a receipt number may be a POSIX time and a 4-digit serial');
+    check(receipt_number_is_valid('RCPT-2026-0012'), 'an older receipt number still opens');
+    check(receipt_number_is_valid('RCPT-1758920820-1') === false, 'a receipt serial is at least 4 digits');
+    check(receipt_number_is_valid('../RCPT-2026-0012') === false, 'a receipt number cannot leave the receipts folder');
+} finally {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+}
+
 if ($failed > 0) {
     fwrite(STDERR, "{$failed} failed\n");
     exit(1);

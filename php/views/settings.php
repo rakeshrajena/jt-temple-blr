@@ -49,6 +49,16 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
           <label for="app_name"><?= e(t('settings.temple_name')) ?></label>
           <input id="app_name" type="text" name="app_name" value="<?= e(app_display_name()) ?>" maxlength="80" required>
         </div>
+        <div class="form-group">
+          <label for="watermark_receipt"><?= e(t('settings.watermark_receipt')) ?></label>
+          <input id="watermark_receipt" type="number" name="watermark_receipt" min="0" max="100" step="1" value="<?= e((string) brand_watermark_level('receipt')) ?>" required>
+          <p class="hint"><?= e(t('settings.watermark_hint')) ?></p>
+        </div>
+        <div class="form-group">
+          <label for="watermark_coupon"><?= e(t('settings.watermark_coupon')) ?></label>
+          <input id="watermark_coupon" type="number" name="watermark_coupon" min="0" max="100" step="1" value="<?= e((string) brand_watermark_level('coupon')) ?>" required>
+          <p class="hint"><?= e(t('settings.watermark_hint')) ?></p>
+        </div>
         <div class="form-group full">
           <label for="logo"><?= e(t('settings.logo')) ?></label>
           <input id="logo" type="file" name="logo" accept="image/*,.heic,.heif,.avif,.jxl,.bmp,.tif,.tiff,.ico,.svg,.webp,.gif,.jpg,.jpeg,.png,.jfif,.ppm,.wbmp">

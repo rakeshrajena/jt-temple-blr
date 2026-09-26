@@ -43,8 +43,7 @@
       <?php foreach ($receipts as $row): ?>
       <?php
         $number = (string) $row['receipt_number'];
-        $ready = preg_match('/^RCPT-\d{4}-\d{4}$/', $number) === 1
-            && is_file(APP_ROOT . '/storage/receipts/' . $number . '.pdf');
+        $ready = receipt_file_exists($number);
         $generatedOn = (string) ($row['generated_date'] ?? '');
         $generatedBy = (string) ($row['generated_by_name'] ?? '');
         $publicUrl = $ready ? receipt_public_url((string) ($row['receipt_share_token'] ?? '')) : '';

@@ -1,19 +1,35 @@
 <?php
 declare(strict_types=1);
 
+function receipt_number_is_valid(string $number): bool
+{
+    return preg_match('/^RCPT-\d{10}-\d{4,6}$/', $number) === 1
+        || preg_match('/^RCPT-\d{4}-\d{4}$/', $number) === 1;
+}
+
+function receipt_serial_value(string $number): int
+{
+    if (preg_match('/^RCPT-\d{10}-(\d{4,6})$/', $number, $match) === 1) {
+        return (int) $match[1];
+    }
+    if (preg_match('/^RCPT-\d{4}-(\d{4})$/', $number, $match) === 1) {
+        return (int) $match[1];
+    }
+    return 0;
+}
+
 function next_receipt_number(PDO $pdo): string
 {
-    $year = date('Y');
-    $row = db_one(
-        'SELECT receipt_number FROM donations WHERE receipt_number LIKE ? ORDER BY id DESC LIMIT 1',
-        ["RCPT-{$year}-%"]
-    );
-    $seq = 1;
-    if ($row !== null && !empty($row['receipt_number'])) {
-        $parts = explode('-', (string) $row['receipt_number']);
-        $seq = ((int) end($parts)) + 1;
+    $statement = $pdo->prepare("SELECT receipt_number FROM donations WHERE receipt_number LIKE 'RCPT-%'");
+    $statement->execute();
+    $highest = 0;
+    foreach ($statement->fetchAll() as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $highest = max($highest, receipt_serial_value((string) ($row['receipt_number'] ?? '')));
     }
-    return sprintf('RCPT-%s-%04d', $year, $seq);
+    return sprintf('RCPT-%d-%04d', time(), $highest + 1);
 }
 
 function generate_receipt_pdf(array $donation, array $donor, string $receiptNumber): string
@@ -25,11 +41,16 @@ function generate_receipt_pdf(array $donation, array $donor, string $receiptNumb
     $gold = [201 / 255, 138 / 255, 43 / 255];
     $dark = [0.133, 0.133, 0.133];
     $grey = [0.353, 0.384, 0.439];
+    $pdf->setFill(1, 1, 1);
+    $pdf->rect(0, 0, $pageW, $pageH, false, true);
     $logo = brand_logo_raster();
     $image = $logo !== null ? $pdf->addImage($logo) : null;
-    if ($image !== null) {
-        $mark = 168.0;
-        $pdf->drawImage($image, ($pageW - $mark) / 2, ($pageH - $mark) / 2, $mark, $mark, 0.14);
+    if ($image !== null && $logo !== null) {
+        [$markW, $markH] = brand_fit_box((int) $logo['width'], (int) $logo['height'], 210.0);
+        $opacity = brand_watermark_opacity('receipt');
+        if ($opacity > 0.0) {
+            $pdf->drawImage($image, ($pageW - $markW) / 2, ($pageH - $markH) / 2, $markW, $markH, $opacity);
+        }
     }
 
     $pdf->setStroke(...$gold);
@@ -37,10 +58,10 @@ function generate_receipt_pdf(array $donation, array $donor, string $receiptNumb
     $pdf->rect(22.7, 22.7, $pageW - 45.4, $pageH - 45.4);
 
     $nameY = 530.0;
-    if ($image !== null) {
-        $logoSize = 36.0;
-        $pdf->drawImage($image, ($pageW - $logoSize) / 2, 522, $logoSize, $logoSize, 1);
-        $nameY = 508.0;
+    if ($image !== null && $logo !== null) {
+        [$logoW, $logoH] = brand_fit_box((int) $logo['width'], (int) $logo['height'], 58.0);
+        $pdf->drawImage($image, ($pageW - $logoW) / 2, 492, $logoW, $logoH, 1);
+        $nameY = 474.0;
     }
     $pdf->setFill(...$navy);
     $temple = app_display_name();

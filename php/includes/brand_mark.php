@@ -6,7 +6,46 @@ declare(strict_types=1);
  */
 function brand_logo_raster(): ?array
 {
-    $path = brand_logo_path() ?? (APP_ROOT . '/static/logo.svg');
+    static $cached = null;
+    static $cacheKey = '';
+    static $hasCache = false;
+
+    $path = brand_logo_path();
+    $svgPath = APP_ROOT . '/static/logo.svg';
+    $key = $path === null
+        ? 'svg:' . (string) @filemtime($svgPath)
+        : $path . ':' . (string) @filemtime($path) . ':' . (string) @filesize($path);
+    if ($hasCache && $cacheKey === $key) {
+        return $cached;
+    }
+
+    if ($path === null) {
+        $svg = file_get_contents($svgPath);
+        $decoded = is_string($svg) ? brand_rasterize_svg($svg, 128) : null;
+    } else {
+        $info = @getimagesize($path);
+        $tooLarge = is_array($info) && ((int) $info[0] > 256 || (int) $info[1] > 256);
+        $decoded = $tooLarge ? null : brand_decode_logo_file($path);
+        if ($decoded === null) {
+            $print = brand_ensure_print_png($path);
+            $decoded = $print === null ? null : brand_decode_png($print);
+        }
+        if ($decoded !== null) {
+            $decoded = brand_limit_raster($decoded, 256);
+        }
+    }
+
+    $cacheKey = $key;
+    $hasCache = true;
+    $cached = $decoded;
+    return $decoded;
+}
+
+/**
+ * @return array{width:int,height:int,jpeg:?string,rgb:string,alpha:?string,colorSpace:string}|null
+ */
+function brand_decode_logo_file(string $path): ?array
+{
     if (!is_file($path)) {
         return null;
     }
@@ -35,13 +74,102 @@ function brand_logo_raster(): ?array
         return brand_decode_png($path);
     }
     $svg = file_get_contents($path);
-    if ($svg === false) {
-        return null;
-    }
-    if ($mime === 'image/svg+xml' || str_contains(strtolower($svg), '<svg')) {
+    if ($svg !== false && ($mime === 'image/svg+xml' || str_contains(ltrim(strtolower($svg)), '<svg') || str_contains(strtolower(substr($svg, 0, 200)), '<svg'))) {
         return brand_rasterize_svg($svg, 128);
     }
     return null;
+}
+
+function brand_ensure_print_png(string $source): ?string
+{
+    $dest = APP_ROOT . '/storage/brand/logo-print.png';
+    if (brand_print_png_is_current($source, $dest)) {
+        return $dest;
+    }
+    if (!brand_convert_to_png($source, $dest) || !brand_print_png_is_current($source, $dest)) {
+        return null;
+    }
+    return $dest;
+}
+
+function brand_print_png_is_current(string $source, string $dest): bool
+{
+    if (!is_file($dest) || !is_file($source) || filemtime($dest) < filemtime($source) || filesize($dest) <= 32) {
+        return false;
+    }
+    $info = @getimagesize($dest);
+    return is_array($info)
+        && (int) $info[0] > 0
+        && (int) $info[0] <= 256
+        && (int) $info[1] > 0
+        && (int) $info[1] <= 256;
+}
+
+function brand_clear_print_png(): void
+{
+    $path = APP_ROOT . '/storage/brand/logo-print.png';
+    if (is_file($path)) {
+        unlink($path);
+    }
+}
+
+function brand_convert_to_png(string $source, string $dest): bool
+{
+    $script = APP_ROOT . '/bin/logo_to_png.ps1';
+    $powershell = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
+    if (!is_file($script) || !is_file($powershell)) {
+        return false;
+    }
+    $command = escapeshellarg($powershell)
+        . ' -NoProfile -NonInteractive -ExecutionPolicy Bypass -File '
+        . escapeshellarg($script) . ' '
+        . escapeshellarg($source) . ' '
+        . escapeshellarg($dest);
+    $output = [];
+    $code = 1;
+    exec($command, $output, $code);
+    return $code === 0 && is_file($dest) && filesize($dest) > 32;
+}
+
+/** @return array{0:float,1:float} */
+function brand_fit_box(int $pixelW, int $pixelH, float $box): array
+{
+    if ($pixelW < 1 || $pixelH < 1) {
+        return [$box, $box];
+    }
+    $scale = $box / max($pixelW, $pixelH);
+    return [$pixelW * $scale, $pixelH * $scale];
+}
+
+/**
+ * @param array{width:int,height:int,jpeg:?string,rgb:string,alpha:?string,colorSpace:string} $raster
+ * @return array{width:int,height:int,jpeg:?string,rgb:string,alpha:?string,colorSpace:string}
+ */
+function brand_limit_raster(array $raster, int $max): array
+{
+    if ($raster['jpeg'] !== null || ($raster['width'] <= $max && $raster['height'] <= $max)) {
+        return $raster;
+    }
+    $scale = min($max / $raster['width'], $max / $raster['height']);
+    $width = max(1, (int) round($raster['width'] * $scale));
+    $height = max(1, (int) round($raster['height'] * $scale));
+    $rgb = '';
+    $alpha = $raster['alpha'] === null ? null : '';
+    for ($y = 0; $y < $height; $y++) {
+        $sourceY = min($raster['height'] - 1, (int) floor($y / $scale));
+        for ($x = 0; $x < $width; $x++) {
+            $sourceX = min($raster['width'] - 1, (int) floor($x / $scale));
+            $rgb .= substr($raster['rgb'], ($sourceY * $raster['width'] + $sourceX) * 3, 3);
+            if (is_string($alpha) && is_string($raster['alpha'])) {
+                $alpha .= $raster['alpha'][$sourceY * $raster['width'] + $sourceX];
+            }
+        }
+    }
+    $raster['width'] = $width;
+    $raster['height'] = $height;
+    $raster['rgb'] = $rgb;
+    $raster['alpha'] = $alpha;
+    return $raster;
 }
 
 /** @return array{mime:string,bytes:string}|null */
