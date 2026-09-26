@@ -17,11 +17,11 @@
   <div class="kpi-card <?= $summary['pending_invoices'] ? 'warn' : 'good' ?>"><div class="value"><?= e((string) $summary['pending_invoices']) ?></div><div class="label"><?= e(t('kpi.invoices_due')) ?></div></div>
 </div>
 
-<div class="panel-row">
-  <div class="panel">
+<div class="fit-row">
+  <div class="panel fit">
     <h3><?= e(t('dash.recent_donations')) ?></h3>
     <?php if ($recentDonations): ?>
-    <table class="data-table">
+    <table class="data-table fit">
       <tr><th><?= e(t('common.donor')) ?></th><th><?= e(t('common.type')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('common.date')) ?></th><th><?= e(t('common.receipt')) ?></th></tr>
       <?php foreach ($recentDonations as $d): ?>
       <tr>
@@ -43,10 +43,10 @@
     <div class="empty-state"><?= e(t('dash.no_donations')) ?></div>
     <?php endif; ?>
   </div>
-  <div class="panel">
+  <div class="panel fit">
     <h3><?= e(t('dash.low_stock')) ?></h3>
     <?php if ($lowStockItems): ?>
-    <table class="data-table">
+    <table class="data-table fit">
       <tr><th><?= e(t('common.item')) ?></th><th><?= e(t('common.stock')) ?></th><th><?= e(t('common.threshold')) ?></th></tr>
       <?php foreach ($lowStockItems as $f): ?>
       <tr>
@@ -60,12 +60,10 @@
     <div class="empty-state"><?= e(t('dash.stock_healthy')) ?></div>
     <?php endif; ?>
   </div>
-</div>
-
-<div class="panel">
+  <div class="panel fit">
   <h3><?= e(t('dash.recent_expenses')) ?></h3>
   <?php if ($recentExpenses): ?>
-  <table class="data-table">
+  <table class="data-table fit">
     <tr><th><?= e(t('common.category')) ?></th><th><?= e(t('common.description')) ?></th><th><?= e(t('common.paid_to')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('common.date')) ?></th></tr>
     <?php foreach ($recentExpenses as $row): ?>
     <tr>
@@ -80,4 +78,5 @@
   <?php else: ?>
   <div class="empty-state"><?= e(t('dash.no_expenses')) ?></div>
   <?php endif; ?>
+  </div>
 </div>

@@ -34,8 +34,9 @@
   <div class="flow-arrow">→</div>
   <div class="flow-step"><div class="n">4</div><?= e(t('overview.step4')) ?></div>
 </div>
-<div class="panel">
-  <table class="data-table">
+<div class="fit-row">
+<div class="panel fit">
+  <table class="data-table fit">
     <tr><th><?= e(t('overview.subscriber')) ?></th><th><?= e(t('common.plan')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('common.period')) ?></th><th><?= e(t('common.status')) ?></th></tr>
     <?php foreach ($recentInvoices as $invoice): ?>
     <tr>
@@ -53,10 +54,12 @@
     <?php endforeach; ?>
   </table>
 </div>
+</div>
 
 <h3 class="overview-title"><?= e(t('overview.donations')) ?></h3>
-<div class="panel">
-  <table class="data-table">
+<div class="fit-row">
+<div class="panel fit">
+  <table class="data-table fit">
     <tr><th><?= e(t('common.date')) ?></th><th><?= e(t('common.donor')) ?></th><th><?= e(t('common.type')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('common.purpose')) ?></th><th><?= e(t('common.receipt')) ?></th></tr>
     <?php foreach ($recentDonations as $donation): ?>
     <tr>
@@ -70,19 +73,20 @@
     <?php endforeach; ?>
   </table>
 </div>
+</div>
 
 <h3 class="overview-title"><?= e(t('overview.stock')) ?></h3>
-<div class="overview-grid-3">
-  <div class="panel">
+<div class="fit-row">
+  <div class="panel fit">
     <h3><?= e(t('overview.inventory')) ?></h3>
-    <table class="data-table">
+    <table class="data-table fit">
       <tr><th><?= e(t('common.item')) ?></th><th><?= e(t('common.quantity')) ?></th></tr>
       <?php foreach ($inventorySample as $item): ?><tr><td><?= e($item['name']) ?></td><td><?= e($item['quantity']) ?> <?= e($item['unit']) ?></td></tr><?php endforeach; ?>
     </table>
   </div>
-  <div class="panel">
+  <div class="panel fit">
     <h3><?= e(t('overview.food')) ?></h3>
-    <table class="data-table">
+    <table class="data-table fit">
       <tr><th><?= e(t('common.item')) ?></th><th><?= e(t('common.stock')) ?></th><th><?= e(t('common.status')) ?></th></tr>
       <?php foreach ($foodSample as $food): ?>
       <tr>
@@ -93,9 +97,9 @@
       <?php endforeach; ?>
     </table>
   </div>
-  <div class="panel">
+  <div class="panel fit">
     <h3><?= e(t('overview.vastra')) ?></h3>
-    <table class="data-table">
+    <table class="data-table fit">
       <tr><th><?= e(t('common.deity')) ?></th><th><?= e(t('common.item')) ?></th><th><?= e(t('common.status')) ?></th></tr>
       <?php foreach ($vastraSample as $vastra): ?><tr><td><?= e($vastra['deity_name']) ?></td><td><?= e($vastra['item_name']) ?></td><td><?= e($vastra['status']) ?></td></tr><?php endforeach; ?>
     </table>
@@ -103,18 +107,18 @@
 </div>
 
 <h3 class="overview-title"><?= e(t('overview.money')) ?></h3>
-<div class="overview-grid-2">
-  <div class="panel">
+<div class="fit-row">
+  <div class="panel fit">
     <h3><?= e(t('overview.expenses')) ?></h3>
-    <table class="data-table">
+    <table class="data-table fit">
       <tr><th><?= e(t('common.category')) ?></th><th><?= e(t('common.description')) ?></th><th><?= e(t('common.amount')) ?></th></tr>
       <?php foreach ($expenseSample as $expense): ?><tr><td><?= e($expense['category']) ?></td><td><?= e(dash($expense['description'])) ?></td><td><?= e(money($expense['amount'])) ?></td></tr><?php endforeach; ?>
     </table>
   </div>
-  <div class="panel">
+  <div class="panel fit">
     <h3><?= e(t('overview.bank')) ?></h3>
     <?php if ($bankSample): ?>
-    <table class="data-table">
+    <table class="data-table fit">
       <tr><th><?= e(t('common.description')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('common.status')) ?></th></tr>
       <?php foreach ($bankSample as $txn): ?>
       <tr>
