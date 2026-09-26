@@ -2411,6 +2411,9 @@ function action_demo(): void
 {
     login_required();
     render('demo', [
+        'title' => 'Overview',
+        'pageTitle' => 'Overview',
+        'active' => 'demo',
         'summary' => dashboard_summary(db()),
         'recentDonations' => db_all(
             'SELECT d.*, don.name AS donor_name FROM donations d
@@ -2428,7 +2431,7 @@ function action_demo(): void
         'expenseSample' => db_all('SELECT * FROM expenses ORDER BY expense_date DESC LIMIT 8'),
         'bankSample' => db_all('SELECT * FROM bank_transactions ORDER BY txn_date DESC LIMIT 8'),
         'generatedOn' => date('d M Y, h:i A'),
-    ], false);
+    ]);
 }
 
 function action_settings(string $method): void
