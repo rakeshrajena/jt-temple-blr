@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login — Temple Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="Temple Logo" class="login-logo">
+      <h1>Shree Jagannath Temple</h1>
+      <p class="sub">Admin Management System — Sign In</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" name="username" required autofocus>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" name="password" required>
+        </div>
+        <button class="btn btn-primary" type="submit">Sign In</button>
+      </form>
+
+      <div class="demo-creds">
+        <strong>Demo credentials:</strong><br>
+        admin / temple@123 (Admin)<br>
+        staff1 / staff@123 (Staff)
+      </div>
+    </div>
+  </div>
+</body>
+</html>

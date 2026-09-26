@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>{{ title }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"></head>
+<body style="background:#fff;">
+<div class="content" style="max-width:1000px; margin:0 auto; padding:28px;">
+  <div class="print-header">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Temple Logo" class="print-logo">
+    <h1>Shree Jagannath Temple, Sarjapura</h1>
+    <p>{{ title }} — Generated on {{ generated_on }}</p>
+  </div>
+  <div class="no-print" style="display:flex; justify-content:space-between; margin-bottom:16px;">
+    <a href="{{ url_for('reports_page') }}" class="btn btn-outline btn-sm">← Back to Reports</a>
+    <button class="btn btn-sm btn-primary" onclick="window.print()">🖨️ Print</button>
+  </div>
+  <div class="report-meta">{{ data|length }} item(s)</div>
+  <table class="data-table">
+    <tr><th>Category</th><th>Name</th><th>Qty</th><th>Condition</th><th>Location</th><th>Source</th><th>Added</th></tr>
+    {% for i in data %}
+    <tr>
+      <td>{{ i.category }}</td><td>{{ i.name }}</td><td>{{ i.quantity }} {{ i.unit }}</td>
+      <td>{{ i.item_condition }}</td><td>{{ i.location or "—" }}</td><td>{{ i.source }}</td><td>{{ i.added_date }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+</body></html>

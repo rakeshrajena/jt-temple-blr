@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Food Coupons{% endblock %}
+{% block page_title %}Food Coupon Generator{% endblock %}
+{% block content %}
+
+<a href="{{ url_for('food') }}" class="btn btn-outline btn-sm" style="margin-bottom:16px;">← Back to Food Stock</a>
+
+<div class="kpi-grid">
+  <div class="kpi-card good"><div class="value">₹{{ "{:,.0f}".format(total_coupons_value) }}</div><div class="label">Total Value of All Coupons Generated</div></div>
+  <div class="kpi-card"><div class="value">{{ batches|length }}</div><div class="label">Batches Generated</div></div>
+  <div class="kpi-card"><div class="value">{{ batches|sum(attribute='quantity') if batches else 0 }}</div><div class="label">Total Coupons Printed</div></div>
+</div>
+
+<div class="panel">
+  <h3>Generate a New Coupon Batch</h3>
+  <p style="color:var(--ink-soft); font-size:13px; margin-top:-8px;">
+    Serial numbers continue automatically from the last batch, so coupons never overlap or repeat —
+    useful for reconciling how many were actually redeemed later.
+  </p>
+  <form method="POST">
+    <div class="form-grid cols-3">
+      <div class="form-group">
+        <label>Coupon Name</label>
+        <input type="text" name="coupon_name" placeholder="e.g. Lunch Mahaprasad" required>
+      </div>
+      <div class="form-group">
+        <label>Cost per Coupon (₹)</label>
+        <input type="number" step="0.01" name="cost" required>
+      </div>
+      <div class="form-group">
+        <label>Quantity</label>
+        <input type="number" name="quantity" min="1" required>
+      </div>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit">Generate & Prepare for Print</button></div>
+  </form>
+</div>
+
+<div class="panel">
+  <h3>Coupon Batches ({{ batches|length }})</h3>
+  {% if batches %}
+  <table class="data-table">
+    <tr><th>Coupon Name</th><th>Cost</th><th>Sl No Range</th><th>Quantity</th><th>Total Value</th><th>Created</th><th>By</th><th></th></tr>
+    {% for b in batches %}
+    <tr>
+      <td>{{ b.coupon_name }}</td>
+      <td>₹{{ "{:,.0f}".format(b.cost) }}</td>
+      <td>{{ b.start_sl_no }} – {{ b.end_sl_no }}</td>
+      <td>{{ b.quantity }}</td>
+      <td>₹{{ "{:,.0f}".format(b.total_value) }}</td>
+      <td>{{ b.created_date }}</td>
+      <td>{{ b.created_by_name or "—" }}</td>
+      <td><a href="{{ url_for('print_coupon_batch', batch_id=b.id) }}" target="_blank" class="btn btn-sm btn-gold">🖨️ Print PDF</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty-state">No coupon batches yet — generate the first one above.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

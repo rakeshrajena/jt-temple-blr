@@ -1,0 +1,36 @@
+# Generated donation receipts and coupon PDFs
+php/storage/receipts/*
+php/storage/coupons/*
+!php/storage/receipts/.gitkeep
+!php/storage/coupons/.gitkeep
+
+# Uploaded bank statements
+php/storage/uploads/*
+!php/storage/uploads/.gitkeep
+
+# Runtime logs
+php/storage/logs/*
+!php/storage/logs/.gitkeep
+
+# Python bytecode, virtualenv, and the local SQLite database
+python/**/__pycache__/
+python/**/*.py[cod]
+python/.venv/
+python/venv/
+python/*.db
+python/*.log
+python/uploads/*
+python/receipts/*
+!python/uploads/.gitkeep
+!python/receipts/.gitkeep
+
+# Local secrets
+.env
+.env.*
+
+# OS and editor files
+Thumbs.db
+Desktop.ini
+.DS_Store
+.idea/
+.vscode/

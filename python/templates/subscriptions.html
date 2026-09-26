@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Subscriptions{% endblock %}
+{% block page_title %}Monthly Subscriptions{% endblock %}
+{% block content %}
+
+<div class="kpi-grid">
+  <div class="kpi-card good"><div class="value">₹{{ "{:,.0f}".format(mrr) }}</div><div class="label">Monthly Recurring Revenue (Active)</div></div>
+  <div class="kpi-card warn"><div class="value">₹{{ "{:,.0f}".format(pending_amount) }}</div><div class="label">Pending / Overdue Amount</div></div>
+  <div class="kpi-card"><div class="value">{{ subs|length }}</div><div class="label">Total Subscribers</div></div>
+</div>
+
+<div class="panel" style="border-left: 4px solid var(--amber);">
+  <h3 style="color:var(--amber);">ℹ️ How this works</h3>
+  <p style="color:var(--ink-soft); font-size:13px; margin:0;">
+    <strong>Generate Invoice</strong> creates a billing record. <strong>Send</strong> texts the devotee a secure payment link (simulated in this demo —
+    a real deployment wires this to an SMS/WhatsApp provider like Twilio). The devotee opens the link, pays, and the invoice
+    auto-updates to <strong>Paid</strong> here — with the payment mirrored into Donations and available in every report, no manual entry needed.
+  </p>
+</div>
+
+<div class="panel-row">
+  <div class="panel">
+    <h3>Add Subscriber</h3>
+    <form method="POST">
+      <div class="form-grid">
+        <div class="form-group"><label>Name</label><input type="text" name="name" required></div>
+        <div class="form-group"><label>Mobile Number</label><input type="text" name="mobile" placeholder="9XXXXXXXXX" required></div>
+        <div class="form-group"><label>Email (optional)</label><input type="email" name="email"></div>
+        <div class="form-group">
+          <label>Plan</label>
+          <select name="plan_name">
+            {% for p in plan_presets %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group"><label>Amount (₹)</label><input type="number" step="0.01" name="plan_amount" required></div>
+        <div class="form-group">
+          <label>Billing Cycle</label>
+          <select name="frequency"><option>Monthly</option><option>Quarterly</option><option>Yearly</option></select>
+        </div>
+      </div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">Add Subscriber</button></div>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h3>Subscribers ({{ subs|length }})</h3>
+    <table class="data-table">
+      <tr><th>Name</th><th>Plan</th><th>Amount</th><th>Status</th><th>Due</th><th></th></tr>
+      {% for s in subs %}
+      <tr>
+        <td>{{ s.name }}<br><span style="color:var(--ink-soft); font-size:12px;">{{ s.mobile }}</span></td>
+        <td>{{ s.plan_name }}</td>
+        <td>₹{{ "{:,.0f}".format(s.plan_amount) }} / {{ s.frequency }}</td>
+        <td>
+          {% if s.status == 'Active' %}<span class="badge badge-green">Active</span>
+          {% elif s.status == 'Paused' %}<span class="badge badge-amber">Paused</span>
+          {% else %}<span class="badge badge-grey">Cancelled</span>{% endif %}
+        </td>
+        <td>{% if s.due_count %}<span class="badge badge-amber">{{ s.due_count }} due</span>{% else %}<span class="badge badge-green">Up to date</span>{% endif %}</td>
+        <td>
+          {% if s.status == 'Active' %}
+          <form method="POST" action="{{ url_for('generate_invoice', sub_id=s.id) }}">
+            <button class="btn btn-sm btn-outline" type="submit">+ Invoice</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+
+<div class="panel">
+  <h3>All Invoices ({{ invoices|length }})</h3>
+  <form method="POST" action="{{ url_for('bulk_send_invoices') }}" id="bulkSendForm">
+    <div class="flex-toolbar" style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+      <button class="btn btn-gold btn-sm" type="submit" id="bulkSendBtn" disabled>📲 Send Selected (<span id="selCount">0</span>)</button>
+      <span style="color:var(--ink-soft); font-size:12.5px;">Select invoices below, or use the header checkbox to select all pending/sent/overdue at once.</span>
+    </div>
+    <table class="data-table">
+      <tr>
+        <th style="width:36px;"><input type="checkbox" id="selectAll"></th>
+        <th>Invoice #</th><th>Subscriber</th><th>Contact</th><th>Period</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Payment Link</th><th></th>
+      </tr>
+      {% for i in invoices %}
+      <tr>
+        <td>
+          {% if i.status != 'Paid' %}
+          <input type="checkbox" name="invoice_ids" value="{{ i.id }}" class="invoice-checkbox">
+          {% endif %}
+        </td>
+        <td>{{ i.invoice_number }}</td>
+        <td>{{ i.subscriber_name }}</td>
+        <td style="font-size:12px; color:var(--ink-soft);">{{ i.mobile }}{% if i.email %}<br>{{ i.email }}{% endif %}</td>
+        <td>{{ i.period_label }}</td>
+        <td>₹{{ "{:,.0f}".format(i.amount) }}</td>
+        <td>{{ i.due_date }}</td>
+        <td>
+          {% if i.status == 'Paid' %}<span class="badge badge-green">Paid</span>
+          {% elif i.status == 'Sent' %}<span class="badge badge-blue">Sent</span>
+          {% elif i.status == 'Overdue' %}<span class="badge badge-red">Overdue</span>
+          {% else %}<span class="badge badge-amber">Pending</span>{% endif %}
+        </td>
+        <td>
+          {% if i.status != 'Paid' %}
+          <a href="{{ url_for('pay_invoice', token=i.payment_token) }}" target="_blank" class="btn btn-sm btn-outline">Preview Pay Page</a>
+          {% else %}
+          <span style="color:var(--ink-soft); font-size:12px;">Ref: {{ i.payment_reference }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if i.status in ['Pending', 'Overdue'] %}
+          <button class="btn btn-sm btn-gold" type="submit" form="singleSend{{ i.id }}">📲 Send</button>
+          {% elif i.status == 'Sent' %}
+          <button class="btn btn-sm btn-outline" type="submit" form="singleSend{{ i.id }}">Resend</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </form>
+
+  {# Standalone single-invoice send forms, referenced by the buttons above via form="..." so they don't nest inside bulkSendForm #}
+  {% for i in invoices %}
+    {% if i.status != 'Paid' %}
+    <form method="POST" action="{{ url_for('send_invoice', invoice_id=i.id) }}" id="singleSend{{ i.id }}"></form>
+    {% endif %}
+  {% endfor %}
+</div>
+
+<script>
+  const selectAll = document.getElementById('selectAll');
+  const checkboxes = () => Array.from(document.querySelectorAll('.invoice-checkbox'));
+  const bulkBtn = document.getElementById('bulkSendBtn');
+  const selCount = document.getElementById('selCount');
+
+  function updateBulkButton() {
+    const checked = checkboxes().filter(c => c.checked).length;
+    selCount.textContent = checked;
+    bulkBtn.disabled = checked === 0;
+  }
+
+  selectAll.addEventListener('change', () => {
+    checkboxes().forEach(c => c.checked = selectAll.checked);
+    updateBulkButton();
+  });
+
+  checkboxes().forEach(c => c.addEventListener('change', updateBulkButton));
+  updateBulkButton();
+</script>
+{% endblock %}

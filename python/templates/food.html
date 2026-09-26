@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Food Stock{% endblock %}
+{% block page_title %}Raw Food Items & Usage{% endblock %}
+{% block content %}
+
+<div class="panel" style="border-left: 4px solid var(--gold); display:flex; align-items:center; justify-content:space-between;">
+  <div>
+    <h3 style="margin-bottom:2px;">🎟️ Food Coupon Generator</h3>
+    <p style="color:var(--ink-soft); font-size:13px; margin:0;">Generate cost-tracked prasad/meal coupons in bulk, with sequential serial numbers and a print-ready PDF.</p>
+  </div>
+  <a href="{{ url_for('food_coupons') }}" class="btn btn-gold">Manage Coupons →</a>
+</div>
+
+<div class="panel-row">
+  <div class="panel">
+    <h3>Add New Food Item</h3>
+    <form method="POST">
+      <input type="hidden" name="action" value="new_item">
+      <div class="form-grid">
+        <div class="form-group"><label>Item Name</label><input type="text" name="name" required></div>
+        <div class="form-group"><label>Unit</label><input type="text" name="unit" value="kg"></div>
+        <div class="form-group"><label>Opening Stock</label><input type="number" step="0.1" name="current_stock" value="0"></div>
+        <div class="form-group"><label>Low-Stock Threshold</label><input type="number" step="0.1" name="minimum_threshold" value="0"></div>
+      </div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">Add Item</button></div>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h3>Log Stock Movement</h3>
+    <form method="POST">
+      <input type="hidden" id="action_field" name="action" value="use_stock">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Item</label>
+          <select name="food_item_id" required>
+            {% for f in items %}<option value="{{ f.id }}">{{ f.name }} ({{ f.current_stock }} {{ f.unit }} in stock)</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group"><label>Quantity</label><input type="number" step="0.1" name="quantity" required></div>
+        <div class="form-group full"><label>Purpose / Note</label><input type="text" name="purpose" placeholder="e.g. Daily Mahaprasad, Purchased from supplier"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-outline" type="submit" onclick="document.getElementById('action_field').value='add_stock'">+ Add Stock</button>
+        <button class="btn btn-primary" type="submit" onclick="document.getElementById('action_field').value='use_stock'">− Log Usage</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="panel">
+  <h3>Current Stock</h3>
+  <table class="data-table">
+    <tr><th>Item</th><th>Current Stock</th><th>Threshold</th><th>Status</th><th>Last Updated</th></tr>
+    {% for f in items %}
+    <tr>
+      <td>{{ f.name }}</td>
+      <td>{{ f.current_stock }} {{ f.unit }}</td>
+      <td>{{ f.minimum_threshold }} {{ f.unit }}</td>
+      <td>
+        {% if f.current_stock <= f.minimum_threshold %}<span class="badge badge-red">Low Stock</span>
+        {% else %}<span class="badge badge-green">OK</span>{% endif %}
+      </td>
+      <td>{{ f.last_updated }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="panel">
+  <h3>Recent Usage Log</h3>
+  {% if logs %}
+  <table class="data-table">
+    <tr><th>Date</th><th>Item</th><th>Type</th><th>Quantity</th><th>Purpose</th></tr>
+    {% for l in logs %}
+    <tr>
+      <td>{{ l.txn_date }}</td>
+      <td>{{ l.food_name }}</td>
+      <td>{% if l.txn_type == 'Added' %}<span class="badge badge-green">Added</span>{% else %}<span class="badge badge-amber">Used</span>{% endif %}</td>
+      <td>{{ l.quantity }} {{ l.unit }}</td>
+      <td>{{ l.purpose or "—" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty-state">No stock movements logged yet.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

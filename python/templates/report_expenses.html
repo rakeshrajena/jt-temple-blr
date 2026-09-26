@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>{{ title }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"></head>
+<body style="background:#fff;">
+<div class="content" style="max-width:1000px; margin:0 auto; padding:28px;">
+  <div class="print-header">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Temple Logo" class="print-logo">
+    <h1>Shree Jagannath Temple, Sarjapura</h1>
+    <p>{{ title }} — Generated on {{ generated_on }}</p>
+  </div>
+
+  <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <a href="{{ url_for('reports_page') }}" class="btn btn-outline btn-sm">← Back to Reports</a>
+    <div>
+      <form method="GET" style="display:inline-flex; gap:8px; align-items:center;">
+        <input type="date" name="start" value="{{ start or '' }}" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
+        <span>to</span>
+        <input type="date" name="end" value="{{ end or '' }}" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
+        <button class="btn btn-sm btn-outline" type="submit">Filter</button>
+      </form>
+      <button class="btn btn-sm btn-primary" onclick="window.print()">🖨️ Print</button>
+    </div>
+  </div>
+
+  <div class="report-meta">
+    {{ data|length }} expense(s){% if start or end %} between {{ start or 'earliest' }} and {{ end or 'today' }}{% endif %}
+    &nbsp;•&nbsp; Total: ₹{{ "{:,.2f}".format(data|sum(attribute='amount') or 0) }}
+  </div>
+
+  <table class="data-table">
+    <tr><th>Date</th><th>Category</th><th>Description</th><th>Paid To</th><th class="text-right">Amount</th><th>Payment Mode</th></tr>
+    {% for e in data %}
+    <tr>
+      <td>{{ e.expense_date }}</td>
+      <td>{{ e.category }}</td>
+      <td>{{ e.description or "—" }}</td>
+      <td>{{ e.paid_to or "—" }}</td>
+      <td class="text-right">₹{{ "{:,.2f}".format(e.amount) }}</td>
+      <td>{{ e.payment_mode }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+</body></html>

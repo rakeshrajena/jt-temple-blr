@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block page_title %}Admin Users{% endblock %}
+{% block content %}
+
+<div class="kpi-grid">
+  <div class="kpi-card {{ 'warn' if active_count >= max_users else 'good' }}">
+    <div class="value">{{ active_count }} / {{ max_users }}</div>
+    <div class="label">Active Users</div>
+  </div>
+</div>
+
+<div class="panel">
+  <h3>Add User</h3>
+  {% if active_count >= max_users %}
+  <div class="flash flash-error">User limit reached ({{ max_users }} active users). Deactivate someone below before adding a new one.</div>
+  {% else %}
+  <form method="POST">
+    <div class="form-grid cols-3">
+      <div class="form-group"><label>Full Name</label><input type="text" name="full_name" required></div>
+      <div class="form-group"><label>Username</label><input type="text" name="username" required></div>
+      <div class="form-group"><label>Password</label><input type="password" name="password" required></div>
+      <div class="form-group">
+        <label>Role</label>
+        <select name="role"><option value="Staff">Staff</option><option value="Admin">Admin</option></select>
+      </div>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit">Add User</button></div>
+  </form>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h3>All Users</h3>
+  <table class="data-table">
+    <tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.full_name }}</td>
+      <td>{{ u.username }}</td>
+      <td>{{ u.role }}</td>
+      <td>{% if u.is_active %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-grey">Inactive</span>{% endif %}</td>
+      <td>{{ u.created_at }}</td>
+      <td>
+        {% if u.id != current_user.id %}
+        <form method="POST" action="{{ url_for('toggle_user', user_id=u.id) }}">
+          <button class="btn btn-sm {{ 'btn-danger' if u.is_active else 'btn-outline' }}" type="submit">
+            {{ 'Deactivate' if u.is_active else 'Reactivate' }}
+          </button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% endblock %}

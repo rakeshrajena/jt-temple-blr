@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Temple Admin{% endblock %} — Shree Jagannath Temple</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar no-print">
+      <div class="brand">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Temple Logo" class="brand-logo">
+        <h1>Shree Jagannath Temple</h1>
+        <p>Admin Management System</p>
+      </div>
+      <a class="nav-link {{ 'active' if active=='demo' }}" href="{{ url_for('demo_overview') }}" style="background: rgba(200,138,43,0.18);"><span class="icon">⭐</span> Demo Overview</a>
+      <a class="nav-link {{ 'active' if active=='dashboard' }}" href="{{ url_for('dashboard') }}"><span class="icon">📊</span> Dashboard</a>
+      <a class="nav-link {{ 'active' if active=='inventory' }}" href="{{ url_for('inventory') }}"><span class="icon">📦</span> Inventory</a>
+      <a class="nav-link {{ 'active' if active=='food' }}" href="{{ url_for('food') }}"><span class="icon">🌾</span> Food Stock</a>
+      <a class="nav-link {{ 'active' if active=='vastra' }}" href="{{ url_for('vastra') }}"><span class="icon">🧵</span> Deity Vastra</a>
+      <a class="nav-link {{ 'active' if active=='donations' }}" href="{{ url_for('donations') }}"><span class="icon">🙏</span> Donations</a>
+      <a class="nav-link {{ 'active' if active=='subscriptions' }}" href="{{ url_for('subscriptions') }}"><span class="icon">🔔</span> Subscriptions</a>
+      <a class="nav-link {{ 'active' if active=='expenses' }}" href="{{ url_for('expenses') }}"><span class="icon">💳</span> Expenses</a>
+      <a class="nav-link {{ 'active' if active=='bank' }}" href="{{ url_for('bank') }}"><span class="icon">🏦</span> Bank & Reconciliation</a>
+      <a class="nav-link {{ 'active' if active=='reports' }}" href="{{ url_for('reports_page') }}"><span class="icon">🖨️</span> Reports</a>
+      {% if current_user.role == 'Admin' %}
+      <a class="nav-link {{ 'active' if active=='users' }}" href="{{ url_for('users') }}"><span class="icon">👥</span> Users</a>
+      {% endif %}
+      <div class="sidebar-footer">Logged in as<br><strong>{{ current_user.full_name }}</strong> ({{ current_user.role }})</div>
+    </aside>
+
+    <div class="main">
+      <div class="topbar no-print">
+        <h2>{% block page_title %}{% endblock %}</h2>
+        <div class="user-chip">
+          <div class="avatar">{{ current_user.full_name[0] if current_user.full_name else '?' }}</div>
+          {{ current_user.full_name }}
+          <a class="logout-link" href="{{ url_for('logout') }}">Log out</a>
+        </div>
+      </div>
+      <div class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="flash flash-{{ category }} no-print">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

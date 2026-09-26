@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Expenses{% endblock %}
+{% block page_title %}Expense Management{% endblock %}
+{% block content %}
+
+<div class="panel">
+  <h3>Record an Expense</h3>
+  <form method="POST">
+    <div class="form-grid cols-3">
+      <div class="form-group">
+        <label>Category</label>
+        <select name="category" required>
+          {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group"><label>Amount (₹)</label><input type="number" step="0.01" name="amount" required></div>
+      <div class="form-group"><label>Paid To</label><input type="text" name="paid_to"></div>
+      <div class="form-group"><label>Expense Date</label><input type="date" name="expense_date" id="exp_date_field"></div>
+      <div class="form-group">
+        <label>Payment Mode</label>
+        <select name="payment_mode">
+          <option>Cash</option><option>Bank Transfer</option><option>UPI</option><option>Cheque</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Receipt / Invoice Ref</label><input type="text" name="receipt_ref"></div>
+      <div class="form-group full"><label>Description</label><textarea name="description" rows="2"></textarea></div>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit">Record Expense</button></div>
+  </form>
+</div>
+
+<div class="panel">
+  <h3>All Expenses ({{ expenses|length }})</h3>
+  {% if expenses %}
+  <table class="data-table">
+    <tr><th>Date</th><th>Category</th><th>Description</th><th>Paid To</th><th>Amount</th><th>Payment</th><th>Bank Match</th></tr>
+    {% for e in expenses %}
+    <tr>
+      <td>{{ e.expense_date }}</td>
+      <td>{{ e.category }}</td>
+      <td>{{ e.description or "—" }}</td>
+      <td>{{ e.paid_to or "—" }}</td>
+      <td>₹{{ "{:,.0f}".format(e.amount) }}</td>
+      <td>{{ e.payment_mode }}</td>
+      <td>{% if e.reconciled_bank_txn_id %}<span class="badge badge-green">Reconciled</span>{% else %}<span class="badge badge-grey">Not yet</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty-state">No expenses recorded yet.</div>
+  {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('exp_date_field').value = new Date().toISOString().split('T')[0];
+});
+</script>
+{% endblock %}

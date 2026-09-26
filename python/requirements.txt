@@ -1,0 +1,9 @@
+Flask>=3.0
+Werkzeug>=3.0
+reportlab>=4.0
+pandas>=2.0
+openpyxl>=3.1
+
+# Optional, only needed if you switch database.py from SQLite to MySQL
+# in production (see README "Moving to MySQL in Production"):
+# PyMySQL>=1.1

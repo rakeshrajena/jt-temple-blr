@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>{{ title }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"></head>
+<body style="background:#fff;">
+<div class="content" style="max-width:1050px; margin:0 auto; padding:28px;">
+  <div class="print-header">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Temple Logo" class="print-logo">
+    <h1>Shree Jagannath Temple, Sarjapura</h1>
+    <p>{{ title }} — Generated on {{ generated_on }}</p>
+  </div>
+  <div class="no-print" style="display:flex; justify-content:space-between; margin-bottom:16px;">
+    <a href="{{ url_for('reports_page') }}" class="btn btn-outline btn-sm">← Back to Reports</a>
+    <button class="btn btn-sm btn-primary" onclick="window.print()">🖨️ Print</button>
+  </div>
+  <div class="report-meta">{{ data|length }} transaction(s)</div>
+  <table class="data-table">
+    <tr><th>Date</th><th>Description</th><th class="text-right">Amount</th><th>Type</th><th>Status</th><th>Matched To</th></tr>
+    {% for t in data %}
+    <tr>
+      <td>{{ t.txn_date }}</td>
+      <td>{{ t.description }}</td>
+      <td class="text-right">₹{{ "{:,.2f}".format(t.amount) }}</td>
+      <td>{{ t.txn_type }}</td>
+      <td>{{ t.reconciled_status }}</td>
+      <td>
+        {% if t.donor_name %}Donation — {{ t.donor_name }} {% if t.donation_receipt %}({{ t.donation_receipt }}){% endif %}
+        {% elif t.expense_description %}Expense — {{ t.expense_description }}
+        {% else %}—{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+</body></html>

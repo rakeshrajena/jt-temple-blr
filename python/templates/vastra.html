@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Deity Vastra{% endblock %}
+{% block page_title %}Deity Vastra (Cloths) Management{% endblock %}
+{% block content %}
+
+<div class="panel">
+  <h3>Add Vastra Item</h3>
+  <form method="POST">
+    <div class="form-grid cols-3">
+      <div class="form-group">
+        <label>Deity</label>
+        <select name="deity_name" required>
+          <option>Jagannath</option><option>Balabhadra</option><option>Subhadra</option><option>Sudarshan</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Item Name</label><input type="text" name="item_name" placeholder="e.g. Silk Pata" required></div>
+      <div class="form-group"><label>Color</label><input type="text" name="color"></div>
+      <div class="form-group"><label>Quantity</label><input type="number" name="quantity" value="1" min="1"></div>
+      <div class="form-group">
+        <label>Source</label>
+        <select name="source"><option>Purchased</option><option>Donated</option></select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select name="status"><option>In Store</option><option>In Use</option><option>Retired</option></select>
+      </div>
+      <div class="form-group full"><label>Notes</label><input type="text" name="notes"></div>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit">Add Vastra</button></div>
+  </form>
+</div>
+
+<div class="panel">
+  <h3>Vastra Inventory ({{ items|length }} entries)</h3>
+  {% if items %}
+  <table class="data-table">
+    <tr><th>Deity</th><th>Item</th><th>Color</th><th>Qty</th><th>Source</th><th>Status</th><th>Added</th></tr>
+    {% for v in items %}
+    <tr>
+      <td>{{ v.deity_name }}</td>
+      <td>{{ v.item_name }}</td>
+      <td>{{ v.color or "—" }}</td>
+      <td>{{ v.quantity }}</td>
+      <td>{% if v.source == 'Donated' %}<span class="badge badge-blue">Donated</span>{% else %}Purchased{% endif %}</td>
+      <td>
+        {% if v.status == 'In Use' %}<span class="badge badge-green">In Use</span>
+        {% elif v.status == 'Retired' %}<span class="badge badge-grey">Retired</span>
+        {% else %}<span class="badge badge-amber">In Store</span>{% endif %}
+      </td>
+      <td>{{ v.date_added }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty-state">No vastra items recorded yet.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

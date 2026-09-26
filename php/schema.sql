@@ -1,0 +1,201 @@
+-- Shree Jagannath Temple admin schema (MySQL 8 / PHP 8).
+-- Database jt_blr is created by the installer before this file runs.
+
+CREATE TABLE users (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    username        VARCHAR(50) NOT NULL UNIQUE,
+    password_hash   VARCHAR(255) NOT NULL,
+    full_name       VARCHAR(100) NOT NULL,
+    role            ENUM('Admin', 'Staff') NOT NULL DEFAULT 'Staff',
+    is_active       TINYINT(1) NOT NULL DEFAULT 1,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE inventory_items (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    category        VARCHAR(50) NOT NULL,
+    name            VARCHAR(150) NOT NULL,
+    description     TEXT,
+    quantity        INT NOT NULL DEFAULT 0,
+    unit            VARCHAR(30) DEFAULT 'pcs',
+    item_condition  ENUM('New','Good','Fair','Needs Repair','Damaged') DEFAULT 'Good',
+    location        VARCHAR(100),
+    source          ENUM('Purchased','Donated') DEFAULT 'Purchased',
+    donation_id     INT NULL,
+    added_date      DATE NOT NULL,
+    added_by        INT,
+    notes           TEXT,
+    FOREIGN KEY (added_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE food_items (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    name                VARCHAR(150) NOT NULL,
+    unit                VARCHAR(30) NOT NULL DEFAULT 'kg',
+    current_stock       DECIMAL(10,2) NOT NULL DEFAULT 0,
+    minimum_threshold   DECIMAL(10,2) DEFAULT 0,
+    last_updated        DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE food_usage_log (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    food_item_id    INT NOT NULL,
+    txn_type        ENUM('Added','Used') NOT NULL,
+    quantity        DECIMAL(10,2) NOT NULL,
+    purpose         VARCHAR(200),
+    txn_date        DATE NOT NULL,
+    logged_by       INT,
+    FOREIGN KEY (food_item_id) REFERENCES food_items(id) ON DELETE CASCADE,
+    FOREIGN KEY (logged_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE vastra_items (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    deity_name      VARCHAR(100) NOT NULL,
+    item_name       VARCHAR(150) NOT NULL,
+    color           VARCHAR(50),
+    quantity        INT NOT NULL DEFAULT 1,
+    source          ENUM('Purchased','Donated') DEFAULT 'Purchased',
+    donation_id     INT NULL,
+    date_added      DATE NOT NULL,
+    status          ENUM('In Store','In Use','Retired') DEFAULT 'In Store',
+    notes           TEXT
+) ENGINE=InnoDB;
+
+CREATE TABLE donors (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    name            VARCHAR(150) NOT NULL,
+    phone           VARCHAR(20),
+    email           VARCHAR(120),
+    address         TEXT,
+    pan_number      VARCHAR(20),
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE donations (
+    id                      INT AUTO_INCREMENT PRIMARY KEY,
+    donor_id                INT NOT NULL,
+    donation_type           ENUM('Cash','Food','Vastra','Inventory','Other') NOT NULL,
+    amount                  DECIMAL(12,2) DEFAULT NULL,
+    linked_food_id          INT NULL,
+    linked_vastra_id        INT NULL,
+    linked_inventory_id     INT NULL,
+    purpose                 VARCHAR(200),
+    donation_date           DATE NOT NULL,
+    payment_mode            ENUM('Cash','Bank Transfer','UPI','Cheque','In-Kind','Card','Netbanking') NOT NULL,
+    receipt_number          VARCHAR(30) UNIQUE,
+    receipt_generated       TINYINT(1) DEFAULT 0,
+    reconciled_bank_txn_id  INT NULL,
+    notes                   TEXT,
+    created_by              INT,
+    created_at              DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (donor_id) REFERENCES donors(id),
+    FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE expenses (
+    id                      INT AUTO_INCREMENT PRIMARY KEY,
+    category                VARCHAR(80) NOT NULL,
+    description             VARCHAR(255),
+    amount                  DECIMAL(12,2) NOT NULL,
+    paid_to                 VARCHAR(150),
+    expense_date            DATE NOT NULL,
+    payment_mode            ENUM('Cash','Bank Transfer','UPI','Cheque') NOT NULL,
+    reconciled_bank_txn_id  INT NULL,
+    receipt_ref             VARCHAR(100),
+    added_by                INT,
+    created_at              DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (added_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE bank_statement_uploads (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    filename            VARCHAR(255),
+    upload_date         DATETIME DEFAULT CURRENT_TIMESTAMP,
+    uploaded_by         INT,
+    total_transactions  INT DEFAULT 0,
+    matched_count       INT DEFAULT 0,
+    FOREIGN KEY (uploaded_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE bank_transactions (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    upload_batch_id     INT NOT NULL,
+    txn_date            DATE NOT NULL,
+    description         VARCHAR(255),
+    amount              DECIMAL(12,2) NOT NULL,
+    txn_type            ENUM('Credit','Debit') NOT NULL,
+    balance             DECIMAL(12,2),
+    reconciled_status   ENUM('Matched','Unmatched','Manual') DEFAULT 'Unmatched',
+    matched_donation_id INT NULL,
+    matched_expense_id  INT NULL,
+    FOREIGN KEY (upload_batch_id) REFERENCES bank_statement_uploads(id) ON DELETE CASCADE,
+    FOREIGN KEY (matched_donation_id) REFERENCES donations(id),
+    FOREIGN KEY (matched_expense_id) REFERENCES expenses(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE receipts (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    donation_id     INT NOT NULL,
+    receipt_number  VARCHAR(30) NOT NULL UNIQUE,
+    generated_date  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    generated_by    INT,
+    FOREIGN KEY (donation_id) REFERENCES donations(id),
+    FOREIGN KEY (generated_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE subscribers (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    name            VARCHAR(150) NOT NULL,
+    mobile          VARCHAR(15) NOT NULL UNIQUE,
+    email           VARCHAR(120),
+    plan_name       VARCHAR(100) NOT NULL DEFAULT 'Monthly Seva',
+    plan_amount     DECIMAL(10,2) NOT NULL,
+    frequency       ENUM('Monthly','Quarterly','Yearly') NOT NULL DEFAULT 'Monthly',
+    status          ENUM('Active','Paused','Cancelled') NOT NULL DEFAULT 'Active',
+    start_date      DATE NOT NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE subscription_invoices (
+    id                      INT AUTO_INCREMENT PRIMARY KEY,
+    subscriber_id           INT NOT NULL,
+    invoice_number          VARCHAR(30) NOT NULL UNIQUE,
+    amount                  DECIMAL(10,2) NOT NULL,
+    period_label            VARCHAR(30),
+    due_date                DATE NOT NULL,
+    status                  ENUM('Pending','Sent','Paid','Overdue','Failed') NOT NULL DEFAULT 'Pending',
+    payment_token           VARCHAR(64) NOT NULL UNIQUE,
+    notification_sent       TINYINT(1) DEFAULT 0,
+    notification_sent_at    DATETIME NULL,
+    paid_date               DATETIME NULL,
+    paid_via                VARCHAR(30) NULL,
+    payment_reference       VARCHAR(100) NULL,
+    linked_donation_id      INT NULL,
+    created_at              DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (subscriber_id) REFERENCES subscribers(id),
+    FOREIGN KEY (linked_donation_id) REFERENCES donations(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE food_coupon_batches (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    coupon_name     VARCHAR(100) NOT NULL,
+    cost            DECIMAL(10,2) NOT NULL,
+    start_sl_no     INT NOT NULL,
+    end_sl_no       INT NOT NULL,
+    quantity        INT NOT NULL,
+    total_value     DECIMAL(12,2) NOT NULL,
+    created_date    DATE NOT NULL,
+    created_by      INT,
+    FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_subscribers_status ON subscribers(status);
+CREATE INDEX idx_invoices_status ON subscription_invoices(status);
+CREATE INDEX idx_invoices_token ON subscription_invoices(payment_token);
+CREATE INDEX idx_donations_date ON donations(donation_date);
+CREATE INDEX idx_donations_donor ON donations(donor_id);
+CREATE INDEX idx_expenses_date ON expenses(expense_date);
+CREATE INDEX idx_bank_txn_date ON bank_transactions(txn_date);
+CREATE INDEX idx_bank_txn_status ON bank_transactions(reconciled_status);
+CREATE INDEX idx_food_usage_date ON food_usage_log(txn_date);

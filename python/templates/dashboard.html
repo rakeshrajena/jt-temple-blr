@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+
+<div class="kpi-grid">
+  <div class="kpi-card good">
+    <div class="value">₹{{ "{:,.0f}".format(summary.total_donations) }}</div>
+    <div class="label">Total Donations Received</div>
+  </div>
+  <div class="kpi-card danger">
+    <div class="value">₹{{ "{:,.0f}".format(summary.total_expenses) }}</div>
+    <div class="label">Total Expenses</div>
+  </div>
+  <div class="kpi-card {{ 'good' if summary.net_balance >= 0 else 'danger' }}">
+    <div class="value">₹{{ "{:,.0f}".format(summary.net_balance) }}</div>
+    <div class="label">Net Balance</div>
+  </div>
+  <div class="kpi-card">
+    <div class="value">{{ summary.donor_count }}</div>
+    <div class="label">Unique Donors</div>
+  </div>
+  <div class="kpi-card {{ 'warn' if summary.pending_receipts else '' }}">
+    <div class="value">{{ summary.pending_receipts }}</div>
+    <div class="label">Receipts Pending</div>
+  </div>
+  <div class="kpi-card {{ 'warn' if summary.low_stock else 'good' }}">
+    <div class="value">{{ summary.low_stock }}</div>
+    <div class="label">Food Items Low on Stock</div>
+  </div>
+  <div class="kpi-card {{ 'warn' if summary.unmatched_txns else 'good' }}">
+    <div class="value">{{ summary.unmatched_txns }}</div>
+    <div class="label">Bank Txns Needing Review</div>
+  </div>
+  <div class="kpi-card">
+    <div class="value">{{ summary.inventory_count }}</div>
+    <div class="label">Inventory Items Tracked</div>
+  </div>
+  <div class="kpi-card good">
+    <div class="value">₹{{ "{:,.0f}".format(summary.mrr) }}</div>
+    <div class="label">Monthly Recurring Revenue</div>
+  </div>
+  <div class="kpi-card {{ 'warn' if summary.pending_invoices else 'good' }}">
+    <div class="value">{{ summary.pending_invoices }}</div>
+    <div class="label">Subscription Invoices Due</div>
+  </div>
+</div>
+
+<div class="panel-row">
+  <div class="panel">
+    <h3>Recent Donations</h3>
+    {% if recent_donations %}
+    <table class="data-table">
+      <tr><th>Donor</th><th>Type</th><th>Amount</th><th>Date</th><th>Receipt</th></tr>
+      {% for d in recent_donations %}
+      <tr>
+        <td>{{ d.donor_name }}</td>
+        <td>{{ d.donation_type }}</td>
+        <td>{{ "₹{:,.0f}".format(d.amount) if d.amount else "—" }}</td>
+        <td>{{ d.donation_date }}</td>
+        <td>
+          {% if d.receipt_generated %}
+            <span class="badge badge-green">{{ d.receipt_number }}</span>
+          {% else %}
+            <span class="badge badge-amber">Pending</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty-state">No donations recorded yet.</div>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h3>Low Stock Alerts</h3>
+    {% if low_stock_items %}
+    <table class="data-table">
+      <tr><th>Item</th><th>Stock</th><th>Threshold</th></tr>
+      {% for f in low_stock_items %}
+      <tr>
+        <td>{{ f.name }}</td>
+        <td><span class="badge badge-red">{{ f.current_stock }} {{ f.unit }}</span></td>
+        <td>{{ f.minimum_threshold }} {{ f.unit }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty-state">All food stock levels are healthy.</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="panel">
+  <h3>Recent Expenses</h3>
+  {% if recent_expenses %}
+  <table class="data-table">
+    <tr><th>Category</th><th>Description</th><th>Paid To</th><th>Amount</th><th>Date</th></tr>
+    {% for e in recent_expenses %}
+    <tr>
+      <td>{{ e.category }}</td>
+      <td>{{ e.description or "—" }}</td>
+      <td>{{ e.paid_to or "—" }}</td>
+      <td>₹{{ "{:,.0f}".format(e.amount) }}</td>
+      <td>{{ e.expense_date }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty-state">No expenses recorded yet.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

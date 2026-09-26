@@ -1,2 +1,47 @@
-# jt-temple-blr
-Inventory and Donation Management App for Lord Jagannath Temple , Bangalore
+# Shree Jagannath Temple — Bengaluru
+
+Inventory and donation management for Shree Jagannath Temple, Sarjapura, Bengaluru.
+
+Two copies of the same admin app live in this repo:
+
+| Folder | Stack | Use it when |
+|---|---|---|
+| [`php/`](php/README.md) | PHP 8 and MySQL | This is the app served by AMPPS |
+| [`python/`](python/README.md) | Flask and SQLite | The original app, for local Python runs |
+
+## PHP (AMPPS)
+
+1. Start Apache and MySQL in AMPPS.
+2. Open [http://localhost/jt_blr/jt-temple-blr/php/](http://localhost/jt_blr/jt-temple-blr/php/).
+
+The first request creates the `jt_blr` database, the tables, and the demo records. Database settings are in `php/config.php` (localhost, user `root`, password `mysql`).
+
+| Username | Password | Role |
+|---|---|---|
+| admin | temple@123 | Admin |
+| ramesh | ramesh@123 | Admin |
+| staff1 | staff@123 | Staff |
+
+Staff can use every module except Users. Only an Admin can add or deactivate accounts.
+
+Generated receipt PDFs, coupon PDFs, uploaded bank statements, and logs stay in `php/storage/` and are not part of the git history. See [php/README.md](php/README.md) for modules, subscriptions, and layout.
+
+## Python (Flask)
+
+```bash
+cd python
+pip install -r requirements.txt
+python app.py
+```
+
+Then open [http://localhost:5055](http://localhost:5055) and sign in with the same demo accounts. The SQLite file `python/temple.db` is created on first run and is not committed. See [python/README.md](python/README.md).
+
+## What stays off GitHub
+
+`.gitignore` leaves out files that are created while the app runs:
+
+- Receipt and coupon PDFs
+- Uploaded bank statements
+- Application and notification logs
+- The Python SQLite database, bytecode, and virtualenv
+- `.env` files, if you add them later

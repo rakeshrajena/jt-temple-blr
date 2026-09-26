@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Bank & Reconciliation{% endblock %}
+{% block page_title %}Bank Statement & Reconciliation{% endblock %}
+{% block content %}
+
+<div class="panel">
+  <h3>Upload Bank Statement</h3>
+  <p style="color:var(--ink-soft); font-size:13px; margin-top:-6px;">
+    Accepts CSV or Excel with Date, Description, Amount (or separate Credit/Debit columns), and optionally Balance.
+    Credits are auto-matched against donations, debits against expenses — same amount, within 3 days.
+  </p>
+  <form method="POST" enctype="multipart/form-data">
+    <div class="form-grid">
+      <div class="form-group"><label>Statement File (.csv, .xlsx)</label><input type="file" name="statement_file" accept=".csv,.xlsx,.xls" required></div>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit">Upload & Reconcile</button></div>
+  </form>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card good"><div class="value">{{ matched|length }}</div><div class="label">Matched Transactions</div></div>
+  <div class="kpi-card warn"><div class="value">{{ unmatched|length }}</div><div class="label">Needs Manual Review</div></div>
+  <div class="kpi-card"><div class="value">{{ uploads|length }}</div><div class="label">Statements Uploaded</div></div>
+</div>
+
+<div class="panel">
+  <h3>Needs Manual Review ({{ unmatched|length }})</h3>
+  {% if unmatched %}
+  <table class="data-table">
+    <tr><th>Date</th><th>Description</th><th>Amount</th><th>Type</th><th>Link to</th></tr>
+    {% for u in unmatched %}
+    <tr>
+      <td>{{ u.txn_date }}</td>
+      <td>{{ u.description }}</td>
+      <td>₹{{ "{:,.2f}".format(u.amount) }}</td>
+      <td>{% if u.txn_type == 'Credit' %}<span class="badge badge-green">Credit</span>{% else %}<span class="badge badge-red">Debit</span>{% endif %}</td>
+      <td>
+        <form method="POST" action="{{ url_for('bank_manual_match') }}" style="display:flex; gap:6px;">
+          <input type="hidden" name="txn_id" value="{{ u.id }}">
+          {% if u.txn_type == 'Credit' %}
+          <input type="hidden" name="match_type" value="donation">
+          <select name="match_id" style="max-width:220px;">
+            {% for od in open_donations %}<option value="{{ od.id }}">{{ od.name }} — ₹{{ "{:,.0f}".format(od.amount) }} ({{ od.donation_date }})</option>{% endfor %}
+          </select>
+          {% else %}
+          <input type="hidden" name="match_type" value="expense">
+          <select name="match_id" style="max-width:220px;">
+            {% for oe in open_expenses %}<option value="{{ oe.id }}">{{ oe.description or 'Expense' }} — ₹{{ "{:,.0f}".format(oe.amount) }} ({{ oe.expense_date }})</option>{% endfor %}
+          </select>
+          {% endif %}
+          <button class="btn btn-sm btn-outline" type="submit">Link</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty-state">Nothing pending review — everything's reconciled.</div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h3>Matched Transactions ({{ matched|length }})</h3>
+  {% if matched %}
+  <table class="data-table">
+    <tr><th>Date</th><th>Description</th><th>Amount</th><th>Type</th><th>Matched To</th></tr>
+    {% for m in matched %}
+    <tr>
+      <td>{{ m.txn_date }}</td>
+      <td>{{ m.description }}</td>
+      <td>₹{{ "{:,.2f}".format(m.amount) }}</td>
+      <td>{% if m.txn_type == 'Credit' %}<span class="badge badge-green">Credit</span>{% else %}<span class="badge badge-red">Debit</span>{% endif %}</td>
+      <td>
+        {% if m.donor_name %}Donation — {{ m.donor_name }} {% if m.receipt_number %}({{ m.receipt_number }}){% endif %}
+        {% elif m.expense_desc %}Expense — {{ m.expense_desc }}
+        {% else %}—{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty-state">No matched transactions yet — upload a statement to get started.</div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h3>Upload History</h3>
+  {% if uploads %}
+  <table class="data-table">
+    <tr><th>File</th><th>Uploaded</th><th>Total Txns</th><th>Auto-Matched</th></tr>
+    {% for u in uploads %}
+    <tr><td>{{ u.filename }}</td><td>{{ u.upload_date }}</td><td>{{ u.total_transactions }}</td><td>{{ u.matched_count }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty-state">No statements uploaded yet.</div>
+  {% endif %}
+</div>
+
+{% endblock %}
