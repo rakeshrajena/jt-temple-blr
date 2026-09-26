@@ -79,6 +79,22 @@ function dispatch_request(): void
         action_donors();
         return;
     }
+    if ($path === 'donors/bulk-email' && $method === 'POST') {
+        action_donors_bulk_email();
+        return;
+    }
+    if ($path === 'donors/new') {
+        action_devotee_new($method);
+        return;
+    }
+    if (preg_match('#^donors/(\d+)/save$#', $path, $m) === 1 && $method === 'POST') {
+        action_devotee_save((int) $m[1]);
+        return;
+    }
+    if (preg_match('#^donors/(\d+)/delete$#', $path, $m) === 1 && $method === 'POST') {
+        action_devotee_delete((int) $m[1]);
+        return;
+    }
     if (preg_match('#^donors/(\d+)$#', $path, $m) === 1 && $method === 'GET') {
         action_donor((int) $m[1]);
         return;
@@ -105,6 +121,18 @@ function dispatch_request(): void
     }
     if ($path === 'receipts/cancel' && $method === 'POST') {
         action_receipts_cancel();
+        return;
+    }
+    if ($path === 'receipts/bulk-email' && $method === 'POST') {
+        action_receipts_bulk_email();
+        return;
+    }
+    if (preg_match('#^receipts/(\d+)/email$#', $path, $m) === 1 && $method === 'POST') {
+        action_receipt_email((int) $m[1]);
+        return;
+    }
+    if (preg_match('#^receipts/open/([a-f0-9]{32})$#', $path, $m) === 1 && $method === 'GET') {
+        action_open_receipt($m[1]);
         return;
     }
     if (preg_match('#^receipts/([A-Za-z0-9._-]+)$#', $path, $m) === 1 && $method === 'GET') {
@@ -197,6 +225,10 @@ function dispatch_request(): void
     }
     if ($path === 'users') {
         action_users($method);
+        return;
+    }
+    if ($path === 'settings') {
+        action_settings($method);
         return;
     }
     if (preg_match('#^users/(\d+)/toggle$#', $path, $m) === 1 && $method === 'POST') {
@@ -809,7 +841,48 @@ function action_donors(): void
         'to' => $to,
         'query' => (string) ($_GET['q'] ?? ''),
         'financialYear' => financial_year_label($from),
+        'countryCode' => load_messaging_settings()['whatsapp_country_code'],
     ]);
+}
+
+function action_donors_bulk_email(): void
+{
+    login_required();
+    $message = post_string('message', 1000);
+    $ids = posted_id_list('donor_ids');
+    $error = bulk_compose_error($message, count($ids));
+    if ($error !== null) {
+        flash('error', $error);
+        redirect(url('donors'));
+    }
+    $settings = load_messaging_settings();
+    if (!smtp_is_ready($settings)) {
+        flash('error', 'Outgoing mail is not configured.');
+        redirect(url('donors'));
+    }
+    $sent = 0;
+    $skipped = 0;
+    $failed = 0;
+    $subject = 'Message from ' . APP_NAME;
+    foreach ($ids as $donorId) {
+        $donor = db_one('SELECT name, email FROM donors WHERE id = ?', [$donorId]);
+        $email = trim((string) ($donor['email'] ?? ''));
+        if ($donor === null || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            $skipped++;
+            continue;
+        }
+        $sendError = send_smtp_message($settings, $email, $subject, $message);
+        if ($sendError !== null) {
+            notify_log('EMAIL', $email, 'Not sent. ' . $subject . ' ' . $sendError);
+            $failed++;
+            continue;
+        }
+        notify_log('EMAIL', $email, 'Sent. ' . $subject);
+        $sent++;
+    }
+    [$category, $text] = bulk_result_flash($sent, $skipped, $failed);
+    flash($category, $text);
+    redirect(url('donors'));
 }
 
 function action_donor(int $donorId): void
@@ -830,13 +903,77 @@ function action_donor(int $donorId): void
         flash('error', 'That devotee was not found.');
         redirect(url('donors'));
     }
+    $gifts = db_one('SELECT COUNT(*) AS n FROM donations WHERE donor_id = ?', [$donorId]);
+    $pledges = db_one('SELECT COUNT(*) AS n FROM pledges WHERE donor_id = ?', [$donorId]);
     render('donor', [
         'title' => $statement['name'],
         'pageTitle' => $statement['name'],
         'active' => 'donors',
         'statement' => $statement,
         'today' => date('Y-m-d'),
+        'deleteReason' => devotee_delete_block_reason((int) ($gifts['n'] ?? 0), (int) ($pledges['n'] ?? 0)),
     ]);
+}
+
+function action_devotee_new(string $method): void
+{
+    login_required();
+    $values = devotee_fields(['name' => '', 'phone' => '', 'email' => '', 'address' => '', 'pan' => '']);
+    if ($method === 'POST') {
+        $values = devotee_fields([
+            'name' => post_string('name', 150),
+            'phone' => post_string('phone', 20),
+            'email' => post_string('email', 120),
+            'address' => post_string('address', 500),
+            'pan' => post_string('pan', 20),
+        ]);
+        $saved = save_devotee(null, $values);
+        if ($saved['error'] === null) {
+            flash('success', 'Devotee added.');
+            redirect(url('donors/' . $saved['id']));
+        }
+        flash('error', $saved['error']);
+    } elseif ($method !== 'GET') {
+        http_response_code(405);
+        echo 'Method not allowed.';
+        return;
+    }
+    render('devotee_form', [
+        'title' => 'Add devotee',
+        'pageTitle' => 'Add devotee',
+        'active' => 'donors',
+        'values' => $values,
+    ]);
+}
+
+function action_devotee_save(int $donorId): void
+{
+    login_required();
+    $saved = save_devotee($donorId, [
+        'name' => post_string('name', 150),
+        'phone' => post_string('phone', 20),
+        'email' => post_string('email', 120),
+        'address' => post_string('address', 500),
+        'pan' => post_string('pan', 20),
+    ]);
+    if ($saved['error'] !== null) {
+        flash('error', $saved['error']);
+        redirect(url('donors/' . $donorId));
+    }
+    flash('success', 'Devotee details saved.');
+    redirect(url('donors/' . $donorId));
+}
+
+function action_devotee_delete(int $donorId): void
+{
+    login_required();
+    $error = delete_devotee($donorId);
+    if ($error !== null) {
+        flash('error', $error);
+        redirect(url('donors/' . $donorId));
+    }
+    flash('success', 'Devotee removed.');
+    redirect(url('donors'));
 }
 
 function action_save_pledge(int $donorId): void
@@ -948,6 +1085,30 @@ function action_generate_receipt(int $donationId): void
     redirect(url('donations'));
 }
 
+function action_open_receipt(string $token): void
+{
+    if (preg_match('/^[a-f0-9]{32}$/', $token) !== 1) {
+        http_response_code(404);
+        echo 'Not found.';
+        return;
+    }
+    $row = db_one(
+        "SELECT receipt_number FROM donations
+         WHERE receipt_share_token = ?
+           AND receipt_generated = 1
+           AND receipt_number IS NOT NULL
+           AND receipt_number <> ''",
+        [$token]
+    );
+    $number = $row === null ? '' : (string) $row['receipt_number'];
+    if ($number === '' || !receipt_file_exists($number)) {
+        http_response_code(404);
+        echo 'Not found.';
+        return;
+    }
+    send_pdf(receipt_path($number), $number . '.pdf', false);
+}
+
 function action_serve_receipt(string $filename): void
 {
     login_required();
@@ -984,6 +1145,7 @@ function action_receipts(): void
         'receipts' => $rows,
         'onDisk' => $onDisk,
         'isAdmin' => ($_SESSION['role'] ?? '') === 'Admin',
+        'countryCode' => load_messaging_settings()['whatsapp_country_code'],
     ]);
 }
 
@@ -1049,13 +1211,128 @@ function action_receipts_cancel(): void
     redirect(url('receipts'));
 }
 
-/** @return list<array<string, mixed>> */
-function receipt_rows(): array
+function action_receipt_email(int $donationId): void
 {
+    login_required();
+    $rows = receipt_rows($donationId);
+    $row = $rows[0] ?? null;
+    if ($row === null) {
+        flash('error', 'Receipt not found.');
+        redirect(url('receipts'));
+    }
+    $email = trim((string) ($row['donor_email'] ?? ''));
+    $number = (string) $row['receipt_number'];
+    $ready = receipt_file_exists($number);
+    $settings = load_messaging_settings();
+    $blocked = receipt_email_block_reason($email, $ready, smtp_is_ready($settings));
+    if ($blocked !== null) {
+        flash('error', $blocked);
+        redirect(url('receipts'));
+    }
+    $pdf = file_get_contents(receipt_path($number));
+    if ($pdf === false) {
+        flash('error', 'The receipt PDF is not ready to send.');
+        redirect(url('receipts'));
+    }
+    $subject = 'Receipt ' . $number;
+    $error = send_smtp_message($settings, $email, $subject, receipt_email_body($row, receipt_public_url((string) ($row['receipt_share_token'] ?? ''))), [
+        'filename' => $number . '.pdf',
+        'content' => $pdf,
+        'mime' => 'application/pdf',
+    ]);
+    if ($error !== null) {
+        notify_log('EMAIL', $email, 'Not sent. ' . $subject . ' ' . $error);
+        flash('error', 'The receipt was not emailed: ' . $error);
+        redirect(url('receipts'));
+    }
+    notify_log('EMAIL', $email, 'Sent. ' . $subject);
+    flash('success', 'Receipt ' . $number . ' emailed to ' . $email . '.');
+    redirect(url('receipts'));
+}
+
+function action_receipts_bulk_email(): void
+{
+    login_required();
+    $message = post_string('message', 1000);
+    $ids = posted_id_list('donation_ids');
+    $error = bulk_compose_error($message, count($ids));
+    if ($error !== null) {
+        flash('error', $error);
+        redirect(url('receipts'));
+    }
+    $settings = load_messaging_settings();
+    if (!smtp_is_ready($settings)) {
+        flash('error', 'Outgoing mail is not configured.');
+        redirect(url('receipts'));
+    }
+    $sent = 0;
+    $skipped = 0;
+    $failed = 0;
+    foreach ($ids as $donationId) {
+        $rows = receipt_rows($donationId);
+        $row = $rows[0] ?? null;
+        $email = trim((string) ($row['donor_email'] ?? ''));
+        $number = (string) ($row['receipt_number'] ?? '');
+        $ready = $row !== null && receipt_file_exists($number);
+        if ($row === null || receipt_email_block_reason($email, $ready, true) !== null) {
+            $skipped++;
+            continue;
+        }
+        $pdf = file_get_contents(receipt_path($number));
+        if ($pdf === false) {
+            $skipped++;
+            continue;
+        }
+        $subject = 'Receipt ' . $number;
+        $link = receipt_public_url((string) ($row['receipt_share_token'] ?? ''));
+        $sendError = send_smtp_message($settings, $email, $subject, receipt_bulk_email_body($message, $link), [
+            'filename' => $number . '.pdf',
+            'content' => $pdf,
+            'mime' => 'application/pdf',
+        ]);
+        if ($sendError !== null) {
+            notify_log('EMAIL', $email, 'Not sent. ' . $subject . ' ' . $sendError);
+            $failed++;
+            continue;
+        }
+        notify_log('EMAIL', $email, 'Sent. ' . $subject);
+        $sent++;
+    }
+    [$category, $text] = bulk_result_flash($sent, $skipped, $failed);
+    flash($category, $text);
+    redirect(url('receipts'));
+}
+
+/** @return list<int> */
+function posted_id_list(string $key): array
+{
+    $raw = $_POST[$key] ?? [];
+    if (!is_array($raw)) {
+        return [];
+    }
+    $ids = [];
+    foreach ($raw as $id) {
+        $id = (int) $id;
+        if ($id > 0) {
+            $ids[$id] = $id;
+        }
+    }
+    return array_values($ids);
+}
+
+/** @return list<array<string, mixed>> */
+function receipt_rows(?int $donationId = null): array
+{
+    $params = [];
+    $one = '';
+    if ($donationId !== null) {
+        $one = ' AND d.id = ?';
+        $params[] = $donationId;
+    }
     return db_all(
         "SELECT d.id AS donation_id, d.receipt_number, d.amount, d.donation_date, d.donation_type,
-                d.purpose, d.payment_mode, d.receipt_cancelled,
-                don.name AS donor_name, don.phone AS donor_phone,
+                d.purpose, d.payment_mode, d.receipt_cancelled, d.receipt_share_token,
+                don.name AS donor_name, don.phone AS donor_phone, don.email AS donor_email,
                 r.generated_date, u.full_name AS generated_by_name,
                 (SELECT rc.reason FROM receipt_cancellations rc
                  JOIN approvals a ON a.subject_type = 'receipt' AND a.subject_id = rc.id AND a.status = 'Approved'
@@ -1071,7 +1348,9 @@ function receipt_rows(): array
          WHERE d.receipt_generated = 1
            AND d.receipt_number IS NOT NULL
            AND d.receipt_number <> ''
-         ORDER BY d.donation_date DESC, d.id DESC"
+           {$one}
+         ORDER BY d.donation_date DESC, d.id DESC",
+        $params
     );
 }
 
@@ -1934,6 +2213,7 @@ function action_subscriptions(string $method): void
         'planPresets' => PLAN_PRESETS,
         'mrr' => (float) db_value("SELECT COALESCE(SUM(plan_amount),0) FROM subscribers WHERE status = 'Active' AND frequency = 'Monthly'"),
         'pendingAmount' => (float) db_value("SELECT COALESCE(SUM(amount),0) FROM subscription_invoices WHERE status IN ('Sent','Pending','Overdue')"),
+        'messaging' => messaging_for_page(),
     ]);
 }
 
@@ -1974,7 +2254,15 @@ function action_send_invoice(int $invoiceId): void
         redirect(url('subscriptions'));
     }
     $extra = !empty($inv['email']) ? ' and ' . $inv['email'] : '';
-    flash('success', 'Invoice ' . $inv['invoice_number'] . ' sent to ' . $inv['mobile'] . $extra . ' (simulated — see storage/logs/notifications.log).');
+    if (!empty($inv['email_error'])) {
+        flash('error', 'The message was logged, and the email was not sent: ' . $inv['email_error']);
+        redirect(url('subscriptions'));
+    }
+    if (!empty($inv['email']) && smtp_is_ready(load_messaging_settings())) {
+        flash('success', 'Invoice ' . $inv['invoice_number'] . ' emailed to ' . $inv['email'] . '.');
+        redirect(url('subscriptions'));
+    }
+    flash('success', 'Invoice ' . $inv['invoice_number'] . ' logged for ' . $inv['mobile'] . $extra . '. Outgoing mail is not configured, so nothing was sent to an inbox. Use WhatsApp Web on the row to send it yourself.');
     redirect(url('subscriptions'));
 }
 
@@ -1987,12 +2275,22 @@ function action_bulk_send(): void
         redirect(url('subscriptions'));
     }
     $sent = 0;
+    $mailFailed = 0;
     foreach ($ids as $id) {
-        if (notify_invoice((int) $id) !== null) {
-            $sent++;
+        $notice = notify_invoice((int) $id);
+        if ($notice === null) {
+            continue;
         }
+        if (!empty($notice['email_error'])) {
+            $mailFailed++;
+            continue;
+        }
+        $sent++;
     }
-    flash('success', 'Sent ' . $sent . ' of ' . count($ids) . ' selected invoice(s). Messages are logged in storage/logs/notifications.log.');
+    if ($mailFailed > 0) {
+        flash('error', $mailFailed . ' email(s) could not be sent. Those invoices were left unchanged.');
+    }
+    flash('success', 'Logged ' . $sent . ' of ' . count($ids) . ' selected invoice(s).');
     redirect(url('subscriptions'));
 }
 
@@ -2007,16 +2305,22 @@ function notify_invoice(int $invoiceId): ?array
         return null;
     }
     $payUrl = absolute_url('pay/' . $inv['payment_token']);
-    $message = sprintf(
-        'Namaskar %s, your %s seva contribution of Rs.%s is due. Pay securely here: %s — Shree Jagannath Temple',
-        $inv['name'],
-        (string) $inv['period_label'],
-        number_format((float) $inv['amount'], 0),
-        $payUrl
-    );
+    $settings = load_messaging_settings();
+    $message = invoice_notice_text($inv, $payUrl, $settings);
     notify_log('SMS', (string) $inv['mobile'], $message);
+    $inv['email_error'] = null;
     if (!empty($inv['email'])) {
-        notify_log('EMAIL', (string) $inv['email'], 'Seva Contribution Due — ' . $inv['invoice_number'] . ' | ' . $message);
+        $subject = 'Seva Contribution Due — ' . $inv['invoice_number'];
+        if (smtp_is_ready($settings)) {
+            $emailError = send_smtp_message($settings, (string) $inv['email'], $subject, $message);
+            $inv['email_error'] = $emailError;
+            notify_log('EMAIL', (string) $inv['email'], $emailError === null ? 'Sent. ' . $subject : 'Not sent. ' . $emailError);
+            if ($emailError !== null) {
+                return $inv;
+            }
+        } else {
+            notify_log('EMAIL', (string) $inv['email'], $subject . ' | ' . $message);
+        }
     }
     db_exec(
         "UPDATE subscription_invoices SET status = 'Sent', notification_sent = 1, notification_sent_at = ? WHERE id = ?",
@@ -2125,6 +2429,44 @@ function action_demo(): void
         'bankSample' => db_all('SELECT * FROM bank_transactions ORDER BY txn_date DESC LIMIT 8'),
         'generatedOn' => date('d M Y, h:i A'),
     ], false);
+}
+
+function action_settings(string $method): void
+{
+    admin_required();
+    if ($method === 'POST') {
+        $current = load_messaging_settings();
+        $input = [
+            'smtp_host' => post_string('smtp_host', 200),
+            'smtp_port' => post_string('smtp_port', 6),
+            'smtp_encryption' => post_string('smtp_encryption', 10),
+            'smtp_username' => post_string('smtp_username', 200),
+            'smtp_password' => post_string('smtp_password', 200),
+            'smtp_from_email' => post_string('smtp_from_email', 200),
+            'smtp_from_name' => post_string('smtp_from_name', 120),
+            'whatsapp_country_code' => post_string('whatsapp_country_code', 8),
+            'whatsapp_template' => post_string('whatsapp_template', 1000),
+            'clear_smtp_password' => isset($_POST['clear_smtp_password']) ? '1' : '',
+        ];
+        try {
+            $error = save_messaging_settings($input, $current);
+        } catch (Throwable $e) {
+            error_log('[jt_blr] settings: ' . $e->getMessage());
+            flash('error', 'The settings could not be saved.');
+            redirect(url('settings'));
+        }
+        flash($error !== null ? 'error' : 'success', $error ?? 'Message settings saved.');
+        redirect(url('settings'));
+    }
+    $settings = load_messaging_settings();
+    $settings['password_saved'] = $settings['smtp_password'] !== '' ? '1' : '';
+    unset($settings['smtp_password']);
+    render('settings', [
+        'title' => 'Settings',
+        'pageTitle' => 'Message settings',
+        'active' => 'settings',
+        'settings' => $settings,
+    ]);
 }
 
 function action_users(string $method): void

@@ -54,6 +54,8 @@ function ensure_schema(PDO $pdo): void
     ensure_correction_schema($pdo);
     ensure_donor_schema($pdo);
     ensure_stock_schema($pdo);
+    ensure_messaging_schema($pdo);
+    ensure_receipt_share_schema($pdo);
     backfill_receipt_pdfs();
 }
 

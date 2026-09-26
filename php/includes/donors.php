@@ -277,9 +277,132 @@ function open_pledge_choices(): array
     return $choices;
 }
 
+function devotee_phone_digits(string $phone): string
+{
+    return preg_replace('/\D+/', '', $phone) ?? '';
+}
+
+/** @param array{name: string, phone: string, email: string, address: string, pan: string} $input */
+function devotee_fields(array $input): array
+{
+    return [
+        'name' => trim($input['name'] ?? ''),
+        'phone' => trim($input['phone'] ?? ''),
+        'email' => trim($input['email'] ?? ''),
+        'address' => trim($input['address'] ?? ''),
+        'pan' => strtoupper(trim($input['pan'] ?? '')),
+    ];
+}
+
+/**
+ * @param array{name: string, phone: string, email: string, address: string, pan: string} $input
+ */
+function devotee_profile_error(array $input, ?int $ignoreId = null, ?string $keptEmail = null): ?string
+{
+    if ($input['name'] === '' || mb_strlen($input['name']) > 150) {
+        return 'Enter the devotee name.';
+    }
+    if (mb_strlen($input['phone']) > 20) {
+        return 'The phone number is too long.';
+    }
+    $digits = devotee_phone_digits($input['phone']);
+    if ($input['phone'] !== '' && (strlen($digits) < 8 || strlen($digits) > 15)) {
+        return 'Enter a phone number of 8 to 15 digits.';
+    }
+    if ($digits !== '') {
+        foreach (db_all('SELECT id, phone FROM donors') as $row) {
+            if ($ignoreId !== null && (int) $row['id'] === $ignoreId) {
+                continue;
+            }
+            if (devotee_phone_digits((string) ($row['phone'] ?? '')) === $digits) {
+                return 'Another devotee already uses this phone number.';
+            }
+        }
+    }
+    if (mb_strlen($input['email']) > 120) {
+        return 'The email address is too long.';
+    }
+    if ($input['email'] !== '' && filter_var($input['email'], FILTER_VALIDATE_EMAIL) === false) {
+        if ($keptEmail === null || trim($keptEmail) !== $input['email']) {
+            return 'The email address is not valid.';
+        }
+    }
+    if (mb_strlen($input['address']) > 500) {
+        return 'The address is too long.';
+    }
+    if ($input['pan'] !== '' && preg_match('/^[A-Z]{5}[0-9]{4}[A-Z]$/', $input['pan']) !== 1) {
+        return 'PAN should look like ABCDE1234F.';
+    }
+    return null;
+}
+
+/**
+ * @param array{name?: string, phone?: string, email?: string, address?: string, pan?: string} $input
+ * @return array{error: ?string, id: int}
+ */
+function save_devotee(?int $donorId, array $input): array
+{
+    $fields = devotee_fields($input);
+    $keptEmail = null;
+    if ($donorId !== null) {
+        $current = db_one('SELECT email FROM donors WHERE id = ?', [$donorId]);
+        if ($current === null) {
+            return ['error' => 'That devotee was not found.', 'id' => 0];
+        }
+        $keptEmail = (string) ($current['email'] ?? '');
+    }
+    $error = devotee_profile_error($fields, $donorId, $keptEmail);
+    if ($error !== null) {
+        return ['error' => $error, 'id' => 0];
+    }
+    $values = [
+        $fields['name'],
+        $fields['phone'] !== '' ? $fields['phone'] : null,
+        $fields['email'] !== '' ? $fields['email'] : null,
+        $fields['address'] !== '' ? $fields['address'] : null,
+        $fields['pan'] !== '' ? $fields['pan'] : null,
+    ];
+    if ($donorId === null) {
+        $id = db_exec(
+            'INSERT INTO donors (name, phone, email, address, pan_number) VALUES (?,?,?,?,?)',
+            $values
+        );
+        return ['error' => null, 'id' => $id];
+    }
+    $values[] = $donorId;
+    db_exec(
+        'UPDATE donors SET name = ?, phone = ?, email = ?, address = ?, pan_number = ? WHERE id = ?',
+        $values
+    );
+    return ['error' => null, 'id' => $donorId];
+}
+
+function devotee_delete_block_reason(int $giftCount, int $pledgeCount): ?string
+{
+    if ($giftCount > 0 || $pledgeCount > 0) {
+        return 'This devotee has gifts or pledges, so the record stays.';
+    }
+    return null;
+}
+
+function delete_devotee(int $donorId): ?string
+{
+    if (db_one('SELECT id FROM donors WHERE id = ?', [$donorId]) === null) {
+        return 'That devotee was not found.';
+    }
+    $gifts = db_one('SELECT COUNT(*) AS n FROM donations WHERE donor_id = ?', [$donorId]);
+    $pledges = db_one('SELECT COUNT(*) AS n FROM pledges WHERE donor_id = ?', [$donorId]);
+    $blocked = devotee_delete_block_reason((int) ($gifts['n'] ?? 0), (int) ($pledges['n'] ?? 0));
+    if ($blocked !== null) {
+        return $blocked;
+    }
+    db_exec('DELETE FROM donors WHERE id = ?', [$donorId]);
+    return null;
+}
+
 function load_donor_list(string $from, string $to, string $query = ''): array
 {
-    $donors = db_all('SELECT id, name, phone, pan_number FROM donors ORDER BY name, id');
+    $donors = db_all('SELECT id, name, phone, email, pan_number FROM donors ORDER BY name, id');
     $received = [];
     foreach (db_all(
         "SELECT donor_id, COALESCE(SUM(amount), 0) AS total
@@ -337,13 +460,15 @@ function load_donor_list(string $from, string $to, string $query = ''): array
     foreach ($donors as $donor) {
         $name = (string) $donor['name'];
         $phone = (string) ($donor['phone'] ?? '');
-        if ($needle !== '' && !str_contains(mb_strtolower($name . ' ' . $phone), $needle)) {
+        $email = (string) ($donor['email'] ?? '');
+        if ($needle !== '' && !str_contains(mb_strtolower($name . ' ' . $phone . ' ' . $email), $needle)) {
             continue;
         }
         $rows[] = [
             'id' => (int) $donor['id'],
             'name' => $name,
             'phone' => $phone,
+            'email' => $email,
             'pan' => (string) ($donor['pan_number'] ?? ''),
             'received' => round($received[(int) $donor['id']] ?? 0.0, 2),
             'outstanding' => max(0.0, round($promised[(int) $donor['id']] ?? 0.0, 2)),

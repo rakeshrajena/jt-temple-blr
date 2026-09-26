@@ -1,6 +1,7 @@
 <?php
 /** @var array<string, mixed> $statement */
 /** @var string $today */
+/** @var ?string $deleteReason */
 $lines = $statement['lines'];
 $pledges = $statement['pledges'];
 ?>
@@ -13,6 +14,7 @@ $pledges = $statement['pledges'];
   <h3><?= e($statement['name']) ?></h3>
   <p class="sub">
     <?= e(dash($statement['phone'])) ?>
+    <?php if ($statement['email'] !== ''): ?> · <?= e($statement['email']) ?><?php endif; ?>
     <?php if ($statement['pan'] !== ''): ?> · PAN <?= e($statement['pan']) ?><?php endif; ?>
     <?php if ($statement['address'] !== ''): ?><br><?= e($statement['address']) ?><?php endif; ?>
   </p>
@@ -26,6 +28,26 @@ $pledges = $statement['pledges'];
     <a class="btn btn-outline btn-sm" href="<?= e(url('donors', ['from' => $statement['from'], 'to' => $statement['to']])) ?>">All devotees</a>
     <button class="btn btn-outline btn-sm" type="button" onclick="window.print()">Print statement</button>
   </div>
+  <form method="POST" action="<?= e(url('donors/' . (int) $statement['donor_id'] . '/save')) ?>" class="no-print" style="margin-bottom:16px;">
+    <?= csrf_field() ?>
+    <h3>Details</h3>
+    <div class="form-grid cols-3">
+      <div class="form-group"><label>Name</label><input type="text" name="name" maxlength="150" required value="<?= e($statement['name']) ?>"></div>
+      <div class="form-group"><label>Phone</label><input type="text" name="phone" maxlength="20" value="<?= e($statement['phone']) ?>"></div>
+      <div class="form-group"><label>Email</label><input type="text" name="email" maxlength="120" value="<?= e($statement['email']) ?>"></div>
+      <div class="form-group"><label>Address</label><input type="text" name="address" maxlength="500" value="<?= e($statement['address']) ?>"></div>
+      <div class="form-group"><label>PAN</label><input type="text" name="pan" maxlength="10" value="<?= e($statement['pan']) ?>" placeholder="ABCDE1234F"></div>
+    </div>
+    <div class="form-actions"><button class="btn btn-gold btn-sm" type="submit">Save details</button></div>
+  </form>
+  <?php if ($deleteReason === null): ?>
+  <form method="POST" action="<?= e(url('donors/' . (int) $statement['donor_id'] . '/delete')) ?>" class="no-print" id="deleteDevotee" style="margin-bottom:16px;">
+    <?= csrf_field() ?>
+    <button class="btn btn-outline btn-sm" type="submit">Remove devotee</button>
+  </form>
+  <?php else: ?>
+  <p class="no-print" style="color:var(--ink-soft); font-size:13px;"><?= e($deleteReason) ?> Gifts and receipts stay in the books.</p>
+  <?php endif; ?>
   <div class="kpi-grid">
     <div class="kpi-card good"><div class="value"><?= e(money($statement['received'])) ?></div><div class="label">Received this period</div></div>
   </div>
@@ -99,3 +121,14 @@ $pledges = $statement['pledges'];
     <div class="form-actions"><button class="btn btn-outline" type="submit">Save pledge</button></div>
   </form>
 </div>
+<script>
+(function () {
+  const form = document.getElementById('deleteDevotee');
+  if (!form) return;
+  form.addEventListener('submit', function (event) {
+    if (!window.confirm('Remove this devotee? The name, phone, and email will be deleted.')) {
+      event.preventDefault();
+    }
+  });
+})();
+</script>

@@ -55,11 +55,12 @@ Change these in `config.php` if the server credentials differ.
 | Bank reconciliation | Upload a CSV or Excel statement. Credits match donations and debits match expenses when the amount is the same and the date is within 3 days. Anything left over can be linked by hand |
 | Reports | Donations, expenses, inventory, food, vastra, and reconciliation. Each report prints from the browser |
 | Users | Admin-only accounts |
+| Settings | Admin-only outgoing mail (SMTP) and the WhatsApp Web message. WhatsApp opens in the browser; there is no WhatsApp API |
 
 ### Subscriptions and payment links
 
 1. Generate an invoice for an active subscriber.
-2. Send it. The SMS and email text is written to `storage/logs/notifications.log` (nothing is sent to a phone or inbox).
+2. Send it. The message is written to `storage/logs/notifications.log`. If SMTP is saved in Settings, it is also emailed. WhatsApp on the invoice row opens WhatsApp Web with the message filled in.
 3. The devotee opens `/pay/<token>` without signing in, chooses UPI, card, or netbanking, and confirms.
 4. The invoice becomes Paid and a matching donation is created.
 

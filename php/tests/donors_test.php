@@ -97,6 +97,46 @@ try {
     $pdo->rollBack();
 }
 
+check(devotee_profile_error(devotee_fields(['name' => '  ', 'phone' => '', 'email' => '', 'address' => '', 'pan' => '']), null, null) !== null, 'a devotee needs a name');
+check(devotee_profile_error(devotee_fields(['name' => 'Meera', 'phone' => '123', 'email' => '', 'address' => '', 'pan' => '']), null, null) !== null, 'a phone number needs 8 to 15 digits');
+check(devotee_profile_error(devotee_fields(['name' => 'Meera', 'phone' => '', 'email' => 'not-an-email', 'address' => '', 'pan' => '']), null, null) !== null, 'a new email must contain a mailbox');
+check(devotee_profile_error(devotee_fields(['name' => 'Meera', 'phone' => '', 'email' => 'asrrjprince.com', 'address' => '', 'pan' => '']), null, 'asrrjprince.com') === null, 'an already saved address can stay until it is changed');
+check(devotee_profile_error(devotee_fields(['name' => 'Meera', 'phone' => '', 'email' => '', 'address' => '', 'pan' => 'bad']), null, null) !== null, 'PAN uses five letters, four digits, and a letter');
+check(devotee_delete_block_reason(1, 0) !== null && devotee_delete_block_reason(0, 0) === null, 'a devotee with a gift stays, and an empty record can be removed');
+
+$pdo = db();
+$pdo->beginTransaction();
+try {
+    $created = save_devotee(null, ['name' => 'Manage Devotee', 'phone' => '9000000099', 'email' => 'manage@example.com', 'address' => 'Sarjapura', 'pan' => 'abcde1234f']);
+    $duplicate = save_devotee(null, ['name' => 'Other Devotee', 'phone' => '90000 00099', 'email' => '', 'address' => '', 'pan' => '']);
+    $updated = save_devotee($created['id'], ['name' => 'Manage Devotee Updated', 'phone' => '9000000099', 'email' => 'manage@example.com', 'address' => 'Sarjapura', 'pan' => 'ABCDE1234F']);
+    $row = db_one('SELECT name, pan_number FROM donors WHERE id = ?', [$created['id']]);
+    $removed = delete_devotee($created['id']);
+    $gone = db_one('SELECT id FROM donors WHERE id = ?', [$created['id']]);
+    $kept = save_devotee(null, ['name' => 'Kept Devotee', 'phone' => '9000000088', 'email' => '', 'address' => '', 'pan' => '']);
+    db_exec(
+        'INSERT INTO donations (donor_id, donation_type, amount, purpose, donation_date, payment_mode, created_by) VALUES (?,?,?,?,?,?,?)',
+        [$kept['id'], 'Other', 10, 'Flower', date('Y-m-d'), 'In-Kind', 1]
+    );
+    $blocked = delete_devotee($kept['id']);
+    check(
+        $created['error'] === null
+        && $duplicate['error'] !== null
+        && $updated['error'] === null
+        && $row !== null
+        && $row['name'] === 'Manage Devotee Updated'
+        && $row['pan_number'] === 'ABCDE1234F'
+        && $removed === null
+        && $gone === null
+        && $blocked !== null,
+        'a devotee can be added, updated, and removed, and a gift keeps the record'
+    );
+} finally {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+}
+
 if ($failed > 0) {
     fwrite(STDERR, "{$failed} failed\n");
     exit(1);

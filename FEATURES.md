@@ -11,7 +11,7 @@ Nothing in the “To add” section is built yet.
 - Admin and Staff accounts. Passwords are hashed.
 - Staff can use every module except Users.
 - An Admin adds or deactivates accounts. At most 10 active users. The last active Admin cannot be deactivated.
-- Forms require a session token.
+- An Admin opens Settings to save the outgoing mail server and the WhatsApp Web message. The mail password is kept and is not shown again.
 
 ### Dashboard and overview
 
@@ -40,7 +40,7 @@ Nothing in the “To add” section is built yet.
 ### Subscriptions
 
 - Recurring seva plans and invoices.
-- Send writes the SMS and email text to a log. Nothing is sent to a phone or inbox.
+- Send writes the message to a log. When SMTP is saved under Settings, the same message is emailed. WhatsApp Web opens with the message filled in. There is no WhatsApp API. The devotee still confirms payment on the link.
 - The devotee opens a payment link without signing in. Confirming payment marks the invoice Paid and copies it into Donations.
 
 ### Expenses and bank

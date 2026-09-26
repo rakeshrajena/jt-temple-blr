@@ -4,6 +4,7 @@
 /** @var list<string> $planPresets */
 /** @var float $mrr */
 /** @var float $pendingAmount */
+/** @var array{country_code: string, template: string, smtp_ready: bool} $messaging */
 ?>
 <div class="kpi-grid">
   <div class="kpi-card good"><div class="value"><?= e(money($mrr)) ?></div><div class="label">Monthly Recurring Revenue (Active)</div></div>
@@ -13,9 +14,8 @@
 <div class="panel" style="border-left: 4px solid var(--amber);">
   <h3 style="color:var(--amber);">ℹ️ How this works</h3>
   <p style="color:var(--ink-soft); font-size:13px; margin:0;">
-    <strong>Generate Invoice</strong> creates a billing record. <strong>Send</strong> texts the devotee a secure payment link (simulated in this demo —
-    the message is written to <code>storage/logs/notifications.log</code>). The devotee opens the link, pays, and the invoice
-    auto-updates to <strong>Paid</strong> here — with the payment mirrored into Donations and available in every report.
+    <strong>Generate Invoice</strong> creates a billing record. <strong>Send</strong> writes the message to the log. If outgoing mail is saved in Settings, it is also emailed. <strong>WhatsApp</strong> opens WhatsApp Web with the message filled in. Nothing is sent through a WhatsApp API. The devotee opens the payment link, pays, and the invoice
+    updates to <strong>Paid</strong> here — with the payment copied into Donations.
   </p>
 </div>
 <div class="panel-row">
@@ -114,6 +114,19 @@
           <button class="btn btn-sm btn-gold" type="submit" form="singleSend<?= e((string) $i['id']) ?>">📲 Send</button>
           <?php elseif ($i['status'] === 'Sent'): ?>
           <button class="btn btn-sm btn-outline" type="submit" form="singleSend<?= e((string) $i['id']) ?>">Resend</button>
+          <?php endif; ?>
+          <?php
+            $waText = fill_message_template($messaging['template'], [
+                'name' => (string) $i['subscriber_name'],
+                'period' => (string) $i['period_label'],
+                'amount' => number_format((float) $i['amount'], 0),
+                'link' => absolute_url('pay/' . $i['payment_token']),
+                'invoice' => (string) $i['invoice_number'],
+            ]);
+            $waUrl = $i['status'] === 'Paid' ? null : whatsapp_web_url((string) $i['mobile'], $waText, $messaging['country_code']);
+          ?>
+          <?php if ($waUrl !== null): ?>
+          <a class="btn btn-sm btn-outline" href="<?= e($waUrl) ?>" target="_blank" rel="noopener">WhatsApp</a>
           <?php endif; ?>
         </td>
       </tr>

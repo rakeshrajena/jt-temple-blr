@@ -91,6 +91,87 @@ function generate_receipt_pdf(array $donation, array $donor, string $receiptNumb
     return $path;
 }
 
+function receipt_share_message(array $row, string $link = ''): string
+{
+    $name = trim((string) ($row['donor_name'] ?? ''));
+    $amount = ($row['amount'] ?? null) === null || $row['amount'] === ''
+        ? 'an in-kind gift'
+        : 'Rs.' . number_format((float) $row['amount'], 0);
+    $purpose = trim((string) ($row['purpose'] ?? ''));
+    $purpose = $purpose !== '' ? $purpose : 'General';
+    $mode = trim((string) ($row['payment_mode'] ?? ''));
+    $modeText = $mode !== '' ? ', ' . $mode : '';
+    $text = 'Namaskar ' . $name . ', your receipt ' . (string) $row['receipt_number']
+        . ' dated ' . (string) $row['donation_date'] . ' for ' . $amount
+        . ' (' . $purpose . $modeText . ') is ready.';
+    $link = trim($link);
+    if ($link !== '') {
+        return $text . "\nReceipt: " . $link . "\n— " . APP_NAME;
+    }
+    return $text . ' — ' . APP_NAME;
+}
+
+function receipt_public_url(string $token): string
+{
+    if (preg_match('/^[a-f0-9]{32}$/', $token) !== 1) {
+        return '';
+    }
+    return absolute_url('receipts/open/' . $token);
+}
+
+function receipt_email_body(array $row, string $link = ''): string
+{
+    return receipt_share_message($row, $link) . "\n\nThe receipt PDF is attached.";
+}
+
+function receipt_bulk_email_body(string $message, string $link): string
+{
+    $text = trim($message);
+    if (trim($link) !== '') {
+        $text .= "\n\nReceipt: " . trim($link);
+    }
+    return $text . "\n\nThe receipt PDF is attached.";
+}
+
+function ensure_receipt_share_schema(PDO $pdo): void
+{
+    ensure_column($pdo, 'donations', 'receipt_share_token', 'VARCHAR(64) NULL');
+    $index = $pdo->query("SHOW INDEX FROM donations WHERE Key_name = 'uq_receipt_share_token'")->fetch();
+    if ($index === false) {
+        $pdo->exec('ALTER TABLE donations ADD UNIQUE KEY uq_receipt_share_token (receipt_share_token)');
+    }
+    $rows = db_all(
+        "SELECT id FROM donations
+         WHERE receipt_generated = 1
+           AND receipt_number IS NOT NULL
+           AND receipt_number <> ''
+           AND (receipt_share_token IS NULL OR receipt_share_token = '')"
+    );
+    foreach ($rows as $row) {
+        db_exec(
+            'UPDATE donations SET receipt_share_token = ? WHERE id = ? AND (receipt_share_token IS NULL OR receipt_share_token = \'\')',
+            [bin2hex(random_bytes(16)), (int) $row['id']]
+        );
+    }
+}
+
+function receipt_email_block_reason(string $email, bool $pdfReady, bool $smtpReady): ?string
+{
+    if (trim($email) === '') {
+        return 'This devotee has no email address.';
+    }
+    if (filter_var(trim($email), FILTER_VALIDATE_EMAIL) === false) {
+        return 'The devotee email address is not valid.';
+    }
+    if (!$pdfReady) {
+        return 'The receipt PDF is not ready to send.';
+    }
+    if (!$smtpReady) {
+        return 'Outgoing mail is not configured.';
+    }
+    return null;
+}
+
 function backfill_receipt_pdfs(): void
 {
     $rows = db_all(

@@ -143,6 +143,7 @@ CREATE TABLE donations (
     receipt_number          VARCHAR(30) UNIQUE,
     receipt_generated       TINYINT(1) DEFAULT 0,
     receipt_cancelled       TINYINT(1) NOT NULL DEFAULT 0,
+    receipt_share_token     VARCHAR(64) NULL,
     cheque_number           VARCHAR(30) NULL,
     cheque_date             DATE NULL,
     cheque_cleared          TINYINT(1) NOT NULL DEFAULT 0,
@@ -153,7 +154,8 @@ CREATE TABLE donations (
     created_by              INT,
     created_at              DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (donor_id) REFERENCES donors(id),
-    FOREIGN KEY (created_by) REFERENCES users(id)
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    UNIQUE KEY uq_receipt_share_token (receipt_share_token)
 ) ENGINE=InnoDB;
 
 CREATE TABLE pledges (
@@ -352,4 +354,9 @@ CREATE TABLE approvals (
     UNIQUE KEY uq_approval_subject (subject_type, subject_id),
     FOREIGN KEY (prepared_by) REFERENCES users(id),
     FOREIGN KEY (decided_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE app_settings (
+    setting_key    VARCHAR(64) PRIMARY KEY,
+    setting_value  TEXT NULL
 ) ENGINE=InnoDB;

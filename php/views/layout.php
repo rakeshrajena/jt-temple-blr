@@ -28,6 +28,7 @@ $icon = static function (string $name): string {
         'print' => '<path d="M7 8V4h10v4"/><rect x="5" y="8" width="14" height="8" rx="1.5"/><path d="M8 13h8v7H8z"/>',
         'receipt' => '<path d="M7 3.5h7l4.5 4.5V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5V8h4.5"/><path d="M9 13h6M9 16.5h4"/>',
         'users' => '<circle cx="9" cy="9" r="2.4"/><circle cx="15.5" cy="9.5" r="2"/><path d="M4.8 17.2c.6-2.2 2.3-3.4 4.2-3.4s3.6 1.2 4.2 3.4"/><path d="M13 13.8c1.4-.3 2.8.2 3.6 1.6"/>',
+        'gear' => '<circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6 6l1.6 1.6M16.4 16.4 18 18M18 6l-1.6 1.6M7.6 16.4 6 18"/>',
     ];
     $path = $paths[$name] ?? $paths['grid'];
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $path . '</svg>';
@@ -45,7 +46,6 @@ $sections = [
     ],
     'Finance' => [
         ['donations', 'hands', 'Donations', 'donations'],
-        ['donors', 'users', 'Donors', 'donors'],
         ['receipts', 'receipt', 'Receipts', 'receipts'],
         ['subscriptions', 'bell', 'Subscriptions', 'subscriptions'],
         ['expenses', 'card', 'Expenses', 'expenses'],
@@ -82,9 +82,11 @@ $sections = [
           <a class="nav-link<?= $active === $key ? ' active' : '' ?>" href="<?= e(url($route)) ?>"><?= $icon($glyph) ?> <?= e($label) ?></a>
         <?php endforeach; ?>
       <?php endforeach; ?>
+      <div class="nav-label">Administration</div>
+      <a class="nav-link<?= $active === 'donors' ? ' active' : '' ?>" href="<?= e(url('donors')) ?>"><?= $icon('users') ?> Donors</a>
       <?php if ($role === 'Admin'): ?>
-        <div class="nav-label">Administration</div>
         <a class="nav-link<?= $active === 'users' ? ' active' : '' ?>" href="<?= e(url('users')) ?>"><?= $icon('users') ?> Users</a>
+        <a class="nav-link<?= $active === 'settings' ? ' active' : '' ?>" href="<?= e(url('settings')) ?>"><?= $icon('gear') ?> Settings</a>
       <?php endif; ?>
       <div class="sidebar-footer">Signed in as<br><strong><?= e($fullName) ?></strong><br><?= e($role) ?></div>
     </aside>
