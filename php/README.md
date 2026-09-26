@@ -39,15 +39,17 @@ Change these in `config.php` if the server credentials differ.
 | Module | What it does |
 |---|---|
 | Dashboard | Totals for donations, expenses, stock alerts, and subscriptions |
-| Inventory | Hardware and general items, with condition, location, and source |
-| Food stock | Add items, log stock in and out, low-stock flags |
-| Food coupons | Sequential coupon batches and a printable PDF |
+| Inventory | Quantity, rate, value, condition, and location. Issue, return, damage, loss, and retired. A purchase posts stock and the payment together after approval |
+| Food stock | Add items, log stock in and out, low-stock flags. Kitchen use above 5 units waits for approval |
+| Food coupons | Sequential batches and a printable PDF. The face value waits for approval and does not enter the cash book. Name, cost, and quantity can be edited or the batch removed |
 | Deity vastra | Cloths by deity, marked In Store, In Use, or Retired |
-| Donations | Cash and in-kind gifts. In-kind food, vastra, and inventory update those registers. Receipts are PDF |
-| Receipts | List of generated receipt PDFs. Anyone signed in can open or download one. An Admin can download a zip of many receipts, or delete them |
+| Donations | Cash and in-kind gifts. In-kind food, vastra, and inventory update those registers. Receipts are PDF. A gift can be applied to a pledge |
+| Donors | One page per devotee: gifts, receipt numbers, PAN, and pledge versus amount received. The page prints as the yearly statement |
+| Receipts | List of generated receipt PDFs. Anyone signed in can open one. An Admin can download a zip. Cancelling a receipt keeps the number and waits for approval |
 | Subscriptions | Recurring seva plans, invoices, and a public pay link |
 | Expenses | Categorised spending, with a voucher number, an optional bill, a UPI id, and cheque details. A new expense waits for approval before it enters the books |
-| Cash book | Receipt and payment columns for cash and bank, with opening and closing balances. An Admin sets the year opening. Cash deposited or withdrawn is a contra entry |
+| Cash book | Receipt and payment columns for cash and bank, with opening and closing balances. Opening balance, carry forward, deposits, and withdrawals wait for approval |
+| Corrections | Keep the original donation or expense and add a second line, after approval |
 | Day book | The same period as one date-wise list, with who entered each line |
 | Ledger | One balance per donation purpose and expense category: money received, money spent, and what remains |
 | Bank reconciliation | Upload a CSV or Excel statement. Credits match donations and debits match expenses when the amount is the same and the date is within 3 days. Anything left over can be linked by hand |

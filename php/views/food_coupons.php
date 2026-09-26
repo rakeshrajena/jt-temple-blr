@@ -2,44 +2,74 @@
 /** @var list<array<string,mixed>> $batches */
 /** @var float $totalCouponsValue */
 /** @var int $totalCouponQty */
+/** @var string $role */
 ?>
 <a href="<?= e(url('food')) ?>" class="btn btn-outline btn-sm" style="margin-bottom:16px;">← Back to Food Stock</a>
 <div class="kpi-grid">
-  <div class="kpi-card good"><div class="value"><?= e(money($totalCouponsValue)) ?></div><div class="label">Total Value of All Coupons Generated</div></div>
-  <div class="kpi-card"><div class="value"><?= count($batches) ?></div><div class="label">Batches Generated</div></div>
-  <div class="kpi-card"><div class="value"><?= e((string) $totalCouponQty) ?></div><div class="label">Total Coupons Printed</div></div>
+  <div class="kpi-card good"><div class="value"><?= e(money($totalCouponsValue)) ?></div><div class="label">Approved coupon value</div></div>
+  <div class="kpi-card"><div class="value"><?= count($batches) ?></div><div class="label">Batches</div></div>
+  <div class="kpi-card"><div class="value"><?= e((string) $totalCouponQty) ?></div><div class="label">Approved coupons</div></div>
 </div>
 <div class="panel">
-  <h3>Generate a New Coupon Batch</h3>
-  <p style="color:var(--ink-soft); font-size:13px; margin-top:-8px;">
-    Serial numbers continue automatically from the last batch, so coupons never overlap or repeat —
-    useful for reconciling how many were actually redeemed later.
-  </p>
+  <h3>Generate a new coupon batch</h3>
+  <p class="sub">A batch is a print run. It does not enter the cash book, day book, or ledger. The amount that waits for approval is the face value of the whole batch, cost times quantity. A Treasurer can approve up to ₹<?= e(number_format(TREASURER_APPROVAL_LIMIT, 0)) ?>. Above that, an Admin decides. The person who prepared the batch cannot approve it. It can be printed only after approval.</p>
   <form method="POST" action="<?= e(url('food/coupons')) ?>">
     <?= csrf_field() ?>
     <div class="form-grid cols-3">
       <div class="form-group"><label>Coupon Name</label><input type="text" name="coupon_name" placeholder="e.g. Lunch Mahaprasad" required></div>
-      <div class="form-group"><label>Cost per Coupon (₹)</label><input type="number" step="0.01" name="cost" required></div>
+      <div class="form-group"><label>Cost per Coupon (₹)</label><input type="number" step="0.01" min="0.01" name="cost" required></div>
       <div class="form-group"><label>Quantity</label><input type="number" name="quantity" min="1" max="400" required></div>
     </div>
-    <div class="form-actions"><button class="btn btn-primary" type="submit">Generate &amp; Prepare for Print</button></div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit">Submit batch for approval</button></div>
   </form>
 </div>
 <div class="panel">
-  <h3>Coupon Batches (<?= count($batches) ?>)</h3>
+  <h3>Coupon batches (<?= count($batches) ?>)</h3>
+  <p class="sub">Edit the name, the cost, or the quantity. A change goes back to approval, and the printed sheet is rebuilt only after it is approved. Removing a batch does not change the cash book. Serial numbers stay in their range, so a larger quantity is refused when it would overlap the next batch.</p>
   <?php if ($batches): ?>
   <table class="data-table">
-    <tr><th>Coupon Name</th><th>Cost</th><th>Sl No Range</th><th>Quantity</th><th>Total Value</th><th>Created</th><th>By</th><th></th></tr>
+    <tr><th>Coupon</th><th>Sl No</th><th>Value</th><th>Approval</th><th>Edit</th><th></th></tr>
     <?php foreach ($batches as $b): ?>
+    <?php $status = (string) ($b['approval_status'] ?? 'Waiting'); ?>
     <tr>
-      <td><?= e($b['coupon_name']) ?></td>
-      <td><?= e(money($b['cost'])) ?></td>
-      <td><?= e((string) $b['start_sl_no']) ?> – <?= e((string) $b['end_sl_no']) ?></td>
-      <td><?= e((string) $b['quantity']) ?></td>
-      <td><?= e(money($b['total_value'])) ?></td>
-      <td><?= e($b['created_date']) ?></td>
-      <td><?= e(dash($b['created_by_name'])) ?></td>
-      <td><a href="<?= e(url('food/coupons/' . $b['id'] . '/print')) ?>" target="_blank" class="btn btn-sm btn-gold">🖨️ Print PDF</a></td>
+      <td>
+        <?= e($b['coupon_name']) ?><br>
+        <span style="color:var(--ink-soft);font-size:12px;"><?= e($b['created_date']) ?> · <?= e(dash($b['created_by_name'])) ?></span>
+      </td>
+      <td><?= e((string) $b['start_sl_no']) ?> – <?= e((string) $b['end_sl_no']) ?><br><span style="color:var(--ink-soft);font-size:12px;"><?= e((string) $b['quantity']) ?> coupons</span></td>
+      <td><?= e(money($b['cost'])) ?> each<br><?= e(money($b['total_value'], 2)) ?> total</td>
+      <td>
+        <?php
+          $badge = match ($status) {
+              'Approved' => 'badge-green',
+              'Waiting' => 'badge-amber',
+              'Sent back' => 'badge-blue',
+              'Rejected' => 'badge-red',
+              default => 'badge-grey',
+          };
+        ?>
+        <span class="badge <?= e($badge) ?>"><?= e($status) ?></span>
+      </td>
+      <td>
+        <form method="POST" action="<?= e(url('food/coupons/' . $b['id'])) ?>">
+          <?= csrf_field() ?>
+          <input type="text" name="coupon_name" value="<?= e((string) $b['coupon_name']) ?>" maxlength="100" required>
+          <input type="number" name="cost" step="0.01" min="0.01" value="<?= e(number_format((float) $b['cost'], 2, '.', '')) ?>" required>
+          <input type="number" name="quantity" min="1" max="400" value="<?= e((string) $b['quantity']) ?>" required>
+          <button class="btn btn-sm btn-outline" type="submit">Save</button>
+        </form>
+      </td>
+      <td>
+        <?php if ($status === 'Approved'): ?>
+          <a href="<?= e(url('food/coupons/' . $b['id'] . '/print')) ?>" target="_blank" class="btn btn-sm btn-gold">Print PDF</a>
+        <?php endif; ?>
+        <?php if ($status !== 'Approved' || $role === 'Admin'): ?>
+        <form method="POST" action="<?= e(url('food/coupons/' . $b['id'] . '/remove')) ?>" onsubmit="return confirm('Remove this coupon batch? The cash book does not change.');">
+          <?= csrf_field() ?>
+          <button class="btn btn-sm btn-outline" type="submit">Remove</button>
+        </form>
+        <?php endif; ?>
+      </td>
     </tr>
     <?php endforeach; ?>
   </table>

@@ -91,7 +91,7 @@ function ensure_approval_schema(PDO $pdo): void
     $pdo->exec(
         "CREATE TABLE IF NOT EXISTS approvals (
             id              INT AUTO_INCREMENT PRIMARY KEY,
-            subject_type    ENUM('expense','contra','opening','purchase','correction','receipt','stock') NOT NULL,
+            subject_type    ENUM('expense','contra','opening','purchase','correction','receipt','stock','coupon') NOT NULL,
             subject_id      INT NOT NULL,
             status          ENUM('Draft','Waiting','Approved','Sent back','Rejected') NOT NULL DEFAULT 'Draft',
             amount          DECIMAL(14,2) NOT NULL DEFAULT 0,
@@ -104,6 +104,13 @@ function ensure_approval_schema(PDO $pdo): void
             FOREIGN KEY (decided_by) REFERENCES users(id)
         ) ENGINE=InnoDB"
     );
+    $subject = $pdo->query("SHOW COLUMNS FROM approvals LIKE 'subject_type'")->fetch();
+    $subjectType = is_array($subject) ? (string) ($subject['Type'] ?? '') : '';
+    if (!str_contains($subjectType, 'coupon')) {
+        $pdo->exec(
+            "ALTER TABLE approvals MODIFY subject_type ENUM('expense','contra','opening','purchase','correction','receipt','stock','coupon') NOT NULL"
+        );
+    }
     ensure_column($pdo, 'opening_balances', 'pending_cash', 'DECIMAL(12,2) NULL');
     ensure_column($pdo, 'opening_balances', 'pending_bank', 'DECIMAL(12,2) NULL');
     ensure_column($pdo, 'opening_balances', 'pending_note', 'VARCHAR(255) NULL');
@@ -132,6 +139,13 @@ function backfill_approvals(PDO $pdo): void
          SELECT 'opening', o.id, 'Approved', GREATEST(o.cash_amount, o.bank_amount), COALESCE(o.set_by, 1)
          FROM opening_balances o
          LEFT JOIN approvals a ON a.subject_type = 'opening' AND a.subject_id = o.id
+         WHERE a.id IS NULL"
+    );
+    $pdo->exec(
+        "INSERT INTO approvals (subject_type, subject_id, status, amount, prepared_by)
+         SELECT 'coupon', b.id, 'Approved', b.total_value, COALESCE(b.created_by, 1)
+         FROM food_coupon_batches b
+         LEFT JOIN approvals a ON a.subject_type = 'coupon' AND a.subject_id = b.id
          WHERE a.id IS NULL"
     );
 }

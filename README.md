@@ -23,7 +23,7 @@ The first request creates the `jt_blr` database, the tables, and the demo record
 | treasurer | treasurer@123 | Treasurer |
 | staff1 | staff@123 | Staff |
 
-Staff can use every module except Users. A Treasurer can approve up to ₹10,000. Only an Admin can add or deactivate accounts, and an Admin approves amounts above that limit.
+Staff can use every module except Users. A Treasurer can approve up to ₹10,000. Stock written off above 5 units also waits for approval. Only an Admin can add or deactivate accounts, and an Admin approves amounts above that limit.
 
 Generated receipt PDFs, coupon PDFs, uploaded bank statements, and logs stay in `php/storage/` and are not part of the git history. See [php/README.md](php/README.md) for modules, subscriptions, and layout. See [FEATURES.md](FEATURES.md) for what the PHP app already does and what is still to add.
 

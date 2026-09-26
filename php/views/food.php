@@ -1,4 +1,9 @@
-<?php /** @var list<array<string,mixed>> $items */ /** @var list<array<string,mixed>> $logs */ ?>
+<?php
+/** @var list<array<string,mixed>> $items */
+/** @var list<array<string,mixed>> $logs */
+/** @var list<array<string,mixed>> $pending */
+/** @var float $writeOffLimit */
+?>
 <div class="panel" style="border-left: 4px solid var(--gold); display:flex; align-items:center; justify-content:space-between;">
   <div>
     <h3 style="margin-bottom:2px;">🎟️ Food Coupon Generator</h3>
@@ -23,6 +28,7 @@
   </div>
   <div class="panel">
     <h3>Log Stock Movement</h3>
+    <p class="sub">Kitchen use of <?= e((string) $writeOffLimit) ?> or less is recorded immediately. Above that, it waits for approval and the quantity stays until then.</p>
     <form method="POST" action="<?= e(url('food')) ?>">
       <?= csrf_field() ?>
       <div class="form-grid">
@@ -65,6 +71,23 @@
     <?php endforeach; ?>
   </table>
 </div>
+<?php if ($pending): ?>
+<div class="panel">
+  <h3>Waiting write-offs</h3>
+  <table class="data-table">
+    <tr><th>Date</th><th>Item</th><th>Movement</th><th>Quantity</th><th>Status</th></tr>
+    <?php foreach ($pending as $row): ?>
+    <tr>
+      <td><?= e((string) $row['movement_date']) ?></td>
+      <td><?= e((string) $row['item_name']) ?></td>
+      <td><?= e((string) $row['movement_type']) ?></td>
+      <td><?= e((string) $row['quantity']) ?></td>
+      <td><span class="badge badge-amber"><?= e((string) $row['status']) ?></span></td>
+    </tr>
+    <?php endforeach; ?>
+  </table>
+</div>
+<?php endif; ?>
 <div class="panel">
   <h3>Recent Usage Log</h3>
   <?php if ($logs): ?>

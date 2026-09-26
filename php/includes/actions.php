@@ -51,6 +51,14 @@ function dispatch_request(): void
         action_food_coupons($method);
         return;
     }
+    if (preg_match('#^food/coupons/(\d+)/remove$#', $path, $m) === 1 && $method === 'POST') {
+        action_remove_coupons((int) $m[1]);
+        return;
+    }
+    if (preg_match('#^food/coupons/(\d+)$#', $path, $m) === 1 && $method === 'POST') {
+        action_update_coupons((int) $m[1]);
+        return;
+    }
     if (preg_match('#^food/coupons/(\d+)/print$#', $path, $m) === 1 && $method === 'GET') {
         action_print_coupons((int) $m[1]);
         return;
@@ -67,6 +75,22 @@ function dispatch_request(): void
         action_donations($method);
         return;
     }
+    if ($path === 'donors' && $method === 'GET') {
+        action_donors();
+        return;
+    }
+    if (preg_match('#^donors/(\d+)$#', $path, $m) === 1 && $method === 'GET') {
+        action_donor((int) $m[1]);
+        return;
+    }
+    if (preg_match('#^donors/(\d+)/pledge$#', $path, $m) === 1 && $method === 'POST') {
+        action_save_pledge((int) $m[1]);
+        return;
+    }
+    if (preg_match('#^donors/(\d+)/receive$#', $path, $m) === 1 && $method === 'POST') {
+        action_receive_pledge((int) $m[1]);
+        return;
+    }
     if (preg_match('#^donations/(\d+)/generate_receipt$#', $path, $m) === 1 && $method === 'POST') {
         action_generate_receipt((int) $m[1]);
         return;
@@ -79,8 +103,8 @@ function dispatch_request(): void
         action_receipts_download();
         return;
     }
-    if ($path === 'receipts/delete' && $method === 'POST') {
-        action_receipts_delete();
+    if ($path === 'receipts/cancel' && $method === 'POST') {
+        action_receipts_cancel();
         return;
     }
     if (preg_match('#^receipts/([A-Za-z0-9._-]+)$#', $path, $m) === 1 && $method === 'GET') {
@@ -99,6 +123,10 @@ function dispatch_request(): void
         action_expenses($method);
         return;
     }
+    if ($path === 'corrections') {
+        action_corrections($method);
+        return;
+    }
     if ($path === 'approvals' && $method === 'GET') {
         action_approvals();
         return;
@@ -113,6 +141,10 @@ function dispatch_request(): void
     }
     if ($path === 'cash-book/opening' && $method === 'POST') {
         action_save_opening();
+        return;
+    }
+    if ($path === 'cash-book/carry' && $method === 'POST') {
+        action_carry_opening();
         return;
     }
     if ($path === 'cash-book/contra' && $method === 'POST') {
@@ -229,6 +261,71 @@ function action_inventory(string $method): void
 {
     login_required();
     if ($method === 'POST') {
+        $kind = post_string('action', 20);
+        $userId = (int) $_SESSION['user_id'];
+        if ($kind === 'move') {
+            $result = record_stock_movement(
+                'inventory',
+                (int) ($_POST['item_id'] ?? 0),
+                post_string('movement_type', 20),
+                (float) ($_POST['quantity'] ?? 0),
+                post_string('note', 255),
+                post_string('movement_date', 10) ?: date('Y-m-d'),
+                $userId
+            );
+            flash($result['error'] !== null ? 'error' : 'success', $result['error'] ?? (
+                $result['outcome'] === 'waiting'
+                    ? 'That write-off is waiting for approval. Stock is unchanged until then.'
+                    : 'Stock movement recorded.'
+            ));
+            redirect(url('inventory'));
+        }
+        if ($kind === 'place') {
+            $result = save_item_place(
+                (int) ($_POST['item_id'] ?? 0),
+                post_string('item_condition', 20),
+                post_string('location', 100),
+                $userId,
+                date('Y-m-d')
+            );
+            flash($result['error'] !== null ? 'error' : 'success', $result['error'] ?? (
+                $result['outcome'] === 'waiting'
+                    ? 'Retiring this quantity is waiting for approval. The location is updated. Stock stays until someone approves.'
+                    : 'Condition and location updated.'
+            ));
+            redirect(url('inventory'));
+        }
+        if ($kind === 'purchase') {
+            $instrument = normalize_payment_instrument(
+                post_string('payment_mode', 20),
+                post_string('upi_reference', 64),
+                post_string('cheque_number', 30),
+                post_string('cheque_date', 10),
+                isset($_POST['cheque_cleared'])
+            );
+            if ($instrument['error'] !== null) {
+                flash('error', $instrument['error']);
+                redirect(url('inventory'));
+            }
+            $result = record_purchase([
+                'item_id' => (int) ($_POST['item_id'] ?? 0),
+                'name' => post_string('name', 150),
+                'category' => one_of(post_string('category', 50), INVENTORY_CATEGORIES, 'Other'),
+                'unit' => post_string('unit', 30) ?: 'pcs',
+                'quantity' => (int) ($_POST['quantity'] ?? 0),
+                'unit_cost' => (float) ($_POST['unit_cost'] ?? 0),
+                'location' => post_string('location', 100) ?: null,
+                'paid_to' => post_string('paid_to', 150) ?: null,
+                'purchase_date' => post_string('purchase_date', 10),
+                'payment_mode' => post_string('payment_mode', 20),
+                'cheque_number' => $instrument['cheque_number'],
+                'cheque_date' => $instrument['cheque_date'],
+                'cheque_cleared' => $instrument['cheque_cleared'],
+                'upi_reference' => $instrument['upi_reference'],
+            ], $userId);
+            flash($result['error'] !== null ? 'error' : 'success', $result['error'] ?? 'Purchase submitted for approval. Stock and the cash book change only after it is approved.');
+            redirect(url('inventory'));
+        }
         $name = post_string('name', 150);
         $category = one_of(post_string('category', 50), INVENTORY_CATEGORIES, 'Other');
         $qty = max(0, (int) ($_POST['quantity'] ?? 0));
@@ -236,23 +333,31 @@ function action_inventory(string $method): void
             flash('error', 'Item name is required.');
             redirect(url('inventory'));
         }
-        db_exec(
-            'INSERT INTO inventory_items (category, name, description, quantity, unit, item_condition, location, source, added_date, added_by, notes)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+        $condition = one_of(post_string('item_condition', 20), inventory_conditions(), 'Good');
+        $itemId = db_exec(
+            'INSERT INTO inventory_items (category, name, description, quantity, unit_cost, unit, item_condition, location, source, added_date, added_by, notes)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
             [
                 $category,
                 $name,
                 post_string('description', 2000) ?: null,
                 $qty,
+                max(0, (float) ($_POST['unit_cost'] ?? 0)),
                 post_string('unit', 30) ?: 'pcs',
-                one_of(post_string('item_condition', 20), ['New', 'Good', 'Fair', 'Needs Repair', 'Damaged'], 'Good'),
+                $condition,
                 post_string('location', 100) ?: null,
                 one_of(post_string('source', 20), ['Purchased', 'Donated'], 'Purchased'),
                 date('Y-m-d'),
-                (int) $_SESSION['user_id'],
+                $userId,
                 post_string('notes', 2000) ?: null,
             ]
         );
+        if ($qty > 0) {
+            db_exec(
+                'INSERT INTO inventory_movements (item_id, movement_type, quantity, note, movement_date, logged_by) VALUES (?,?,?,?,?,?)',
+                [$itemId, 'Added', $qty, 'Opening stock', date('Y-m-d'), $userId]
+            );
+        }
         flash('success', 'Inventory item added.');
         redirect(url('inventory'));
     }
@@ -262,6 +367,22 @@ function action_inventory(string $method): void
         'active' => 'inventory',
         'items' => db_all('SELECT * FROM inventory_items ORDER BY category, name'),
         'categories' => INVENTORY_CATEGORIES,
+        'conditions' => inventory_conditions(),
+        'movements' => inventory_movements(),
+        'writeOffLimit' => STOCK_WRITE_OFF_LIMIT,
+        'today' => date('Y-m-d'),
+        'history' => db_all(
+            'SELECT m.*, i.name, i.unit FROM inventory_movements m
+             JOIN inventory_items i ON i.id = m.item_id
+             ORDER BY m.movement_date DESC, m.id DESC LIMIT 30'
+        ),
+        'pending' => db_all(
+            "SELECT r.item_name, r.movement_type, r.quantity, r.movement_date, a.status
+             FROM stock_requests r
+             JOIN approvals a ON a.subject_type = 'stock' AND a.subject_id = r.id
+             WHERE r.store_name = 'inventory' AND a.status IN ('Draft', 'Waiting', 'Sent back')
+             ORDER BY r.id DESC"
+        ),
     ]);
 }
 
@@ -270,7 +391,6 @@ function action_food(string $method): void
     login_required();
     if ($method === 'POST') {
         $action = post_string('action', 20);
-        $pdo = db();
         if ($action === 'new_item') {
             $name = post_string('name', 150);
             if ($name === '') {
@@ -288,26 +408,24 @@ function action_food(string $method): void
             );
             flash('success', 'Food item added to stock list.');
         } elseif ($action === 'add_stock' || $action === 'use_stock') {
-            $foodId = (int) ($_POST['food_item_id'] ?? 0);
-            $qty = (float) ($_POST['quantity'] ?? 0);
-            $item = db_one('SELECT id FROM food_items WHERE id = ?', [$foodId]);
-            if ($item === null || $qty <= 0) {
-                flash('error', 'Choose an item and a quantity greater than zero.');
-                redirect(url('food'));
+            $result = record_stock_movement(
+                'food',
+                (int) ($_POST['food_item_id'] ?? 0),
+                $action === 'add_stock' ? 'Added' : 'Used',
+                (float) ($_POST['quantity'] ?? 0),
+                post_string('purpose', 200),
+                date('Y-m-d'),
+                (int) $_SESSION['user_id']
+            );
+            if ($result['error'] !== null) {
+                flash('error', $result['error']);
+            } elseif ($action === 'add_stock') {
+                flash('success', 'Stock added.');
+            } elseif ($result['outcome'] === 'waiting') {
+                flash('success', 'That usage is above the write-off limit and is waiting for approval. Stock is unchanged until then.');
+            } else {
+                flash('success', 'Stock usage logged.');
             }
-            $txnType = $action === 'add_stock' ? 'Added' : 'Used';
-            $delta = $txnType === 'Added' ? $qty : -$qty;
-            $pdo->beginTransaction();
-            db_exec(
-                'UPDATE food_items SET current_stock = current_stock + ?, last_updated = ? WHERE id = ?',
-                [$delta, date('Y-m-d H:i:s'), $foodId]
-            );
-            db_exec(
-                'INSERT INTO food_usage_log (food_item_id, txn_type, quantity, purpose, txn_date, logged_by) VALUES (?,?,?,?,?,?)',
-                [$foodId, $txnType, $qty, post_string('purpose', 200) ?: null, date('Y-m-d'), (int) $_SESSION['user_id']]
-            );
-            $pdo->commit();
-            flash('success', $txnType === 'Added' ? 'Stock added.' : 'Stock usage logged.');
         }
         redirect(url('food'));
     }
@@ -321,6 +439,14 @@ function action_food(string $method): void
              JOIN food_items f ON l.food_item_id = f.id
              ORDER BY l.txn_date DESC, l.id DESC LIMIT 30'
         ),
+        'pending' => db_all(
+            "SELECT r.item_name, r.movement_type, r.quantity, r.movement_date, a.status
+             FROM stock_requests r
+             JOIN approvals a ON a.subject_type = 'stock' AND a.subject_id = r.id
+             WHERE r.store_name = 'food' AND a.status IN ('Draft', 'Waiting', 'Sent back')
+             ORDER BY r.id DESC"
+        ),
+        'writeOffLimit' => STOCK_WRITE_OFF_LIMIT,
     ]);
 }
 
@@ -328,42 +454,39 @@ function action_food_coupons(string $method): void
 {
     login_required();
     if ($method === 'POST') {
-        $name = post_string('coupon_name', 100);
-        $cost = (float) ($_POST['cost'] ?? 0);
-        $quantity = (int) ($_POST['quantity'] ?? 0);
-        if ($name === '' || $cost <= 0 || $quantity < 1 || $quantity > 400) {
-            flash('error', 'Enter a coupon name, a cost above zero, and a quantity from 1 to 400.');
+        $result = create_coupon_batch(
+            post_string('coupon_name', 100),
+            (float) ($_POST['cost'] ?? 0),
+            (int) ($_POST['quantity'] ?? 0),
+            (int) $_SESSION['user_id']
+        );
+        if ($result['error'] !== null) {
+            flash('error', $result['error']);
             redirect(url('food/coupons'));
         }
-        $last = db_value('SELECT MAX(end_sl_no) FROM food_coupon_batches');
-        $start = ($last === null || $last === false) ? 1 : ((int) $last) + 1;
-        $end = $start + $quantity - 1;
-        $total = $cost * $quantity;
-        $batchId = db_exec(
-            'INSERT INTO food_coupon_batches (coupon_name, cost, start_sl_no, end_sl_no, quantity, total_value, created_date, created_by)
-             VALUES (?,?,?,?,?,?,?,?)',
-            [$name, $cost, $start, $end, $quantity, $total, date('Y-m-d'), (int) $_SESSION['user_id']]
-        );
-        generate_coupon_batch_pdf($batchId, $name, $cost, $start, $quantity);
         flash('success', sprintf(
-            'Generated %d coupons for “%s” — Sl No %d to %d (total value %s).',
-            $quantity,
-            $name,
-            $start,
-            $end,
-            money($total, 0)
+            'Batch submitted for approval — Sl No %d to %d, total %s. It is not counted, and it cannot be printed, until someone else approves it.',
+            (int) $result['start'],
+            (int) $result['end'],
+            money($result['total'], 2)
         ));
         redirect(url('food/coupons'));
     }
     $batches = db_all(
-        'SELECT b.*, u.full_name AS created_by_name FROM food_coupon_batches b
-         LEFT JOIN users u ON b.created_by = u.id ORDER BY b.id DESC'
+        "SELECT b.*, u.full_name AS created_by_name, a.status AS approval_status, a.prepared_by
+         FROM food_coupon_batches b
+         LEFT JOIN users u ON b.created_by = u.id
+         LEFT JOIN approvals a ON a.subject_type = 'coupon' AND a.subject_id = b.id
+         ORDER BY b.id DESC"
     );
-    $totalValue = (float) db_value('SELECT COALESCE(SUM(total_value),0) FROM food_coupon_batches');
-    $totalQty = 0;
-    foreach ($batches as $batch) {
-        $totalQty += (int) $batch['quantity'];
-    }
+    $totalValue = (float) db_value(
+        "SELECT COALESCE(SUM(b.total_value),0) FROM food_coupon_batches b
+         JOIN approvals a ON a.subject_type = 'coupon' AND a.subject_id = b.id AND a.status = 'Approved'"
+    );
+    $totalQty = (int) db_value(
+        "SELECT COALESCE(SUM(b.quantity),0) FROM food_coupon_batches b
+         JOIN approvals a ON a.subject_type = 'coupon' AND a.subject_id = b.id AND a.status = 'Approved'"
+    );
     render('food_coupons', [
         'title' => 'Food Coupons',
         'pageTitle' => 'Food Coupon Generator',
@@ -371,19 +494,69 @@ function action_food_coupons(string $method): void
         'batches' => $batches,
         'totalCouponsValue' => $totalValue,
         'totalCouponQty' => $totalQty,
+        'role' => (string) ($_SESSION['role'] ?? ''),
     ]);
+}
+
+function action_update_coupons(int $batchId): void
+{
+    login_required();
+    try {
+        $result = update_coupon_batch(
+            $batchId,
+            post_string('coupon_name', 100),
+            (float) ($_POST['cost'] ?? 0),
+            (int) ($_POST['quantity'] ?? 0),
+            (int) $_SESSION['user_id']
+        );
+    } catch (Throwable $e) {
+        error_log('[jt_blr] coupon edit: ' . $e->getMessage());
+        flash('error', 'The coupon batch could not be saved.');
+        redirect(url('food/coupons'));
+    }
+    if ($result['error'] !== null) {
+        flash('error', $result['error']);
+    } elseif ($result['changed']) {
+        flash('success', 'Coupon batch updated and submitted for approval again. It is not counted until someone else approves it.');
+    } else {
+        flash('success', 'No change to save.');
+    }
+    redirect(url('food/coupons'));
+}
+
+function action_remove_coupons(int $batchId): void
+{
+    login_required();
+    try {
+        $error = remove_coupon_batch($batchId, (string) ($_SESSION['role'] ?? ''));
+    } catch (Throwable $e) {
+        error_log('[jt_blr] coupon remove: ' . $e->getMessage());
+        flash('error', 'The coupon batch could not be removed.');
+        redirect(url('food/coupons'));
+    }
+    flash($error !== null ? 'error' : 'success', $error ?? 'Coupon batch removed. The cash book is unchanged.');
+    redirect(url('food/coupons'));
 }
 
 function action_print_coupons(int $batchId): void
 {
     login_required();
-    $path = APP_ROOT . '/storage/coupons/batch_' . $batchId . '.pdf';
+    $batch = db_one(
+        "SELECT b.*, a.status AS approval_status FROM food_coupon_batches b
+         LEFT JOIN approvals a ON a.subject_type = 'coupon' AND a.subject_id = b.id
+         WHERE b.id = ?",
+        [$batchId]
+    );
+    if ($batch === null) {
+        flash('error', 'Coupon batch not found.');
+        redirect(url('food/coupons'));
+    }
+    if ((string) ($batch['approval_status'] ?? '') !== 'Approved') {
+        flash('error', 'This batch can be printed after it is approved.');
+        redirect(url('food/coupons'));
+    }
+    $path = coupon_pdf_path($batchId);
     if (!is_file($path)) {
-        $batch = db_one('SELECT * FROM food_coupon_batches WHERE id = ?', [$batchId]);
-        if ($batch === null) {
-            flash('error', 'Coupon batch not found.');
-            redirect(url('food/coupons'));
-        }
         generate_coupon_batch_pdf(
             $batchId,
             (string) $batch['coupon_name'],
@@ -442,10 +615,19 @@ function action_donations(string $method): void
         'pageTitle' => 'Donations',
         'active' => 'donations',
         'donations' => db_all(
-            'SELECT d.*, don.name AS donor_name, don.phone AS donor_phone FROM donations d
-             JOIN donors don ON d.donor_id = don.id ORDER BY d.donation_date DESC'
+            "SELECT d.*, don.name AS donor_name, don.phone AS donor_phone,
+                    (SELECT rc.reason FROM receipt_cancellations rc
+                     JOIN approvals a ON a.subject_type = 'receipt' AND a.subject_id = rc.id AND a.status = 'Approved'
+                     WHERE rc.donation_id = d.id ORDER BY rc.id DESC LIMIT 1) AS cancel_reason,
+                    (SELECT a.status FROM receipt_cancellations rc
+                     JOIN approvals a ON a.subject_type = 'receipt' AND a.subject_id = rc.id
+                     WHERE rc.donation_id = d.id AND a.status IN ('Draft', 'Waiting', 'Sent back')
+                     ORDER BY rc.id DESC LIMIT 1) AS cancel_status
+             FROM donations d
+             JOIN donors don ON d.donor_id = don.id ORDER BY d.donation_date DESC"
         ),
         'foodItems' => db_all('SELECT * FROM food_items ORDER BY name'),
+        'pledges' => open_pledge_choices(),
         'today' => date('Y-m-d'),
     ]);
 }
@@ -460,7 +642,26 @@ function record_donation(): void
     $phone = post_string('donor_phone', 20);
     $type = one_of(post_string('donation_type', 20), ['Cash', 'Food', 'Vastra', 'Inventory', 'Other'], 'Cash');
     $amountRaw = trim((string) ($_POST['amount'] ?? ''));
-    $amount = $amountRaw === '' ? null : (float) $amountRaw;
+    $amount = $amountRaw === '' ? null : round((float) $amountRaw, 2);
+    $donationDate = post_date('donation_date');
+    $pledgeId = (int) ($_POST['pledge_id'] ?? 0);
+    $pledge = null;
+    if ($pledgeId > 0) {
+        $pledge = db_one(
+            'SELECT p.*, d.name AS donor_name, d.phone AS donor_phone
+             FROM pledges p JOIN donors d ON d.id = p.donor_id WHERE p.id = ?',
+            [$pledgeId]
+        );
+        if ($pledge === null) {
+            flash('error', 'That pledge was not found.');
+            return;
+        }
+        $pledgePhone = (string) ($pledge['donor_phone'] ?? '');
+        if ($phone !== '' && $pledgePhone !== '' && $phone !== $pledgePhone) {
+            flash('error', 'This pledge belongs to ' . $pledge['donor_name'] . '.');
+            return;
+        }
+    }
     $paymentMode = one_of(
         post_string('payment_mode', 20),
         ['Cash', 'Bank Transfer', 'UPI', 'Cheque', 'In-Kind', 'Card', 'Netbanking'],
@@ -477,14 +678,25 @@ function record_donation(): void
         flash('error', $instrument['error']);
         return;
     }
+    if ($pledge !== null) {
+        $pledgeError = pledge_receipt_error((float) ($amount ?? 0), $donationDate, $paymentMode);
+        if ($pledgeError !== null) {
+            flash('error', $pledgeError);
+            return;
+        }
+    }
     $pdo = db();
     $pdo->beginTransaction();
     try {
         $donor = null;
-        if ($phone !== '') {
+        if ($pledge === null && $phone !== '') {
             $donor = db_one('SELECT * FROM donors WHERE phone = ?', [$phone]);
         }
-        if ($donor === null) {
+        if ($pledge !== null) {
+            $donorId = (int) $pledge['donor_id'];
+        } elseif ($donor !== null) {
+            $donorId = (int) $donor['id'];
+        } else {
             $donorId = db_exec(
                 'INSERT INTO donors (name, phone, email, address, pan_number) VALUES (?,?,?,?,?)',
                 [
@@ -495,23 +707,22 @@ function record_donation(): void
                     post_string('pan_number', 20) ?: null,
                 ]
             );
-        } else {
-            $donorId = (int) $donor['id'];
         }
         $donationId = db_exec(
-            'INSERT INTO donations (donor_id, donation_type, amount, purpose, donation_date, payment_mode, cheque_number, cheque_date, cheque_cleared, upi_reference, created_by)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+            'INSERT INTO donations (donor_id, donation_type, amount, purpose, donation_date, payment_mode, cheque_number, cheque_date, cheque_cleared, upi_reference, pledge_id, created_by)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
             [
                 $donorId,
                 $type,
                 $amount,
-                post_string('purpose', 200) ?: 'General',
-                post_date('donation_date'),
+                $pledge !== null ? (string) $pledge['purpose'] : (post_string('purpose', 200) ?: 'General'),
+                $donationDate,
                 $paymentMode,
                 $instrument['cheque_number'],
                 $instrument['cheque_date'],
                 $instrument['cheque_cleared'],
                 $instrument['upi_reference'],
+                $pledge !== null ? (int) $pledge['id'] : null,
                 (int) $_SESSION['user_id'],
             ]
         );
@@ -575,6 +786,128 @@ function record_donation(): void
         error_log('[jt_blr] donation: ' . $e->getMessage());
         flash('error', 'Could not record the donation.');
     }
+}
+
+function action_donors(): void
+{
+    login_required();
+    $range = default_ledger_range();
+    $from = valid_book_date((string) ($_GET['from'] ?? '')) ?? $range['from'];
+    $to = valid_book_date((string) ($_GET['to'] ?? '')) ?? $range['to'];
+    $error = cash_book_range_error($from, $to);
+    if ($error !== null) {
+        flash('error', $error);
+        $from = $range['from'];
+        $to = $range['to'];
+    }
+    render('donors', [
+        'title' => 'Donors',
+        'pageTitle' => 'Donor ledger',
+        'active' => 'donors',
+        'donors' => load_donor_list($from, $to, (string) ($_GET['q'] ?? '')),
+        'from' => $from,
+        'to' => $to,
+        'query' => (string) ($_GET['q'] ?? ''),
+        'financialYear' => financial_year_label($from),
+    ]);
+}
+
+function action_donor(int $donorId): void
+{
+    login_required();
+    $range = default_ledger_range();
+    $from = valid_book_date((string) ($_GET['from'] ?? '')) ?? $range['from'];
+    $to = valid_book_date((string) ($_GET['to'] ?? '')) ?? $range['to'];
+    $error = cash_book_range_error($from, $to);
+    if ($error !== null) {
+        flash('error', $error);
+        $from = $range['from'];
+        $to = $range['to'];
+    }
+    try {
+        $statement = load_donor_statement($donorId, $from, $to);
+    } catch (RuntimeException) {
+        flash('error', 'That devotee was not found.');
+        redirect(url('donors'));
+    }
+    render('donor', [
+        'title' => $statement['name'],
+        'pageTitle' => $statement['name'],
+        'active' => 'donors',
+        'statement' => $statement,
+        'today' => date('Y-m-d'),
+    ]);
+}
+
+function action_save_pledge(int $donorId): void
+{
+    login_required();
+    if (db_one('SELECT id FROM donors WHERE id = ?', [$donorId]) === null) {
+        flash('error', 'That devotee was not found.');
+        redirect(url('donors'));
+    }
+    $amount = round((float) ($_POST['pledged_amount'] ?? 0), 2);
+    $date = post_string('pledge_date', 10);
+    $purpose = post_string('purpose', 200);
+    $error = pledge_request_error($amount, $date, $purpose);
+    if ($error !== null) {
+        flash('error', $error);
+        redirect(url('donors/' . $donorId));
+    }
+    db_exec(
+        'INSERT INTO pledges (donor_id, purpose, pledged_amount, pledge_date, note, created_by) VALUES (?,?,?,?,?,?)',
+        [$donorId, trim($purpose), $amount, $date, post_string('note', 255) ?: null, (int) $_SESSION['user_id']]
+    );
+    flash('success', 'Pledge recorded. It is a promise, so it is not in the cash book until money is received.');
+    redirect(url('donors/' . $donorId));
+}
+
+function action_receive_pledge(int $donorId): void
+{
+    login_required();
+    $pledge = db_one('SELECT * FROM pledges WHERE id = ? AND donor_id = ?', [(int) ($_POST['pledge_id'] ?? 0), $donorId]);
+    if ($pledge === null) {
+        flash('error', 'That pledge was not found.');
+        redirect(url('donors/' . $donorId));
+    }
+    $amount = round((float) ($_POST['amount'] ?? 0), 2);
+    $date = post_string('donation_date', 10);
+    $paymentMode = one_of(post_string('payment_mode', 20), ['Cash', 'Bank Transfer', 'UPI', 'Cheque'], 'Cash');
+    $error = pledge_receipt_error($amount, $date, $paymentMode);
+    $instrument = normalize_payment_instrument(
+        $paymentMode,
+        post_string('upi_reference', 64),
+        post_string('cheque_number', 30),
+        post_string('cheque_date', 10),
+        isset($_POST['cheque_cleared'])
+    );
+    if ($error === null) {
+        $error = $instrument['error'];
+    }
+    if ($error !== null) {
+        flash('error', $error);
+        redirect(url('donors/' . $donorId));
+    }
+    db_exec(
+        'INSERT INTO donations (donor_id, donation_type, amount, purpose, donation_date, payment_mode, cheque_number, cheque_date, cheque_cleared, upi_reference, pledge_id, created_by)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+        [
+            $donorId,
+            'Cash',
+            $amount,
+            (string) $pledge['purpose'],
+            $date,
+            $paymentMode,
+            $instrument['cheque_number'],
+            $instrument['cheque_date'],
+            $instrument['cheque_cleared'],
+            $instrument['upi_reference'],
+            (int) $pledge['id'],
+            (int) $_SESSION['user_id'],
+        ]
+    );
+    flash('success', 'Amount received against the pledge. It is now in the cash book.');
+    redirect(url('donors/' . $donorId));
 }
 
 function action_generate_receipt(int $donationId): void
@@ -672,40 +1005,47 @@ function action_receipts_download(): void
     send_file($zip, $name, 'application/zip', true);
 }
 
-function action_receipts_delete(): void
+function action_receipts_cancel(): void
 {
-    admin_required();
+    login_required();
+    $reason = post_string('reason', 500);
     $rows = selected_receipt_rows();
     if ($rows === []) {
-        flash('error', 'Select at least one receipt to delete.');
+        flash('error', 'Select at least one receipt to cancel.');
         redirect(url('receipts'));
     }
-    $pdo = db();
-    $pdo->beginTransaction();
-    try {
-        foreach ($rows as $row) {
-            db_exec('DELETE FROM receipts WHERE donation_id = ?', [(int) $row['donation_id']]);
-            db_exec(
-                'UPDATE donations SET receipt_number = NULL, receipt_generated = 0 WHERE id = ?',
-                [(int) $row['donation_id']]
-            );
-        }
-        $pdo->commit();
-    } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        error_log('[jt_blr] receipt delete: ' . $e->getMessage());
-        flash('error', 'Could not delete the selected receipts.');
-        redirect(url('receipts'));
-    }
+    $submitted = 0;
+    $skipped = 0;
+    $userId = (int) $_SESSION['user_id'];
     foreach ($rows as $row) {
-        $path = receipt_path((string) $row['receipt_number']);
-        if (is_file($path)) {
-            unlink($path);
+        $donationId = (int) $row['donation_id'];
+        $error = receipt_cancel_request_error(
+            true,
+            (int) ($row['receipt_cancelled'] ?? 0) === 1,
+            receipt_cancel_is_open($donationId),
+            $reason
+        );
+        if ($error !== null) {
+            $skipped++;
+            continue;
         }
+        $cancelId = db_exec(
+            'INSERT INTO receipt_cancellations (donation_id, reason, prepared_by) VALUES (?,?,?)',
+            [$donationId, trim($reason), $userId]
+        );
+        $amount = round(abs((float) ($row['amount'] ?? 0)), 2);
+        record_approval('receipt', $cancelId, 'Waiting', $amount, $userId);
+        $submitted++;
     }
-    flash('success', count($rows) . ' receipt' . (count($rows) === 1 ? '' : 's') . ' deleted. Those donations can have a new receipt generated.');
+    if ($submitted === 0) {
+        flash('error', $skipped > 0 ? 'Those receipts are already cancelled or already waiting.' : 'Write a short reason for the cancellation.');
+        redirect(url('receipts'));
+    }
+    $message = $submitted . ' cancellation' . ($submitted === 1 ? '' : 's') . ' submitted for approval. The receipt number stays on the donation.';
+    if ($skipped > 0) {
+        $message .= ' ' . $skipped . ' skipped.';
+    }
+    flash('success', $message);
     redirect(url('receipts'));
 }
 
@@ -714,9 +1054,16 @@ function receipt_rows(): array
 {
     return db_all(
         "SELECT d.id AS donation_id, d.receipt_number, d.amount, d.donation_date, d.donation_type,
-                d.purpose, d.payment_mode,
+                d.purpose, d.payment_mode, d.receipt_cancelled,
                 don.name AS donor_name, don.phone AS donor_phone,
-                r.generated_date, u.full_name AS generated_by_name
+                r.generated_date, u.full_name AS generated_by_name,
+                (SELECT rc.reason FROM receipt_cancellations rc
+                 JOIN approvals a ON a.subject_type = 'receipt' AND a.subject_id = rc.id AND a.status = 'Approved'
+                 WHERE rc.donation_id = d.id ORDER BY rc.id DESC LIMIT 1) AS cancel_reason,
+                (SELECT a.status FROM receipt_cancellations rc
+                 JOIN approvals a ON a.subject_type = 'receipt' AND a.subject_id = rc.id
+                 WHERE rc.donation_id = d.id AND a.status IN ('Draft', 'Waiting', 'Sent back')
+                 ORDER BY rc.id DESC LIMIT 1) AS cancel_status
          FROM donations d
          JOIN donors don ON d.donor_id = don.id
          LEFT JOIN receipts r ON r.donation_id = d.id
@@ -748,7 +1095,7 @@ function selected_receipt_rows(): array
     }
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     return db_all(
-        "SELECT d.id AS donation_id, d.receipt_number
+        "SELECT d.id AS donation_id, d.receipt_number, d.amount, d.receipt_cancelled
          FROM donations d
          WHERE d.receipt_generated = 1
            AND d.receipt_number IS NOT NULL
@@ -822,7 +1169,80 @@ function action_cash_book(): void
         'isAdmin' => ($_SESSION['role'] ?? '') === 'Admin',
         'canSetOpening' => in_array((string) ($_SESSION['role'] ?? ''), ['Admin', 'Treasurer'], true),
         'waitingCount' => (int) db_value("SELECT COUNT(*) FROM approvals WHERE status = 'Waiting'"),
+        'carry' => carry_forward_preview($book['financial_year'], (string) ($_SESSION['role'] ?? '')),
     ]);
+}
+
+function action_corrections(string $method): void
+{
+    login_required();
+    if ($method === 'POST') {
+        action_save_correction();
+        return;
+    }
+    render('corrections', [
+        'title' => 'Corrections',
+        'pageTitle' => 'Corrections',
+        'active' => 'corrections',
+        'targets' => correction_targets(),
+        'rows' => correction_history(),
+        'today' => date('Y-m-d'),
+    ]);
+}
+
+function action_save_correction(): void
+{
+    login_required();
+    $target = post_string('target', 40);
+    if (preg_match('/^(donation|expense):(\d+)$/', $target, $match) !== 1) {
+        flash('error', 'Choose the line to correct.');
+        redirect(url('corrections'));
+    }
+    $type = $match[1];
+    $subjectId = (int) $match[2];
+    $posted = correction_posted($type, $subjectId);
+    if ($posted === null) {
+        flash('error', 'That line is not in the books yet.');
+        redirect(url('corrections'));
+    }
+    $kind = post_string('kind', 20);
+    $current = corrected_book_amount($type, $subjectId, $posted['amount']);
+    $corrected = $kind === 'void' ? 0.0 : round((float) ($_POST['corrected_amount'] ?? 0), 2);
+    $reason = post_string('reason', 500);
+    $date = post_string('entry_date', 10);
+    $error = correction_request_error(
+        $kind,
+        $current,
+        $corrected,
+        $reason,
+        $date,
+        book_account($posted['payment_mode']),
+        correction_is_open($type, $subjectId)
+    );
+    if ($error !== null) {
+        flash('error', $error);
+        redirect(url('corrections'));
+    }
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $correctionId = db_exec(
+            'INSERT INTO corrections (subject_type, subject_id, original_amount, corrected_amount, reason, entry_date, prepared_by)
+             VALUES (?,?,?,?,?,?,?)',
+            [$type, $subjectId, $current, $corrected, trim($reason), $date, (int) $_SESSION['user_id']]
+        );
+        record_approval('correction', $correctionId, 'Waiting', abs($corrected - $current), (int) $_SESSION['user_id']);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('[jt_blr] correction: ' . $e->getMessage());
+        flash('error', 'The correction could not be saved.');
+        redirect(url('corrections'));
+    }
+    flash('success', 'Correction submitted for approval. The original line stays until it is approved.');
+    redirect(url('corrections'));
 }
 
 function action_approvals(): void
@@ -836,13 +1256,25 @@ function action_approvals(): void
             "SELECT a.*, p.full_name AS prepared_name, d.full_name AS decided_name,
                     e.voucher_number, e.category, e.expense_date, e.description, e.paid_to,
                     c.direction, c.entry_date AS contra_date, c.note AS contra_note,
-                    o.financial_year, o.pending_cash, o.pending_bank, o.cash_amount, o.bank_amount
+                    o.financial_year, o.pending_cash, o.pending_bank, o.cash_amount, o.bank_amount,
+                    cor.subject_type AS correction_target, cor.original_amount, cor.corrected_amount, cor.reason AS correction_reason,
+                    rd.receipt_number AS cancel_receipt, rn.name AS cancel_donor, rc.reason AS cancel_reason,
+                    pur.item_name AS purchase_name, pur.quantity AS purchase_qty,
+                    sr.item_name AS stock_name, sr.movement_type AS stock_movement, sr.quantity AS stock_qty,
+                    cb.coupon_name, cb.quantity AS coupon_qty, cb.cost AS coupon_cost
              FROM approvals a
              JOIN users p ON p.id = a.prepared_by
              LEFT JOIN users d ON d.id = a.decided_by
              LEFT JOIN expenses e ON a.subject_type = 'expense' AND e.id = a.subject_id
              LEFT JOIN contra_entries c ON a.subject_type = 'contra' AND c.id = a.subject_id
              LEFT JOIN opening_balances o ON a.subject_type = 'opening' AND o.id = a.subject_id
+             LEFT JOIN corrections cor ON a.subject_type = 'correction' AND cor.id = a.subject_id
+             LEFT JOIN receipt_cancellations rc ON a.subject_type = 'receipt' AND rc.id = a.subject_id
+             LEFT JOIN donations rd ON rc.donation_id = rd.id
+             LEFT JOIN donors rn ON rd.donor_id = rn.id
+             LEFT JOIN purchases pur ON a.subject_type = 'purchase' AND pur.id = a.subject_id
+             LEFT JOIN stock_requests sr ON a.subject_type = 'stock' AND sr.id = a.subject_id
+             LEFT JOIN food_coupon_batches cb ON a.subject_type = 'coupon' AND cb.id = a.subject_id
              WHERE a.status IN ('Draft', 'Waiting', 'Sent back')
              ORDER BY FIELD(a.status, 'Waiting', 'Sent back', 'Draft'), a.updated_at DESC"
         ),
@@ -888,6 +1320,9 @@ function action_decide_approval(int $id): void
                 [$next, $id]
             );
         }
+        if ($row['subject_type'] === 'receipt' && $decision === 'approve') {
+            apply_receipt_cancellation((int) $row['subject_id']);
+        }
         if ($row['subject_type'] === 'opening' && $decision === 'approve') {
             db_exec(
                 'UPDATE opening_balances
@@ -899,6 +1334,25 @@ function action_decide_approval(int $id): void
                 [(int) $row['subject_id']]
             );
         }
+        if ($row['subject_type'] === 'purchase' && $decision === 'approve') {
+            apply_approved_purchase((int) $row['subject_id']);
+        }
+        if ($row['subject_type'] === 'stock' && $decision === 'approve') {
+            apply_approved_stock((int) $row['subject_id']);
+        }
+        if ($row['subject_type'] === 'coupon' && $decision === 'approve') {
+            $batch = db_one('SELECT * FROM food_coupon_batches WHERE id = ?', [(int) $row['subject_id']]);
+            if ($batch === null) {
+                throw new RuntimeException('Coupon batch is missing.');
+            }
+            generate_coupon_batch_pdf(
+                (int) $batch['id'],
+                (string) $batch['coupon_name'],
+                (float) $batch['cost'],
+                (int) $batch['start_sl_no'],
+                (int) $batch['quantity']
+            );
+        }
         if ($row['subject_type'] === 'opening' && $decision === 'reject') {
             db_exec(
                 'UPDATE opening_balances SET pending_cash = NULL, pending_bank = NULL, pending_note = NULL WHERE id = ?',
@@ -906,6 +1360,12 @@ function action_decide_approval(int $id): void
             );
         }
         $pdo->commit();
+    } catch (StockApplyException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        flash('error', $e->getMessage());
+        redirect(url('approvals'));
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
@@ -1012,25 +1472,48 @@ function action_save_opening(): void
         flash('error', $error);
         redirect($back);
     }
-    $note = post_string('note', 255);
-    $userId = (int) $_SESSION['user_id'];
-    $existing = db_one('SELECT id FROM opening_balances WHERE financial_year = ?', [$year]);
-    if ($existing === null) {
-        $id = db_exec(
-            'INSERT INTO opening_balances (financial_year, cash_amount, bank_amount, note, set_by, pending_cash, pending_bank, pending_note)
-             VALUES (?,?,?,?,?,?,?,?)',
-            [$year, 0, 0, null, $userId, $cash, $bank, $note !== '' ? $note : null]
-        );
-    } else {
-        $id = (int) $existing['id'];
-        db_exec(
-            'UPDATE opening_balances SET pending_cash = ?, pending_bank = ?, pending_note = ?, set_by = ? WHERE id = ?',
-            [$cash, $bank, $note !== '' ? $note : null, $userId, $id]
-        );
+    try {
+        submit_opening_balance($year, $cash, $bank, post_string('note', 255), (int) $_SESSION['user_id']);
+    } catch (Throwable $e) {
+        error_log('[jt_blr] opening: ' . $e->getMessage());
+        flash('error', 'The opening balance could not be saved.');
+        redirect($back);
     }
-    record_approval('opening', $id, 'Waiting', max($cash, $bank), $userId);
     flash('success', 'Opening balance submitted for approval. The books keep the last approved figures until then.');
     redirect($back);
+}
+
+function action_carry_opening(): void
+{
+    login_required();
+    $role = (string) ($_SESSION['role'] ?? '');
+    $back = url('cash-book', ['from' => post_string('from', 10), 'to' => post_string('to', 10)]);
+    if ($role !== 'Admin' && $role !== 'Treasurer') {
+        flash('error', 'Only a Treasurer or Admin can carry the closing balance forward.');
+        redirect($back);
+    }
+    try {
+        $result = submit_carried_opening(post_string('financial_year', 9), (int) $_SESSION['user_id']);
+    } catch (Throwable $e) {
+        error_log('[jt_blr] carry: ' . $e->getMessage());
+        flash('error', 'The closing balance could not be carried forward.');
+        redirect($back);
+    }
+    if ($result['error'] !== null || $result['next_year'] === null) {
+        flash('error', $result['error'] ?? 'The closing balance could not be carried forward.');
+        redirect($back);
+    }
+    $start = financial_year_start($result['next_year']);
+    $end = financial_year_end($result['next_year']);
+    $today = date('Y-m-d');
+    $to = ($today >= $start && $today <= $end) ? $today : $start;
+    flash(
+        'success',
+        'Closing cash ' . money($result['cash'], 2) . ' and bank ' . money($result['bank'], 2)
+        . ' submitted as the opening for ' . $result['next_year']
+        . '. The books keep the last approved figures until someone else approves it.'
+    );
+    redirect(url('cash-book', ['from' => $start, 'to' => $to]));
 }
 
 function action_save_contra(): void

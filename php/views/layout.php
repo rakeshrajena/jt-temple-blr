@@ -45,10 +45,12 @@ $sections = [
     ],
     'Finance' => [
         ['donations', 'hands', 'Donations', 'donations'],
+        ['donors', 'users', 'Donors', 'donors'],
         ['receipts', 'receipt', 'Receipts', 'receipts'],
         ['subscriptions', 'bell', 'Subscriptions', 'subscriptions'],
         ['expenses', 'card', 'Expenses', 'expenses'],
         ['approvals', 'users', 'Approvals', 'approvals'],
+        ['corrections', 'ledger', 'Corrections', 'corrections'],
         ['cash-book', 'book', 'Cash book', 'cash-book'],
         ['day-book', 'book', 'Day book', 'day-book'],
         ['ledger', 'ledger', 'Ledger', 'ledger'],

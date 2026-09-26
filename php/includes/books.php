@@ -27,6 +27,13 @@ function financial_year_end(string $label): string
     return ($year + 1) . '-03-31';
 }
 
+function next_financial_year(string $label): string
+{
+    $start = financial_year_start($label);
+    $year = (int) substr($start, 0, 4) + 1;
+    return $year . '-' . ($year + 1);
+}
+
 function cash_book_range_error(string $from, string $to): ?string
 {
     if (valid_book_date($from) === null || valid_book_date($to) === null) {
@@ -336,7 +343,121 @@ function load_book_movements(string $from, string $to): array
             $movements[] = $movement;
         }
     }
+    foreach (approved_correction_rows($fyStart, $to) as $row) {
+        $movement = correction_movement($row);
+        if ($movement !== null) {
+            $movements[] = $movement;
+        }
+    }
     return $movements;
+}
+
+/** @return array{cash: float, bank: float} */
+function year_closing_balance(string $financialYear): array
+{
+    $from = financial_year_start($financialYear);
+    $to = financial_year_end($financialYear);
+    $opening = load_opening_balance($financialYear);
+    $book = build_cash_book(
+        load_book_movements($from, $to),
+        $from,
+        $to,
+        $opening['cash'],
+        $opening['bank']
+    );
+    return [
+        'cash' => $book['closing_cash'],
+        'bank' => $book['closing_bank'],
+    ];
+}
+
+function submit_opening_balance(string $year, float $cash, float $bank, string $note, int $userId): void
+{
+    $pdo = db();
+    $own = !$pdo->inTransaction();
+    if ($own) {
+        $pdo->beginTransaction();
+    }
+    try {
+        $existing = db_one('SELECT id FROM opening_balances WHERE financial_year = ?', [$year]);
+        if ($existing === null) {
+            $id = db_exec(
+                'INSERT INTO opening_balances (financial_year, cash_amount, bank_amount, note, set_by, pending_cash, pending_bank, pending_note)
+                 VALUES (?,?,?,?,?,?,?,?)',
+                [$year, 0, 0, null, $userId, $cash, $bank, $note !== '' ? $note : null]
+            );
+        } else {
+            $id = (int) $existing['id'];
+            db_exec(
+                'UPDATE opening_balances SET pending_cash = ?, pending_bank = ?, pending_note = ?, set_by = ? WHERE id = ?',
+                [$cash, $bank, $note !== '' ? $note : null, $userId, $id]
+            );
+        }
+        record_approval('opening', $id, 'Waiting', max($cash, $bank), $userId);
+        if ($own) {
+            $pdo->commit();
+        }
+    } catch (Throwable $e) {
+        if ($own && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
+}
+
+/**
+ * @return array{source_year: string, next_year: string, cash: float, bank: float, error: ?string}|null
+ */
+function carry_forward_preview(string $sourceYear, string $role): ?array
+{
+    if ($role !== 'Admin' && $role !== 'Treasurer') {
+        return null;
+    }
+    $closing = year_closing_balance($sourceYear);
+    $error = null;
+    if ($closing['cash'] < 0 || $closing['bank'] < 0) {
+        $error = 'This year closes with a negative balance, so it cannot be carried forward. Correct the books or type the next opening by hand.';
+    } else {
+        $error = validate_opening_amounts($closing['cash'], $closing['bank']);
+    }
+    return [
+        'source_year' => $sourceYear,
+        'next_year' => next_financial_year($sourceYear),
+        'cash' => $closing['cash'],
+        'bank' => $closing['bank'],
+        'error' => $error,
+    ];
+}
+
+/**
+ * @return array{error: ?string, next_year: ?string, cash: ?float, bank: ?float}
+ */
+function submit_carried_opening(string $sourceYear, int $userId): array
+{
+    $failed = ['error' => null, 'next_year' => null, 'cash' => null, 'bank' => null];
+    try {
+        $next = next_financial_year($sourceYear);
+    } catch (InvalidArgumentException) {
+        $failed['error'] = 'Choose a valid financial year.';
+        return $failed;
+    }
+    $closing = year_closing_balance($sourceYear);
+    if ($closing['cash'] < 0 || $closing['bank'] < 0) {
+        $failed['error'] = 'This year closes with a negative balance, so it cannot be carried forward. Correct the books or type the next opening by hand.';
+        return $failed;
+    }
+    $error = validate_opening_amounts($closing['cash'], $closing['bank']);
+    if ($error !== null) {
+        $failed['error'] = $error;
+        return $failed;
+    }
+    submit_opening_balance($next, $closing['cash'], $closing['bank'], 'Brought forward from ' . $sourceYear, $userId);
+    return [
+        'error' => null,
+        'next_year' => $next,
+        'cash' => $closing['cash'],
+        'bank' => $closing['bank'],
+    ];
 }
 
 /** @return array{cash: float, bank: float, note: string} */
@@ -519,6 +640,12 @@ function load_ledger_lines(string $from, string $to): array
     );
     foreach ($expenses as $row) {
         $line = expense_ledger_line($row);
+        if ($line !== null) {
+            $lines[] = $line;
+        }
+    }
+    foreach (approved_correction_rows($fyStart, $to) as $row) {
+        $line = correction_ledger_line($row);
         if ($line !== null) {
             $lines[] = $line;
         }

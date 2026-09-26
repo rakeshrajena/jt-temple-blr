@@ -1,6 +1,7 @@
 <?php
 /** @var list<array<string,mixed>> $donations */
 /** @var list<array<string,mixed>> $foodItems */
+/** @var list<array{id: int, label: string, donor_name: string}> $pledges */
 /** @var string $today */
 ?>
 <div class="panel">
@@ -29,6 +30,15 @@
       <div class="form-group"><label>Payment Mode</label>
         <select name="payment_mode">
           <option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Cheque</option><option>In-Kind</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Pledge (optional)</label>
+        <select name="pledge_id">
+          <option value="">Not against a pledge</option>
+          <?php foreach ($pledges as $pledge): ?>
+            <option value="<?= e((string) $pledge['id']) ?>"><?= e($pledge['label']) ?></option>
+          <?php endforeach; ?>
         </select>
       </div>
       <div class="form-group"><label>Purpose</label>
@@ -75,7 +85,7 @@
     <?php foreach ($donations as $d): ?>
     <tr>
       <td><?= e($d['donation_date']) ?></td>
-      <td><?= e($d['donor_name']) ?><?php if (!empty($d['donor_phone'])): ?><br><span style="color:var(--ink-soft);font-size:12px;"><?= e($d['donor_phone']) ?></span><?php endif; ?></td>
+      <td><a href="<?= e(url('donors/' . $d['donor_id'])) ?>"><?= e($d['donor_name']) ?></a><?php if (!empty($d['donor_phone'])): ?><br><span style="color:var(--ink-soft);font-size:12px;"><?= e($d['donor_phone']) ?></span><?php endif; ?></td>
       <td><?= e($d['donation_type']) ?></td>
       <td><?= e(money_or_dash($d['amount'])) ?></td>
       <td><?= e(dash($d['purpose'])) ?></td>
@@ -93,6 +103,10 @@
       <td>
         <?php if ((int) $d['receipt_generated'] === 1): ?>
           <?= receipt_link($d['receipt_number']) ?>
+          <?= receipt_cancel_badge($d['receipt_cancelled'] ?? 0, (string) ($d['cancel_reason'] ?? '')) ?>
+          <?php if ((int) ($d['receipt_cancelled'] ?? 0) !== 1 && !empty($d['cancel_status'])): ?>
+            <br><span class="badge badge-amber">Cancellation <?= e((string) $d['cancel_status']) ?></span>
+          <?php endif; ?>
         <?php else: ?>
           <span class="badge badge-amber">Not generated</span>
         <?php endif; ?>

@@ -58,7 +58,7 @@ $filterable = $reportType === 'donations' || $reportType === 'expenses';
         <td class="text-right"><?= e(money_or_dash($d['amount'], 2)) ?></td>
         <td><?= e(dash($d['purpose'])) ?></td>
         <td><?= e($d['payment_mode']) ?></td>
-        <td><?php $receiptLink = receipt_link($d['receipt_number'] ?? ''); ?><?= $receiptLink !== '' ? $receiptLink : 'Not generated' ?></td>
+        <td><?php $receiptLink = receipt_link($d['receipt_number'] ?? ''); ?><?= $receiptLink !== '' ? $receiptLink : 'Not generated' ?><?= receipt_cancel_badge($d['receipt_cancelled'] ?? 0) ?></td>
       </tr>
       <?php endforeach; ?>
     <?php elseif ($reportType === 'expenses'): ?>

@@ -4,6 +4,7 @@
 /** @var bool $isAdmin */
 /** @var bool $canSetOpening */
 /** @var int $waitingCount */
+/** @var array{source_year: string, next_year: string, cash: float, bank: float, error: ?string}|null $carry */
 $lines = $book['lines'];
 ?>
 <div class="kpi-grid">
@@ -99,6 +100,20 @@ $lines = $book['lines'];
       </div>
       <div class="form-actions"><button class="btn btn-outline" type="submit">Submit opening balance</button></div>
     </form>
+    <?php if ($carry !== null): ?>
+    <p class="sub">Closing for the whole of <?= e($carry['source_year']) ?> is cash <?= e(money($carry['cash'], 2)) ?> and bank <?= e(money($carry['bank'], 2)) ?>. Carrying those figures into <?= e($carry['next_year']) ?> waits for approval. The filtered dates above do not change what is carried.</p>
+    <?php if ($carry['error'] === null): ?>
+    <form method="POST" action="<?= e(url('cash-book/carry')) ?>">
+      <?= csrf_field() ?>
+      <input type="hidden" name="financial_year" value="<?= e($carry['source_year']) ?>">
+      <input type="hidden" name="from" value="<?= e($book['from']) ?>">
+      <input type="hidden" name="to" value="<?= e($book['to']) ?>">
+      <div class="form-actions"><button class="btn btn-primary" type="submit">Carry into <?= e($carry['next_year']) ?></button></div>
+    </form>
+    <?php else: ?>
+    <p class="sub"><?= e($carry['error']) ?></p>
+    <?php endif; ?>
+    <?php endif; ?>
   </div>
   <?php endif; ?>
 </div>

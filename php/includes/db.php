@@ -51,6 +51,9 @@ function ensure_schema(PDO $pdo): void
     ensure_books_schema($pdo);
     ensure_payment_columns($pdo);
     ensure_approval_schema($pdo);
+    ensure_correction_schema($pdo);
+    ensure_donor_schema($pdo);
+    ensure_stock_schema($pdo);
     backfill_receipt_pdfs();
 }
 

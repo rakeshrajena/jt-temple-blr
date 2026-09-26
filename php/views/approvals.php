@@ -22,6 +22,36 @@ $label = static function (array $row): string {
     if ($type === 'contra') {
         return (string) ($row['direction'] ?? 'Contra') . ' · ' . (string) ($row['contra_date'] ?? '') . ((string) ($row['contra_note'] ?? '') !== '' ? ' · ' . (string) $row['contra_note'] : '');
     }
+    if ($type === 'correction') {
+        $target = (string) ($row['correction_target'] ?? 'line');
+        return 'Correction · ' . $target
+            . ' · was ' . money($row['original_amount'] ?? 0)
+            . ' now ' . money($row['corrected_amount'] ?? 0)
+            . ((string) ($row['correction_reason'] ?? '') !== '' ? ' · ' . (string) $row['correction_reason'] : '');
+    }
+    if ($type === 'receipt') {
+        $number = (string) ($row['cancel_receipt'] ?? '');
+        $donor = (string) ($row['cancel_donor'] ?? '');
+        return 'Cancel receipt' . ($number !== '' ? ' ' . $number : '') . ($donor !== '' ? ' · ' . $donor : '')
+            . ((string) ($row['cancel_reason'] ?? '') !== '' ? ' · ' . (string) $row['cancel_reason'] : '');
+    }
+    if ($type === 'purchase') {
+        $qty = (string) ($row['purchase_qty'] ?? '');
+        $name = (string) ($row['purchase_name'] ?? 'Purchase');
+        return 'Purchase' . ($qty !== '' ? ' ' . $qty : '') . ' · ' . $name;
+    }
+    if ($type === 'stock') {
+        $movement = (string) ($row['stock_movement'] ?? 'Write-off');
+        $qty = (string) ($row['stock_qty'] ?? '');
+        $name = (string) ($row['stock_name'] ?? '');
+        return $movement . ($qty !== '' ? ' ' . $qty : '') . ($name !== '' ? ' · ' . $name : '');
+    }
+    if ($type === 'coupon') {
+        $name = (string) ($row['coupon_name'] ?? 'Coupons');
+        $qty = (string) ($row['coupon_qty'] ?? '');
+        $cost = isset($row['coupon_cost']) ? money($row['coupon_cost']) : '';
+        return 'Coupons · ' . $name . ($qty !== '' ? ' · ' . $qty . ' × ' . $cost : '');
+    }
     if ($type === 'opening') {
         $cash = $row['pending_cash'] !== null ? (float) $row['pending_cash'] : (float) ($row['cash_amount'] ?? 0);
         $bank = $row['pending_bank'] !== null ? (float) $row['pending_bank'] : (float) ($row['bank_amount'] ?? 0);
@@ -32,7 +62,7 @@ $label = static function (array $row): string {
 ?>
 <div class="panel">
   <h3>Approval queue</h3>
-  <p class="sub">Staff prepare an item. A Treasurer can approve up to ₹10,000. Above that, an Admin decides. The person who prepared it cannot approve it. Only an approved line changes the cash book, day book, ledger, or bank match.</p>
+  <p class="sub">Staff prepare an item. A Treasurer can approve up to ₹10,000. Above that, an Admin decides. The person who prepared it cannot approve it. Only an approved line changes the cash book, day book, ledger, bank match, or stock. A write-off above <?= e((string) STOCK_WRITE_OFF_LIMIT) ?> units waits here even when the money amount is zero.</p>
   <?php if (!$rows): ?>
     <p>Nothing is waiting.</p>
   <?php else: ?>

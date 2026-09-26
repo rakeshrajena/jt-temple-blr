@@ -31,7 +31,7 @@
         <td><?= e($d['donation_date']) ?></td>
         <td>
           <?php if ((int) $d['receipt_generated'] === 1): ?>
-            <?= receipt_link($d['receipt_number']) ?>
+            <?= receipt_link($d['receipt_number']) ?><?= receipt_cancel_badge($d['receipt_cancelled'] ?? 0) ?>
           <?php else: ?>
             <span class="badge badge-amber">Pending</span>
           <?php endif; ?>

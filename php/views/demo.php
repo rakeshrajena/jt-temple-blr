@@ -93,7 +93,7 @@
         <tr>
           <td><?= e($d['donation_date']) ?></td><td><?= e($d['donor_name']) ?></td><td><?= e($d['donation_type']) ?></td>
           <td><?= e(money_or_dash($d['amount'])) ?></td><td><?= e(dash($d['purpose'])) ?></td>
-          <td><?php if ((int) $d['receipt_generated'] === 1): ?><?= receipt_link($d['receipt_number']) ?><?php else: ?><span class="badge badge-amber">Pending</span><?php endif; ?></td>
+          <td><?php if ((int) $d['receipt_generated'] === 1): ?><?= receipt_link($d['receipt_number']) ?><?= receipt_cancel_badge($d['receipt_cancelled'] ?? 0) ?><?php else: ?><span class="badge badge-amber">Pending</span><?php endif; ?></td>
         </tr>
         <?php endforeach; ?>
       </table>

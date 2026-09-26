@@ -17,8 +17,9 @@ CREATE TABLE inventory_items (
     name            VARCHAR(150) NOT NULL,
     description     TEXT,
     quantity        INT NOT NULL DEFAULT 0,
+    unit_cost       DECIMAL(12,2) NOT NULL DEFAULT 0,
     unit            VARCHAR(30) DEFAULT 'pcs',
-    item_condition  ENUM('New','Good','Fair','Needs Repair','Damaged') DEFAULT 'Good',
+    item_condition  ENUM('New','Good','Fair','Needs Repair','Damaged','Retired') DEFAULT 'Good',
     location        VARCHAR(100),
     source          ENUM('Purchased','Donated') DEFAULT 'Purchased',
     donation_id     INT NULL,
@@ -47,6 +48,62 @@ CREATE TABLE food_usage_log (
     logged_by       INT,
     FOREIGN KEY (food_item_id) REFERENCES food_items(id) ON DELETE CASCADE,
     FOREIGN KEY (logged_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE inventory_movements (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    item_id         INT NOT NULL,
+    movement_type   ENUM('Added','Issued','Returned','Damaged','Lost','Retired') NOT NULL,
+    quantity        INT NOT NULL,
+    note            VARCHAR(255) NULL,
+    movement_date   DATE NOT NULL,
+    logged_by       INT NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (item_id) REFERENCES inventory_items(id),
+    FOREIGN KEY (logged_by) REFERENCES users(id),
+    KEY idx_inventory_movement_item (item_id),
+    KEY idx_inventory_movement_date (movement_date)
+) ENGINE=InnoDB;
+
+CREATE TABLE stock_requests (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    store_name      ENUM('food','inventory') NOT NULL,
+    item_id         INT NOT NULL,
+    item_name       VARCHAR(150) NOT NULL,
+    movement_type   VARCHAR(20) NOT NULL,
+    quantity        DECIMAL(12,2) NOT NULL,
+    note            VARCHAR(255) NULL,
+    movement_date   DATE NOT NULL,
+    prepared_by     INT NOT NULL,
+    applied         TINYINT(1) NOT NULL DEFAULT 0,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (prepared_by) REFERENCES users(id),
+    KEY idx_stock_request_item (store_name, item_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE purchases (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    item_id         INT NULL,
+    item_name       VARCHAR(150) NOT NULL,
+    category        VARCHAR(50) NOT NULL,
+    unit            VARCHAR(30) NOT NULL DEFAULT 'pcs',
+    quantity        INT NOT NULL,
+    unit_cost       DECIMAL(12,2) NOT NULL,
+    amount          DECIMAL(12,2) NOT NULL,
+    location        VARCHAR(100) NULL,
+    paid_to         VARCHAR(150) NULL,
+    purchase_date   DATE NOT NULL,
+    payment_mode    ENUM('Cash','Bank Transfer','UPI','Cheque') NOT NULL,
+    cheque_number   VARCHAR(30) NULL,
+    cheque_date     DATE NULL,
+    cheque_cleared  TINYINT(1) NOT NULL DEFAULT 0,
+    upi_reference   VARCHAR(64) NULL,
+    expense_id      INT NULL,
+    prepared_by     INT NOT NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (item_id) REFERENCES inventory_items(id),
+    FOREIGN KEY (prepared_by) REFERENCES users(id),
+    KEY idx_purchase_date (purchase_date)
 ) ENGINE=InnoDB;
 
 CREATE TABLE vastra_items (
@@ -85,17 +142,36 @@ CREATE TABLE donations (
     payment_mode            ENUM('Cash','Bank Transfer','UPI','Cheque','In-Kind','Card','Netbanking') NOT NULL,
     receipt_number          VARCHAR(30) UNIQUE,
     receipt_generated       TINYINT(1) DEFAULT 0,
+    receipt_cancelled       TINYINT(1) NOT NULL DEFAULT 0,
     cheque_number           VARCHAR(30) NULL,
     cheque_date             DATE NULL,
     cheque_cleared          TINYINT(1) NOT NULL DEFAULT 0,
     upi_reference           VARCHAR(64) NULL,
     reconciled_bank_txn_id  INT NULL,
+    pledge_id               INT NULL,
     notes                   TEXT,
     created_by              INT,
     created_at              DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (donor_id) REFERENCES donors(id),
     FOREIGN KEY (created_by) REFERENCES users(id)
 ) ENGINE=InnoDB;
+
+CREATE TABLE pledges (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    donor_id        INT NOT NULL,
+    purpose         VARCHAR(200) NOT NULL,
+    pledged_amount  DECIMAL(12,2) NOT NULL,
+    pledge_date     DATE NOT NULL,
+    note            VARCHAR(255) NULL,
+    created_by      INT NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (donor_id) REFERENCES donors(id),
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    KEY idx_pledge_donor (donor_id),
+    KEY idx_pledge_date (pledge_date)
+) ENGINE=InnoDB;
+
+ALTER TABLE donations ADD CONSTRAINT fk_donation_pledge FOREIGN KEY (pledge_id) REFERENCES pledges(id);
 
 CREATE TABLE expenses (
     id                      INT AUTO_INCREMENT PRIMARY KEY,
@@ -237,9 +313,35 @@ CREATE INDEX idx_bank_txn_status ON bank_transactions(reconciled_status);
 CREATE INDEX idx_food_usage_date ON food_usage_log(txn_date);
 CREATE INDEX idx_contra_date ON contra_entries(entry_date);
 
+CREATE TABLE corrections (
+    id                INT AUTO_INCREMENT PRIMARY KEY,
+    subject_type      ENUM('donation','expense') NOT NULL,
+    subject_id        INT NOT NULL,
+    original_amount   DECIMAL(12,2) NOT NULL,
+    corrected_amount  DECIMAL(12,2) NOT NULL,
+    reason            VARCHAR(500) NOT NULL,
+    entry_date        DATE NOT NULL,
+    prepared_by       INT NOT NULL,
+    created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (prepared_by) REFERENCES users(id),
+    KEY idx_correction_subject (subject_type, subject_id),
+    KEY idx_correction_date (entry_date)
+) ENGINE=InnoDB;
+
+CREATE TABLE receipt_cancellations (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    donation_id   INT NOT NULL,
+    reason        VARCHAR(500) NOT NULL,
+    prepared_by   INT NOT NULL,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (donation_id) REFERENCES donations(id),
+    FOREIGN KEY (prepared_by) REFERENCES users(id),
+    KEY idx_receipt_cancel_donation (donation_id)
+) ENGINE=InnoDB;
+
 CREATE TABLE approvals (
     id              INT AUTO_INCREMENT PRIMARY KEY,
-    subject_type    ENUM('expense','contra','opening','purchase','correction','receipt','stock') NOT NULL,
+    subject_type    ENUM('expense','contra','opening','purchase','correction','receipt','stock','coupon') NOT NULL,
     subject_id      INT NOT NULL,
     status          ENUM('Draft','Waiting','Approved','Sent back','Rejected') NOT NULL DEFAULT 'Draft',
     amount          DECIMAL(14,2) NOT NULL DEFAULT 0,
