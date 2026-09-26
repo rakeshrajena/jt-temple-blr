@@ -96,7 +96,7 @@ $pledges = $statement['pledges'];
             <input type="number" step="0.01" min="0.01" name="amount" placeholder="Received" required style="width:110px;">
             <input type="date" name="donation_date" value="<?= e($today) ?>" required>
             <select name="payment_mode">
-              <option>Cash</option><option>Bank Transfer</option><option>UPI</option><option>Cheque</option>
+              <?php foreach (money_payment_modes() as $mode): ?><option><?= e($mode) ?></option><?php endforeach; ?>
             </select>
             <input type="text" name="upi_reference" maxlength="64" placeholder="UPI id" style="width:120px;">
             <input type="text" name="cheque_number" maxlength="30" placeholder="Cheque no." style="width:110px;">

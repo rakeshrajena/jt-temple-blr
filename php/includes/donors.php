@@ -240,7 +240,7 @@ function open_pledge_choices(): array
         "SELECT pledge_id, COALESCE(SUM(amount), 0) AS total
          FROM donations
          WHERE pledge_id IS NOT NULL
-           AND payment_mode IN ('Cash','Bank Transfer','UPI','Cheque','Card','Netbanking')
+           AND " . money_mode_clause('payment_mode') . "
            AND amount IS NOT NULL
          GROUP BY pledge_id"
     ) as $row) {
@@ -252,7 +252,7 @@ function open_pledge_choices(): array
          JOIN approvals a ON a.subject_type = 'correction' AND a.subject_id = c.id AND a.status = 'Approved'
          JOIN donations d ON c.subject_type = 'donation' AND d.id = c.subject_id
          WHERE d.pledge_id IS NOT NULL
-           AND d.payment_mode IN ('Cash','Bank Transfer','UPI','Cheque','Card','Netbanking')
+           AND " . money_mode_clause('d.payment_mode') . "
          GROUP BY d.pledge_id"
     ) as $row) {
         $id = (int) $row['pledge_id'];
@@ -408,7 +408,7 @@ function load_donor_list(string $from, string $to, string $query = ''): array
         "SELECT donor_id, COALESCE(SUM(amount), 0) AS total
          FROM donations
          WHERE donation_date BETWEEN ? AND ?
-           AND payment_mode IN ('Cash','Bank Transfer','UPI','Cheque','Card','Netbanking')
+           AND " . money_mode_clause('payment_mode') . "
            AND amount IS NOT NULL
          GROUP BY donor_id",
         [$from, $to]
@@ -421,7 +421,7 @@ function load_donor_list(string $from, string $to, string $query = ''): array
          JOIN approvals a ON a.subject_type = 'correction' AND a.subject_id = c.id AND a.status = 'Approved'
          JOIN donations d ON c.subject_type = 'donation' AND d.id = c.subject_id
          WHERE c.entry_date BETWEEN ? AND ?
-           AND d.payment_mode IN ('Cash','Bank Transfer','UPI','Cheque','Card','Netbanking')
+           AND " . money_mode_clause('d.payment_mode') . "
          GROUP BY d.donor_id",
         [$from, $to]
     ) as $row) {
@@ -436,7 +436,7 @@ function load_donor_list(string $from, string $to, string $query = ''): array
         "SELECT d.donor_id, COALESCE(SUM(d.amount), 0) AS total
          FROM donations d
          WHERE d.pledge_id IS NOT NULL
-           AND d.payment_mode IN ('Cash','Bank Transfer','UPI','Cheque','Card','Netbanking')
+           AND " . money_mode_clause('d.payment_mode') . "
            AND d.amount IS NOT NULL
          GROUP BY d.donor_id"
     ) as $row) {
@@ -449,7 +449,7 @@ function load_donor_list(string $from, string $to, string $query = ''): array
          JOIN approvals a ON a.subject_type = 'correction' AND a.subject_id = c.id AND a.status = 'Approved'
          JOIN donations d ON c.subject_type = 'donation' AND d.id = c.subject_id
          WHERE d.pledge_id IS NOT NULL
-           AND d.payment_mode IN ('Cash','Bank Transfer','UPI','Cheque','Card','Netbanking')
+           AND " . money_mode_clause('d.payment_mode') . "
          GROUP BY d.donor_id"
     ) as $row) {
         $id = (int) $row['donor_id'];

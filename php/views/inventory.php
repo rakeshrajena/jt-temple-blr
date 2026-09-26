@@ -23,7 +23,12 @@
       <div class="form-group"><label>Item Name</label><input type="text" name="name" required></div>
       <div class="form-group"><label>Quantity</label><input type="number" name="quantity" min="0" value="1" required></div>
       <div class="form-group"><label>Rate per unit (₹)</label><input type="number" name="unit_cost" min="0" step="0.01" value="0"></div>
-      <div class="form-group"><label>Unit</label><input type="text" name="unit" value="pcs"></div>
+      <div class="form-group">
+        <label>Unit</label>
+        <select name="unit">
+          <?php foreach (selection_values('units') as $unit): ?><option<?= $unit === 'pcs' ? ' selected' : '' ?>><?= e($unit) ?></option><?php endforeach; ?>
+        </select>
+      </div>
       <div class="form-group">
         <label>Condition</label>
         <select name="item_condition">
@@ -33,7 +38,9 @@
       <div class="form-group"><label>Location</label><input type="text" name="location" placeholder="e.g. Store Room, Kitchen"></div>
       <div class="form-group">
         <label>Source</label>
-        <select name="source"><option>Purchased</option><option>Donated</option></select>
+        <select name="source">
+          <?php foreach (selection_values('sources') as $source): ?><option><?= e($source) ?></option><?php endforeach; ?>
+        </select>
       </div>
       <div class="form-group full"><label>Description / Notes</label><textarea name="description" rows="2"></textarea></div>
     </div>
@@ -65,14 +72,19 @@
       </div>
       <div class="form-group"><label>Quantity</label><input type="number" name="quantity" min="1" value="1" required></div>
       <div class="form-group"><label>Rate per unit (₹)</label><input type="number" name="unit_cost" min="0.01" step="0.01" required></div>
-      <div class="form-group"><label>Unit</label><input type="text" name="unit" value="pcs"></div>
+      <div class="form-group">
+        <label>Unit</label>
+        <select name="unit">
+          <?php foreach (selection_values('units') as $unit): ?><option<?= $unit === 'pcs' ? ' selected' : '' ?>><?= e($unit) ?></option><?php endforeach; ?>
+        </select>
+      </div>
       <div class="form-group"><label>Location</label><input type="text" name="location" placeholder="For a new item"></div>
       <div class="form-group"><label>Paid to</label><input type="text" name="paid_to"></div>
       <div class="form-group"><label>Date</label><input type="date" name="purchase_date" value="<?= e($today) ?>" required></div>
       <div class="form-group">
         <label>Payment</label>
         <select name="payment_mode">
-          <option>Cash</option><option>Bank Transfer</option><option>UPI</option><option>Cheque</option>
+          <?php foreach (money_payment_modes() as $mode): ?><option><?= e($mode) ?></option><?php endforeach; ?>
         </select>
       </div>
       <div class="form-group"><label>UPI transaction id</label><input type="text" name="upi_reference" maxlength="64"></div>

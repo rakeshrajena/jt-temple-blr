@@ -7,26 +7,27 @@ final class StockApplyException extends RuntimeException
 
 function inventory_conditions(): array
 {
-    return ['New', 'Good', 'Fair', 'Needs Repair', 'Damaged', 'Retired'];
+    return selection_values('conditions');
 }
 
 function inventory_movements(): array
 {
-    return ['Added', 'Issued', 'Returned', 'Damaged', 'Lost', 'Retired'];
+    return movements_for('inventory');
 }
 
 function stock_direction(string $movement): int
 {
-    return match ($movement) {
-        'Added', 'Returned' => 1,
-        'Issued', 'Used', 'Damaged', 'Lost', 'Retired' => -1,
-        default => 0,
-    };
+    $row = movement_record($movement);
+    if ($row === null) {
+        return 0;
+    }
+    return $row['direction'] === 'in' ? 1 : -1;
 }
 
 function stock_needs_approval(string $movement, float $quantity): bool
 {
-    if (!in_array($movement, ['Used', 'Damaged', 'Lost', 'Retired'], true)) {
+    $row = movement_record($movement);
+    if ($row === null || $row['approval'] !== true) {
         return false;
     }
     return $quantity > STOCK_WRITE_OFF_LIMIT;
@@ -159,7 +160,7 @@ function record_stock_movement(
     int $userId
 ): array {
     $failed = ['error' => null, 'outcome' => null];
-    $allowed = $store === 'food' ? ['Added', 'Used'] : inventory_movements();
+    $allowed = $store === 'food' ? movements_for('food') : inventory_movements();
     if (!in_array($store, ['food', 'inventory'], true) || !in_array($movement, $allowed, true)) {
         $failed['error'] = 'That stock movement is not recognised.';
         return $failed;
@@ -344,8 +345,8 @@ function record_purchase(array $purchase, int $userId): array
         $failed['error'] = 'Enter a date, a quantity of at least 1, and a rate above zero.';
         return $failed;
     }
-    if (!in_array($mode, ['Cash', 'Bank Transfer', 'UPI', 'Cheque'], true)) {
-        $failed['error'] = 'Choose cash, bank transfer, UPI, or cheque.';
+    if (!in_array($mode, money_payment_modes(), true)) {
+        $failed['error'] = 'Choose a payment mode that enters the cash book.';
         return $failed;
     }
     $name = trim($purchase['name']);
@@ -365,7 +366,7 @@ function record_purchase(array $purchase, int $userId): array
         $failed['error'] = 'Enter the item name.';
         return $failed;
     }
-    if (!in_array($category, INVENTORY_CATEGORIES, true)) {
+    if (!in_array($category, selection_values('inventory_categories'), true)) {
         $category = 'Other';
     }
     $amount = round($quantity * $rate, 2);

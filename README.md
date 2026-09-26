@@ -14,7 +14,7 @@ Two copies of the same admin app live in this repo:
 1. Start Apache and MySQL in AMPPS.
 2. Open [http://localhost/jt_blr/jt-temple-blr/php/](http://localhost/jt_blr/jt-temple-blr/php/).
 
-The first request creates the `jt_blr` database, the tables, and the demo records. Database settings are in `php/config.php` (localhost, user `root`, password `mysql`).
+The first request creates the `sjt_temple_blr` database, the tables, and the demo records. Database settings are in `php/config.php` (localhost, user `root`, password `mysql`).
 
 | Username | Password | Role |
 |---|---|---|

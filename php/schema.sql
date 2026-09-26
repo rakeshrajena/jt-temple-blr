@@ -1,5 +1,5 @@
 -- Shree Jagannath Temple admin schema (MySQL 8 / PHP 8).
--- Database jt_blr is created by the installer before this file runs.
+-- Database sjt_temple_blr is created by the installer before this file runs.
 
 CREATE TABLE users (
     id              INT AUTO_INCREMENT PRIMARY KEY,
@@ -19,9 +19,9 @@ CREATE TABLE inventory_items (
     quantity        INT NOT NULL DEFAULT 0,
     unit_cost       DECIMAL(12,2) NOT NULL DEFAULT 0,
     unit            VARCHAR(30) DEFAULT 'pcs',
-    item_condition  ENUM('New','Good','Fair','Needs Repair','Damaged','Retired') DEFAULT 'Good',
+    item_condition  VARCHAR(30) NOT NULL DEFAULT 'Good',
     location        VARCHAR(100),
-    source          ENUM('Purchased','Donated') DEFAULT 'Purchased',
+    source          VARCHAR(30) NOT NULL DEFAULT 'Purchased',
     donation_id     INT NULL,
     added_date      DATE NOT NULL,
     added_by        INT,
@@ -41,7 +41,7 @@ CREATE TABLE food_items (
 CREATE TABLE food_usage_log (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     food_item_id    INT NOT NULL,
-    txn_type        ENUM('Added','Used') NOT NULL,
+    txn_type        VARCHAR(30) NOT NULL,
     quantity        DECIMAL(10,2) NOT NULL,
     purpose         VARCHAR(200),
     txn_date        DATE NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE food_usage_log (
 CREATE TABLE inventory_movements (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     item_id         INT NOT NULL,
-    movement_type   ENUM('Added','Issued','Returned','Damaged','Lost','Retired') NOT NULL,
+    movement_type   VARCHAR(30) NOT NULL,
     quantity        INT NOT NULL,
     note            VARCHAR(255) NULL,
     movement_date   DATE NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE stock_requests (
     store_name      ENUM('food','inventory') NOT NULL,
     item_id         INT NOT NULL,
     item_name       VARCHAR(150) NOT NULL,
-    movement_type   VARCHAR(20) NOT NULL,
+    movement_type   VARCHAR(30) NOT NULL,
     quantity        DECIMAL(12,2) NOT NULL,
     note            VARCHAR(255) NULL,
     movement_date   DATE NOT NULL,
@@ -93,7 +93,7 @@ CREATE TABLE purchases (
     location        VARCHAR(100) NULL,
     paid_to         VARCHAR(150) NULL,
     purchase_date   DATE NOT NULL,
-    payment_mode    ENUM('Cash','Bank Transfer','UPI','Cheque') NOT NULL,
+    payment_mode    VARCHAR(30) NOT NULL,
     cheque_number   VARCHAR(30) NULL,
     cheque_date     DATE NULL,
     cheque_cleared  TINYINT(1) NOT NULL DEFAULT 0,
@@ -112,10 +112,10 @@ CREATE TABLE vastra_items (
     item_name       VARCHAR(150) NOT NULL,
     color           VARCHAR(50),
     quantity        INT NOT NULL DEFAULT 1,
-    source          ENUM('Purchased','Donated') DEFAULT 'Purchased',
+    source          VARCHAR(30) NULL DEFAULT 'Purchased',
     donation_id     INT NULL,
     date_added      DATE NOT NULL,
-    status          ENUM('In Store','In Use','Retired') DEFAULT 'In Store',
+    status          VARCHAR(30) NULL DEFAULT 'In Store',
     notes           TEXT
 ) ENGINE=InnoDB;
 
@@ -132,14 +132,14 @@ CREATE TABLE donors (
 CREATE TABLE donations (
     id                      INT AUTO_INCREMENT PRIMARY KEY,
     donor_id                INT NOT NULL,
-    donation_type           ENUM('Cash','Food','Vastra','Inventory','Other') NOT NULL,
+    donation_type           VARCHAR(30) NOT NULL,
     amount                  DECIMAL(12,2) DEFAULT NULL,
     linked_food_id          INT NULL,
     linked_vastra_id        INT NULL,
     linked_inventory_id     INT NULL,
     purpose                 VARCHAR(200),
     donation_date           DATE NOT NULL,
-    payment_mode            ENUM('Cash','Bank Transfer','UPI','Cheque','In-Kind','Card','Netbanking') NOT NULL,
+    payment_mode            VARCHAR(30) NOT NULL,
     receipt_number          VARCHAR(30) UNIQUE,
     receipt_generated       TINYINT(1) DEFAULT 0,
     receipt_cancelled       TINYINT(1) NOT NULL DEFAULT 0,
@@ -182,7 +182,7 @@ CREATE TABLE expenses (
     amount                  DECIMAL(12,2) NOT NULL,
     paid_to                 VARCHAR(150),
     expense_date            DATE NOT NULL,
-    payment_mode            ENUM('Cash','Bank Transfer','UPI','Cheque') NOT NULL,
+    payment_mode            VARCHAR(30) NOT NULL,
     voucher_number          VARCHAR(30) NULL UNIQUE,
     cheque_number           VARCHAR(30) NULL,
     cheque_date             DATE NULL,
@@ -239,7 +239,7 @@ CREATE TABLE subscribers (
     email           VARCHAR(120),
     plan_name       VARCHAR(100) NOT NULL DEFAULT 'Monthly Seva',
     plan_amount     DECIMAL(10,2) NOT NULL,
-    frequency       ENUM('Monthly','Quarterly','Yearly') NOT NULL DEFAULT 'Monthly',
+    frequency       VARCHAR(20) NOT NULL DEFAULT 'Monthly',
     status          ENUM('Active','Paused','Cancelled') NOT NULL DEFAULT 'Active',
     start_date      DATE NOT NULL,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP

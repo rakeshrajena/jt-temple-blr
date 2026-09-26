@@ -36,7 +36,9 @@
         <div class="form-group"><label>Amount (₹)</label><input type="number" step="0.01" name="plan_amount" required></div>
         <div class="form-group">
           <label>Billing Cycle</label>
-          <select name="frequency"><option>Monthly</option><option>Quarterly</option><option>Yearly</option></select>
+          <select name="frequency">
+            <?php foreach (selection_values('billing_cycles') as $cycle): ?><option><?= e($cycle) ?></option><?php endforeach; ?>
+          </select>
         </div>
       </div>
       <div class="form-actions"><button class="btn btn-primary" type="submit">Add Subscriber</button></div>

@@ -9,7 +9,7 @@ This is the PHP 8 port of the Flask app in `../python/`. It uses MySQL on the lo
 1. Start Apache and MySQL in AMPPS.
 2. Open [http://localhost/jt_blr/jt-temple-blr/php/](http://localhost/jt_blr/jt-temple-blr/php/).
 
-The first request creates the `jt_blr` database, the tables in `schema.sql`, and the demo records.
+The first request creates the `sjt_temple_blr` database, the tables in `schema.sql`, and the demo records.
 
 | Username | Password | Role |
 |---|---|---|
@@ -22,14 +22,14 @@ Staff can use every module except Users. A Treasurer can approve an expense, a c
 
 ## Database
 
-Credentials match the local AMPPS defaults (`localhost`, user `root`, password `mysql`). This app uses its own database, `jt_blr`, so it does not share tables with other projects.
+Credentials match the local AMPPS defaults (`localhost`, user `root`, password `mysql`). This app uses its own database, `sjt_temple_blr`, so it does not share tables with other projects.
 
 | Setting | Value |
 |---|---|
 | Host | localhost |
 | User | root |
 | Password | mysql |
-| Database | jt_blr |
+| Database | sjt_temple_blr |
 | Timezone | Asia/Kolkata |
 
 Change these in `config.php` if the server credentials differ.
@@ -89,5 +89,5 @@ php/
 - Passwords are stored with `password_hash()`.
 - Forms use a session token so a third-party site cannot submit them.
 - Receipt and coupon PDFs are generated in PHP. Excel statements are read with Windows `tar` because this PHP build has no Zip extension. CSV upload works without that.
-- To reset the demo, drop the `jt_blr` database in AMPPS MySQL and reload the site.
+- To reset the demo, drop the `sjt_temple_blr` database in AMPPS MySQL and reload the site.
 - Receipt PDFs, coupon PDFs, bank uploads, and logs under `storage/` are created at runtime and are listed in the repo `.gitignore`.

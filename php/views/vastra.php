@@ -7,7 +7,7 @@
       <div class="form-group">
         <label>Deity</label>
         <select name="deity_name" required>
-          <option>Jagannath</option><option>Balabhadra</option><option>Subhadra</option><option>Sudarshan</option>
+          <?php foreach (selection_values('deities') as $deity): ?><option><?= e($deity) ?></option><?php endforeach; ?>
         </select>
       </div>
       <div class="form-group"><label>Item Name</label><input type="text" name="item_name" placeholder="e.g. Silk Pata" required></div>
@@ -15,11 +15,15 @@
       <div class="form-group"><label>Quantity</label><input type="number" name="quantity" value="1" min="1"></div>
       <div class="form-group">
         <label>Source</label>
-        <select name="source"><option>Purchased</option><option>Donated</option></select>
+        <select name="source">
+          <?php foreach (selection_values('sources') as $source): ?><option><?= e($source) ?></option><?php endforeach; ?>
+        </select>
       </div>
       <div class="form-group">
         <label>Status</label>
-        <select name="status"><option>In Store</option><option>In Use</option><option>Retired</option></select>
+        <select name="status">
+          <?php foreach (selection_values('vastra_statuses') as $status): ?><option><?= e($status) ?></option><?php endforeach; ?>
+        </select>
       </div>
       <div class="form-group full"><label>Notes</label><input type="text" name="notes"></div>
     </div>

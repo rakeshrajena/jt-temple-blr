@@ -19,7 +19,12 @@
       <input type="hidden" name="action" value="new_item">
       <div class="form-grid">
         <div class="form-group"><label>Item Name</label><input type="text" name="name" required></div>
-        <div class="form-group"><label>Unit</label><input type="text" name="unit" value="kg"></div>
+        <div class="form-group">
+          <label>Unit</label>
+          <select name="unit">
+            <?php foreach (selection_values('units') as $unit): ?><option<?= $unit === 'kg' ? ' selected' : '' ?>><?= e($unit) ?></option><?php endforeach; ?>
+          </select>
+        </div>
         <div class="form-group"><label>Opening Stock</label><input type="number" step="0.1" name="current_stock" value="0"></div>
         <div class="form-group"><label>Low-Stock Threshold</label><input type="number" step="0.1" name="minimum_threshold" value="0"></div>
       </div>

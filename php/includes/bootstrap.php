@@ -19,6 +19,7 @@ require APP_ROOT . '/includes/books.php';
 require APP_ROOT . '/includes/donors.php';
 require APP_ROOT . '/includes/stock.php';
 require APP_ROOT . '/includes/settings.php';
+require APP_ROOT . '/includes/selections.php';
 require APP_ROOT . '/includes/actions.php';
 
 date_default_timezone_set(TIMEZONE);

@@ -299,7 +299,7 @@ function action_inventory(string $method): void
             $result = record_stock_movement(
                 'inventory',
                 (int) ($_POST['item_id'] ?? 0),
-                post_string('movement_type', 20),
+                post_string('movement_type', 30),
                 (float) ($_POST['quantity'] ?? 0),
                 post_string('note', 255),
                 post_string('movement_date', 10) ?: date('Y-m-d'),
@@ -315,7 +315,7 @@ function action_inventory(string $method): void
         if ($kind === 'place') {
             $result = save_item_place(
                 (int) ($_POST['item_id'] ?? 0),
-                post_string('item_condition', 20),
+                post_string('item_condition', 30),
                 post_string('location', 100),
                 $userId,
                 date('Y-m-d')
@@ -329,7 +329,7 @@ function action_inventory(string $method): void
         }
         if ($kind === 'purchase') {
             $instrument = normalize_payment_instrument(
-                post_string('payment_mode', 20),
+                post_string('payment_mode', 30),
                 post_string('upi_reference', 64),
                 post_string('cheque_number', 30),
                 post_string('cheque_date', 10),
@@ -342,14 +342,14 @@ function action_inventory(string $method): void
             $result = record_purchase([
                 'item_id' => (int) ($_POST['item_id'] ?? 0),
                 'name' => post_string('name', 150),
-                'category' => one_of(post_string('category', 50), INVENTORY_CATEGORIES, 'Other'),
-                'unit' => post_string('unit', 30) ?: 'pcs',
+                'category' => one_of(post_string('category', 50), selection_values('inventory_categories'), 'Other'),
+                'unit' => one_of(post_string('unit', 30), selection_values('units'), 'pcs'),
                 'quantity' => (int) ($_POST['quantity'] ?? 0),
                 'unit_cost' => (float) ($_POST['unit_cost'] ?? 0),
                 'location' => post_string('location', 100) ?: null,
                 'paid_to' => post_string('paid_to', 150) ?: null,
                 'purchase_date' => post_string('purchase_date', 10),
-                'payment_mode' => post_string('payment_mode', 20),
+                'payment_mode' => post_string('payment_mode', 30),
                 'cheque_number' => $instrument['cheque_number'],
                 'cheque_date' => $instrument['cheque_date'],
                 'cheque_cleared' => $instrument['cheque_cleared'],
@@ -359,13 +359,13 @@ function action_inventory(string $method): void
             redirect(url('inventory'));
         }
         $name = post_string('name', 150);
-        $category = one_of(post_string('category', 50), INVENTORY_CATEGORIES, 'Other');
+        $category = one_of(post_string('category', 50), selection_values('inventory_categories'), 'Other');
         $qty = max(0, (int) ($_POST['quantity'] ?? 0));
         if ($name === '') {
             flash('error', 'Item name is required.');
             redirect(url('inventory'));
         }
-        $condition = one_of(post_string('item_condition', 20), inventory_conditions(), 'Good');
+        $condition = one_of(post_string('item_condition', 30), inventory_conditions(), 'Good');
         $itemId = db_exec(
             'INSERT INTO inventory_items (category, name, description, quantity, unit_cost, unit, item_condition, location, source, added_date, added_by, notes)
              VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
@@ -375,10 +375,10 @@ function action_inventory(string $method): void
                 post_string('description', 2000) ?: null,
                 $qty,
                 max(0, (float) ($_POST['unit_cost'] ?? 0)),
-                post_string('unit', 30) ?: 'pcs',
+                one_of(post_string('unit', 30), selection_values('units'), 'pcs'),
                 $condition,
                 post_string('location', 100) ?: null,
-                one_of(post_string('source', 20), ['Purchased', 'Donated'], 'Purchased'),
+                one_of(post_string('source', 30), selection_values('sources'), 'Purchased'),
                 date('Y-m-d'),
                 $userId,
                 post_string('notes', 2000) ?: null,
@@ -398,9 +398,9 @@ function action_inventory(string $method): void
         'pageTitle' => 'Inventory Management',
         'active' => 'inventory',
         'items' => db_all('SELECT * FROM inventory_items ORDER BY category, name'),
-        'categories' => INVENTORY_CATEGORIES,
+        'categories' => selection_values('inventory_categories'),
         'conditions' => inventory_conditions(),
-        'movements' => inventory_movements(),
+        'movements' => inventory_form_movements(),
         'writeOffLimit' => STOCK_WRITE_OFF_LIMIT,
         'today' => date('Y-m-d'),
         'history' => db_all(
@@ -433,7 +433,7 @@ function action_food(string $method): void
                 'INSERT INTO food_items (name, unit, current_stock, minimum_threshold) VALUES (?,?,?,?)',
                 [
                     $name,
-                    post_string('unit', 30) ?: 'kg',
+                    one_of(post_string('unit', 30), selection_values('units'), 'kg'),
                     (float) ($_POST['current_stock'] ?? 0),
                     (float) ($_POST['minimum_threshold'] ?? 0),
                 ]
@@ -604,7 +604,7 @@ function action_vastra(string $method): void
 {
     login_required();
     if ($method === 'POST') {
-        $deity = one_of(post_string('deity_name', 100), ['Jagannath', 'Balabhadra', 'Subhadra', 'Sudarshan'], 'Jagannath');
+        $deity = one_of(post_string('deity_name', 100), selection_values('deities'), 'Jagannath');
         $item = post_string('item_name', 150);
         if ($item === '') {
             flash('error', 'Item name is required.');
@@ -618,9 +618,9 @@ function action_vastra(string $method): void
                 $item,
                 post_string('color', 50) ?: null,
                 max(1, (int) ($_POST['quantity'] ?? 1)),
-                one_of(post_string('source', 20), ['Purchased', 'Donated'], 'Purchased'),
+                one_of(post_string('source', 30), selection_values('sources'), 'Purchased'),
                 date('Y-m-d'),
-                one_of(post_string('status', 20), ['In Store', 'In Use', 'Retired'], 'In Store'),
+                one_of(post_string('status', 30), selection_values('vastra_statuses'), 'In Store'),
                 post_string('notes', 500) ?: null,
             ]
         );
@@ -672,7 +672,7 @@ function record_donation(): void
         return;
     }
     $phone = post_string('donor_phone', 20);
-    $type = one_of(post_string('donation_type', 20), ['Cash', 'Food', 'Vastra', 'Inventory', 'Other'], 'Cash');
+    $type = one_of(post_string('donation_type', 30), array_column(selection_pairs('donation_types'), 'value'), 'Cash');
     $amountRaw = trim((string) ($_POST['amount'] ?? ''));
     $amount = $amountRaw === '' ? null : round((float) $amountRaw, 2);
     $donationDate = post_date('donation_date');
@@ -695,8 +695,8 @@ function record_donation(): void
         }
     }
     $paymentMode = one_of(
-        post_string('payment_mode', 20),
-        ['Cash', 'Bank Transfer', 'UPI', 'Cheque', 'In-Kind', 'Card', 'Netbanking'],
+        post_string('payment_mode', 30),
+        payment_mode_names(),
         $type === 'Cash' ? 'Cash' : 'In-Kind'
     );
     $instrument = normalize_payment_instrument(
@@ -747,7 +747,7 @@ function record_donation(): void
                 $donorId,
                 $type,
                 $amount,
-                $pledge !== null ? (string) $pledge['purpose'] : (post_string('purpose', 200) ?: 'General'),
+                $pledge !== null ? (string) $pledge['purpose'] : one_of(post_string('purpose', 80), selection_values('purposes'), 'General'),
                 $donationDate,
                 $paymentMode,
                 $instrument['cheque_number'],
@@ -770,7 +770,7 @@ function record_donation(): void
                 db_exec('UPDATE donations SET linked_food_id = ? WHERE id = ?', [$foodId, $donationId]);
             }
         } elseif ($type === 'Vastra') {
-            $deity = post_string('vastra_deity', 100);
+            $deity = one_of(post_string('vastra_deity', 50), selection_values('deities'), '');
             if ($deity !== '') {
                 $vastraId = db_exec(
                     'INSERT INTO vastra_items (deity_name, item_name, color, quantity, source, donation_id, date_added, status)
@@ -795,10 +795,10 @@ function record_donation(): void
                     'INSERT INTO inventory_items (category, name, quantity, unit, source, donation_id, added_date, added_by, notes)
                      VALUES (?,?,?,?,?,?,?,?,?)',
                     [
-                        post_string('inventory_category', 50) ?: 'Other',
+                        one_of(post_string('inventory_category', 50), selection_values('inventory_categories'), 'Other'),
                         $itemName,
                         max(1, (int) ($_POST['inventory_quantity'] ?? 1)),
-                        post_string('inventory_unit', 30) ?: 'pcs',
+                        one_of(post_string('inventory_unit', 30), selection_values('units'), 'pcs'),
                         'Donated',
                         $donationId,
                         date('Y-m-d'),
@@ -1009,7 +1009,7 @@ function action_receive_pledge(int $donorId): void
     }
     $amount = round((float) ($_POST['amount'] ?? 0), 2);
     $date = post_string('donation_date', 10);
-    $paymentMode = one_of(post_string('payment_mode', 20), ['Cash', 'Bank Transfer', 'UPI', 'Cheque'], 'Cash');
+    $paymentMode = one_of(post_string('payment_mode', 30), money_payment_modes(), 'Cash');
     $error = pledge_receipt_error($amount, $date, $paymentMode);
     $instrument = normalize_payment_instrument(
         $paymentMode,
@@ -1874,12 +1874,12 @@ function action_expenses(string $method): void
     login_required();
     if ($method === 'POST') {
         $amount = (float) ($_POST['amount'] ?? 0);
-        $category = one_of(post_string('category', 80), EXPENSE_CATEGORIES, 'Other');
+        $category = one_of(post_string('category', 80), selection_values('expense_categories'), 'Other');
         if ($amount <= 0) {
             flash('error', 'Enter an amount greater than zero.');
             redirect(url('expenses'));
         }
-        $paymentMode = one_of(post_string('payment_mode', 20), ['Cash', 'Bank Transfer', 'UPI', 'Cheque'], 'Cash');
+        $paymentMode = one_of(post_string('payment_mode', 30), money_payment_modes(), 'Cash');
         $instrument = normalize_payment_instrument(
             $paymentMode,
             post_string('upi_reference', 64),
@@ -1956,7 +1956,7 @@ function action_expenses(string $method): void
              LEFT JOIN approvals a ON a.subject_type = \'expense\' AND a.subject_id = e.id
              ORDER BY e.expense_date DESC, e.id DESC'
         ),
-        'categories' => EXPENSE_CATEGORIES,
+        'categories' => selection_values('expense_categories'),
         'today' => date('Y-m-d'),
     ]);
 }
@@ -2179,9 +2179,9 @@ function action_subscriptions(string $method): void
                     $name,
                     $mobile,
                     post_string('email', 120) ?: null,
-                    one_of(post_string('plan_name', 100), PLAN_PRESETS, PLAN_PRESETS[0]),
+                    one_of(post_string('plan_name', 80), selection_values('plans'), selection_values('plans')[0] ?? 'Monthly Annadaan Seva'),
                     $amount,
-                    one_of(post_string('frequency', 20), ['Monthly', 'Quarterly', 'Yearly'], 'Monthly'),
+                    one_of(post_string('frequency', 20), selection_values('billing_cycles'), 'Monthly'),
                     'Active',
                     date('Y-m-d'),
                 ]
@@ -2210,7 +2210,7 @@ function action_subscriptions(string $method): void
              JOIN subscribers s ON i.subscriber_id = s.id
              ORDER BY (i.status = 'Overdue') DESC, (i.status = 'Sent') DESC, (i.status = 'Pending') DESC, i.due_date DESC"
         ),
-        'planPresets' => PLAN_PRESETS,
+        'planPresets' => selection_values('plans'),
         'mrr' => (float) db_value("SELECT COALESCE(SUM(plan_amount),0) FROM subscribers WHERE status = 'Active' AND frequency = 'Monthly'"),
         'pendingAmount' => (float) db_value("SELECT COALESCE(SUM(amount),0) FROM subscription_invoices WHERE status IN ('Sent','Pending','Overdue')"),
         'messaging' => messaging_for_page(),
@@ -2434,6 +2434,15 @@ function action_demo(): void
 function action_settings(string $method): void
 {
     admin_required();
+    if ($method === 'POST' && post_string('form', 20) === 'selections') {
+        $posted = [];
+        foreach (array_keys(selection_catalog()) as $key) {
+            $posted[$key] = post_string($key, 4000);
+        }
+        $error = save_selections($posted);
+        flash($error !== null ? 'error' : 'success', $error ?? 'Form choices saved.');
+        redirect(url('settings'));
+    }
     if ($method === 'POST') {
         $current = load_messaging_settings();
         $input = [
@@ -2463,9 +2472,10 @@ function action_settings(string $method): void
     unset($settings['smtp_password']);
     render('settings', [
         'title' => 'Settings',
-        'pageTitle' => 'Message settings',
+        'pageTitle' => 'Settings',
         'active' => 'settings',
         'settings' => $settings,
+        'selectionCatalog' => selection_catalog(),
     ]);
 }
 

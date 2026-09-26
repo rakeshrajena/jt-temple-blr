@@ -16,7 +16,7 @@
       <div class="form-group">
         <label>Payment Mode</label>
         <select name="payment_mode">
-          <option>Cash</option><option>Bank Transfer</option><option>UPI</option><option>Cheque</option>
+          <?php foreach (money_payment_modes() as $mode): ?><option><?= e($mode) ?></option><?php endforeach; ?>
         </select>
       </div>
       <div class="form-group"><label>Receipt / Invoice Ref</label><input type="text" name="receipt_ref"></div>

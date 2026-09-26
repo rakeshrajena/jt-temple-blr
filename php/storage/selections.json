@@ -1,0 +1,166 @@
+{
+    "inventory_categories": [
+        "Hardware",
+        "Electronics",
+        "Furniture",
+        "Puja Items",
+        "Kitchen Equipment",
+        "Decoration",
+        "Other"
+    ],
+    "expense_categories": [
+        "Food Supplies",
+        "Maintenance",
+        "Utilities",
+        "Salaries",
+        "Festival",
+        "Decoration",
+        "Other"
+    ],
+    "units": [
+        "pcs",
+        "kg",
+        "gram",
+        "litre",
+        "packet",
+        "metre"
+    ],
+    "conditions": [
+        "New",
+        "Good",
+        "Fair",
+        "Needs Repair",
+        "Damaged",
+        "Retired"
+    ],
+    "sources": [
+        "Purchased",
+        "Donated"
+    ],
+    "payment_modes": [
+        {
+            "name": "Cash",
+            "book": "cash"
+        },
+        {
+            "name": "Bank Transfer",
+            "book": "bank"
+        },
+        {
+            "name": "UPI",
+            "book": "bank"
+        },
+        {
+            "name": "Cheque",
+            "book": "bank"
+        },
+        {
+            "name": "Card",
+            "book": "bank"
+        },
+        {
+            "name": "Netbanking",
+            "book": "bank"
+        },
+        {
+            "name": "In-Kind",
+            "book": "none"
+        }
+    ],
+    "movements": [
+        {
+            "name": "Added",
+            "direction": "in",
+            "approval": false,
+            "store": "both"
+        },
+        {
+            "name": "Issued",
+            "direction": "out",
+            "approval": false,
+            "store": "inventory"
+        },
+        {
+            "name": "Returned",
+            "direction": "in",
+            "approval": false,
+            "store": "inventory"
+        },
+        {
+            "name": "Damaged",
+            "direction": "out",
+            "approval": true,
+            "store": "inventory"
+        },
+        {
+            "name": "Lost",
+            "direction": "out",
+            "approval": true,
+            "store": "inventory"
+        },
+        {
+            "name": "Retired",
+            "direction": "out",
+            "approval": true,
+            "store": "inventory"
+        },
+        {
+            "name": "Used",
+            "direction": "out",
+            "approval": true,
+            "store": "food"
+        }
+    ],
+    "vastra_statuses": [
+        "In Store",
+        "In Use",
+        "Retired"
+    ],
+    "donation_types": [
+        {
+            "value": "Cash",
+            "label": "Cash"
+        },
+        {
+            "value": "Food",
+            "label": "Food (in-kind)"
+        },
+        {
+            "value": "Vastra",
+            "label": "Vastra \/ Cloths (in-kind)"
+        },
+        {
+            "value": "Inventory",
+            "label": "Inventory Item (in-kind)"
+        },
+        {
+            "value": "Other",
+            "label": "Other"
+        }
+    ],
+    "purposes": [
+        "General",
+        "Annadaan",
+        "Ratha Yatra",
+        "Construction",
+        "Vastra Seva"
+    ],
+    "plans": [
+        "Monthly Annadaan Seva",
+        "Monthly Mahaprasad Seva",
+        "Monthly Deepa Seva",
+        "Quarterly Vastra Seva",
+        "Yearly Nitya Seva"
+    ],
+    "billing_cycles": [
+        "Monthly",
+        "Quarterly",
+        "Yearly"
+    ],
+    "deities": [
+        "Jagannath",
+        "Balabhadra",
+        "Subhadra",
+        "Sudarshan"
+    ]
+}

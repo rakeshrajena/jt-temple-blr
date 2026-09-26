@@ -61,15 +61,6 @@ function valid_book_date(string $value): ?string
     return $value;
 }
 
-function book_account(string $paymentMode): ?string
-{
-    return match ($paymentMode) {
-        'Cash' => 'cash',
-        'Bank Transfer', 'UPI', 'Cheque', 'Card', 'Netbanking' => 'bank',
-        default => null,
-    };
-}
-
 function validate_opening_amounts(float $cash, float $bank): ?string
 {
     if ($cash < 0 || $bank < 0) {

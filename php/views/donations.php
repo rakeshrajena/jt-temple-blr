@@ -17,11 +17,9 @@
       <div class="form-group">
         <label>Donation Type</label>
         <select name="donation_type" id="donation_type" required>
-          <option value="Cash">Cash</option>
-          <option value="Food">Food (in-kind)</option>
-          <option value="Vastra">Vastra / Cloths (in-kind)</option>
-          <option value="Inventory">Inventory Item (in-kind)</option>
-          <option value="Other">Other</option>
+          <?php foreach (selection_pairs('donation_types') as $type): ?>
+            <option value="<?= e($type['value']) ?>"><?= e($type['label']) ?></option>
+          <?php endforeach; ?>
         </select>
       </div>
     </div>
@@ -29,7 +27,7 @@
       <div class="form-group"><label>Amount (₹)</label><input type="number" step="0.01" name="amount"></div>
       <div class="form-group"><label>Payment Mode</label>
         <select name="payment_mode">
-          <option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Cheque</option><option>In-Kind</option>
+          <?php foreach (payment_mode_names() as $mode): ?><option><?= e($mode) ?></option><?php endforeach; ?>
         </select>
       </div>
       <div class="form-group">
@@ -43,7 +41,7 @@
       </div>
       <div class="form-group"><label>Purpose</label>
         <select name="purpose">
-          <option>General</option><option>Annadaan</option><option>Ratha Yatra</option><option>Construction</option><option>Vastra Seva</option>
+          <?php foreach (selection_values('purposes') as $purpose): ?><option><?= e($purpose) ?></option><?php endforeach; ?>
         </select>
       </div>
       <div class="form-group"><label>Donation Date</label><input type="date" name="donation_date" value="<?= e($today) ?>"></div>
@@ -62,7 +60,9 @@
     </div>
     <div class="form-grid cols-3" id="vastra_fields" style="display:none;">
       <div class="form-group"><label>Deity</label>
-        <select name="vastra_deity"><option>Jagannath</option><option>Balabhadra</option><option>Subhadra</option></select>
+        <select name="vastra_deity">
+          <?php foreach (selection_values('deities') as $deity): ?><option><?= e($deity) ?></option><?php endforeach; ?>
+        </select>
       </div>
       <div class="form-group"><label>Item Name</label><input type="text" name="vastra_item_name" placeholder="e.g. Silk Pata"></div>
       <div class="form-group"><label>Color</label><input type="text" name="vastra_color"></div>
@@ -70,8 +70,18 @@
     </div>
     <div class="form-grid cols-3" id="inventory_fields" style="display:none;">
       <div class="form-group"><label>Item Name</label><input type="text" name="inventory_name"></div>
-      <div class="form-group"><label>Category</label><input type="text" name="inventory_category" placeholder="e.g. Kitchen Equipment"></div>
-      <div class="form-group"><label>Unit</label><input type="text" name="inventory_unit" value="pcs"></div>
+      <div class="form-group">
+        <label>Category</label>
+        <select name="inventory_category">
+          <?php foreach (selection_values('inventory_categories') as $category): ?><option><?= e($category) ?></option><?php endforeach; ?>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Unit</label>
+        <select name="inventory_unit">
+          <?php foreach (selection_values('units') as $unit): ?><option<?= $unit === 'pcs' ? ' selected' : '' ?>><?= e($unit) ?></option><?php endforeach; ?>
+        </select>
+      </div>
       <div class="form-group"><label>Quantity</label><input type="number" name="inventory_quantity" value="1"></div>
     </div>
     <div class="form-actions"><button class="btn btn-primary" type="submit">Record Donation</button></div>
