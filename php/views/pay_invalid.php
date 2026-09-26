@@ -2,9 +2,9 @@
 <html lang="<?= e(current_locale()) ?>">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><?= e(t('pay.invalid_title')) ?> — <?= e(APP_NAME) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=9">
+  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=13">
   <style>
     .pay-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, var(--maroon-deep), var(--maroon)); padding: 20px; }
     .pay-card { background: #fff; border-radius: 14px; padding: 36px 28px; width: 380px; max-width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.25); text-align: center; }

@@ -4,7 +4,7 @@
 /** @var list<array<string,mixed>> $pending */
 /** @var float $writeOffLimit */
 ?>
-<div class="panel" style="border-left: 4px solid var(--gold); display:flex; align-items:center; justify-content:space-between;">
+<div class="panel panel-banner">
   <div>
     <h3 style="margin-bottom:2px;">🎟️ Food Coupon Generator</h3>
     <p style="color:var(--ink-soft); font-size:13px; margin:0;">Generate cost-tracked prasad/meal coupons in bulk, with sequential serial numbers and a print-ready PDF.</p>

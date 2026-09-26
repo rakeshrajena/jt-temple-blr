@@ -7,9 +7,9 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
 <html lang="<?= e(current_locale()) ?>">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><?= e(t('page.login')) ?> — <?= e(APP_NAME) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=9">
+  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=13">
 </head>
 <body>
   <div class="login-split">

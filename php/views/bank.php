@@ -36,7 +36,7 @@
       <td><?= e(money($u['amount'], 2)) ?></td>
       <td><?php if ($u['txn_type'] === 'Credit'): ?><span class="badge badge-green">Credit</span><?php else: ?><span class="badge badge-red">Debit</span><?php endif; ?></td>
       <td>
-        <form method="POST" action="<?= e(url('bank/manual_match')) ?>" style="display:flex; gap:6px;">
+        <form method="POST" action="<?= e(url('bank/manual_match')) ?>" style="display:flex; gap:6px; flex-wrap:wrap;">
           <?= csrf_field() ?>
           <input type="hidden" name="txn_id" value="<?= e((string) $u['id']) ?>">
           <?php if ($u['txn_type'] === 'Credit'): ?>

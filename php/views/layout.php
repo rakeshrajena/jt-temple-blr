@@ -65,13 +65,14 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
 <html lang="<?= e(current_locale()) ?>">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><?= e($title) ?> — <?= e(APP_NAME) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=10">
+  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=13">
 </head>
 <body>
   <div class="app-shell">
-    <input type="checkbox" id="nav-toggle" class="nav-toggle">
+    <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-hidden="true">
+    <label for="nav-toggle" class="nav-scrim" aria-hidden="true"></label>
     <aside class="sidebar no-print">
       <div class="brand">
         <div class="brand-mark"><img src="<?= e(asset('logo.svg')) ?>" alt="" class="brand-logo"></div>
@@ -96,7 +97,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
 
     <div class="main">
       <div class="topbar no-print">
-        <div style="display:flex; align-items:center; min-width:0;">
+        <div class="topbar-title">
           <label for="nav-toggle" class="nav-toggle-btn"><?= e(t('shell.menu')) ?></label>
           <div>
             <h2><?= e($pageTitle) ?></h2>

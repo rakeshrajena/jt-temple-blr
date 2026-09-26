@@ -76,7 +76,7 @@
   <h3>All Invoices (<?= count($invoices) ?>)</h3>
   <form method="POST" action="<?= e(url('subscriptions/bulk_send')) ?>" id="bulkSendForm">
     <?= csrf_field() ?>
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
       <button class="btn btn-gold btn-sm" type="submit" id="bulkSendBtn" disabled>📲 Send Selected (<span id="selCount">0</span>)</button>
       <span style="color:var(--ink-soft); font-size:12.5px;">Select invoices below, or use the header checkbox to select all unpaid invoices.</span>
     </div>
