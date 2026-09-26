@@ -1,0 +1,80 @@
+<?php
+/** @var string $from */
+/** @var string $to */
+/** @var string $financialYear */
+/** @var list<array<string, mixed>> $heads */
+/** @var array<string, mixed>|null $selected */
+$received = 0.0;
+$spent = 0.0;
+foreach ($heads as $head) {
+    $received += (float) $head['received'];
+    $spent += (float) $head['spent'];
+}
+?>
+<div class="kpi-grid">
+  <div class="kpi-card good"><div class="value"><?= e(money($received, 2)) ?></div><div class="label">Received in this period</div></div>
+  <div class="kpi-card danger"><div class="value"><?= e(money($spent, 2)) ?></div><div class="label">Spent in this period</div></div>
+  <div class="kpi-card"><div class="value"><?= count($heads) ?></div><div class="label">Heads</div></div>
+</div>
+<div class="panel">
+  <h3>Ledger by head · <?= e($financialYear) ?></h3>
+  <form method="GET" action="<?= e(app_script()) ?>" style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
+    <input type="hidden" name="r" value="ledger">
+    <div class="form-group"><label>From</label><input type="date" name="from" value="<?= e($from) ?>"></div>
+    <div class="form-group"><label>To</label><input type="date" name="to" value="<?= e($to) ?>"></div>
+    <button class="btn btn-outline btn-sm" type="submit">Show</button>
+  </form>
+  <p style="color:var(--ink-soft); font-size:13px; margin-top:0;">
+    Each donation purpose and each expense category is a head. Received money increases it. Spending decreases it. A gift and an expense with the same name share one balance.
+  </p>
+  <?php if ($heads === []): ?>
+    <div class="empty-state">No receipts or payments in this period.</div>
+  <?php else: ?>
+  <table class="data-table">
+    <tr>
+      <th>Head</th>
+      <th class="text-right">Opening</th>
+      <th class="text-right">Received</th>
+      <th class="text-right">Spent</th>
+      <th class="text-right">Balance</th>
+      <th></th>
+    </tr>
+    <?php foreach ($heads as $head): ?>
+    <tr>
+      <td><?= e((string) $head['head']) ?></td>
+      <td class="text-right"><?= e(money($head['opening'], 2)) ?></td>
+      <td class="text-right"><?= e(money($head['received'], 2)) ?></td>
+      <td class="text-right"><?= e(money($head['spent'], 2)) ?></td>
+      <td class="text-right"><?= e(money($head['balance'], 2)) ?></td>
+      <td><a class="btn btn-sm btn-outline" href="<?= e(url('ledger', ['from' => $from, 'to' => $to, 'head' => (string) $head['head']])) ?>">Open</a></td>
+    </tr>
+    <?php endforeach; ?>
+  </table>
+  <?php endif; ?>
+</div>
+<?php if ($selected !== null): ?>
+<div class="panel">
+  <h3><?= e((string) $selected['head']) ?></h3>
+  <p style="color:var(--ink-soft); font-size:13px; margin-top:0;">
+    Opening <?= e(money($selected['opening'], 2)) ?> · Balance <?= e(money($selected['balance'], 2)) ?>
+    <a href="<?= e(url('ledger', ['from' => $from, 'to' => $to])) ?>" style="margin-left:8px;">All heads</a>
+  </p>
+  <?php if ($selected['lines'] === []): ?>
+    <div class="empty-state">Nothing new in this period. The balance is the opening brought forward.</div>
+  <?php else: ?>
+  <table class="data-table">
+    <tr><th>Date</th><th>Particulars</th><th class="text-right">Received</th><th class="text-right">Spent</th><th class="text-right">Balance</th><th>Entered by</th></tr>
+    <?php foreach ($selected['lines'] as $line): ?>
+    <tr>
+      <td><?= e((string) $line['date']) ?></td>
+      <td><?= e((string) $line['particulars']) ?></td>
+      <td class="text-right"><?= (float) $line['received'] > 0 ? e(money($line['received'], 2)) : '' ?></td>
+      <td class="text-right"><?= (float) $line['spent'] > 0 ? e(money($line['spent'], 2)) : '' ?></td>
+      <td class="text-right"><?= e(money($line['balance'], 2)) ?></td>
+      <td><?= e(dash((string) $line['entered_by'])) ?></td>
+    </tr>
+    <?php endforeach; ?>
+  </table>
+  <?php endif; ?>
+</div>
+<?php endif; ?>

@@ -15,9 +15,10 @@ The first request creates the `jt_blr` database, the tables in `schema.sql`, and
 |---|---|---|
 | admin | temple@123 | Admin |
 | ramesh | ramesh@123 | Admin |
+| treasurer | treasurer@123 | Treasurer |
 | staff1 | staff@123 | Staff |
 
-Staff can use every module except Users. Only an Admin can add or deactivate accounts, and there can be at most 10 active users.
+Staff can use every module except Users. A Treasurer can approve an expense, a cash deposit or withdrawal, or an opening balance up to ₹10,000. Only an Admin can add or deactivate accounts, and an Admin approves amounts above that limit. There can be at most 10 active users.
 
 ## Database
 
@@ -45,7 +46,10 @@ Change these in `config.php` if the server credentials differ.
 | Donations | Cash and in-kind gifts. In-kind food, vastra, and inventory update those registers. Receipts are PDF |
 | Receipts | List of generated receipt PDFs. Anyone signed in can open or download one. An Admin can download a zip of many receipts, or delete them |
 | Subscriptions | Recurring seva plans, invoices, and a public pay link |
-| Expenses | Categorised spending |
+| Expenses | Categorised spending, with a voucher number, an optional bill, a UPI id, and cheque details. A new expense waits for approval before it enters the books |
+| Cash book | Receipt and payment columns for cash and bank, with opening and closing balances. An Admin sets the year opening. Cash deposited or withdrawn is a contra entry |
+| Day book | The same period as one date-wise list, with who entered each line |
+| Ledger | One balance per donation purpose and expense category: money received, money spent, and what remains |
 | Bank reconciliation | Upload a CSV or Excel statement. Credits match donations and debits match expenses when the amount is the same and the date is within 3 days. Anything left over can be linked by hand |
 | Reports | Donations, expenses, inventory, food, vastra, and reconciliation. Each report prints from the browser |
 | Users | Admin-only accounts |

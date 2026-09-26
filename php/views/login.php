@@ -49,6 +49,7 @@
           <strong>Demo accounts</strong><br>
           admin / temple@123 — Admin<br>
           ramesh / ramesh@123 — Admin<br>
+          treasurer / treasurer@123 — Treasurer<br>
           staff1 / staff@123 — Staff
         </div>
       </div>

@@ -8,6 +8,10 @@ php/storage/coupons/*
 php/storage/uploads/*
 !php/storage/uploads/.gitkeep
 
+# Expense bill copies
+php/storage/vouchers/*
+!php/storage/vouchers/.gitkeep
+
 # Runtime logs
 php/storage/logs/*
 !php/storage/logs/.gitkeep

@@ -4,7 +4,10 @@ declare(strict_types=1);
 function dashboard_summary(PDO $pdo): array
 {
     $totalDonations = (float) db_value('SELECT COALESCE(SUM(amount),0) FROM donations WHERE amount IS NOT NULL');
-    $totalExpenses = (float) db_value('SELECT COALESCE(SUM(amount),0) FROM expenses');
+    $totalExpenses = (float) db_value(
+        "SELECT COALESCE(SUM(e.amount),0) FROM expenses e
+         JOIN approvals a ON a.subject_type = 'expense' AND a.subject_id = e.id AND a.status = 'Approved'"
+    );
     return [
         'total_donations' => $totalDonations,
         'total_expenses' => $totalExpenses,
@@ -41,17 +44,19 @@ function donation_report(?string $start, ?string $end): array
 
 function expense_report(?string $start, ?string $end): array
 {
-    $sql = 'SELECT * FROM expenses WHERE 1=1';
+    $sql = "SELECT e.* FROM expenses e
+            JOIN approvals a ON a.subject_type = 'expense' AND a.subject_id = e.id AND a.status = 'Approved'
+            WHERE 1=1";
     $params = [];
     if ($start !== null) {
-        $sql .= ' AND expense_date >= ?';
+        $sql .= ' AND e.expense_date >= ?';
         $params[] = $start;
     }
     if ($end !== null) {
-        $sql .= ' AND expense_date <= ?';
+        $sql .= ' AND e.expense_date <= ?';
         $params[] = $end;
     }
-    $sql .= ' ORDER BY expense_date DESC';
+    $sql .= ' ORDER BY e.expense_date DESC';
     return db_all($sql, $params);
 }
 

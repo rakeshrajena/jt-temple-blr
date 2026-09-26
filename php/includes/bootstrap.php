@@ -12,6 +12,9 @@ require APP_ROOT . '/includes/reports.php';
 require APP_ROOT . '/includes/reconciliation.php';
 require APP_ROOT . '/includes/receipt.php';
 require APP_ROOT . '/includes/coupons.php';
+require APP_ROOT . '/includes/vouchers.php';
+require APP_ROOT . '/includes/approval.php';
+require APP_ROOT . '/includes/books.php';
 require APP_ROOT . '/includes/actions.php';
 
 date_default_timezone_set(TIMEZONE);

@@ -59,6 +59,10 @@ function dispatch_request(): void
         action_vastra($method);
         return;
     }
+    if (preg_match('#^donations/(\d+)/clear-cheque$#', $path, $m) === 1 && $method === 'POST') {
+        action_clear_cheque('donations', (int) $m[1]);
+        return;
+    }
     if ($path === 'donations') {
         action_donations($method);
         return;
@@ -83,8 +87,44 @@ function dispatch_request(): void
         action_serve_receipt($m[1]);
         return;
     }
+    if (preg_match('#^expenses/(\d+)/bill$#', $path, $m) === 1 && $method === 'GET') {
+        action_expense_bill((int) $m[1]);
+        return;
+    }
+    if (preg_match('#^expenses/(\d+)/clear-cheque$#', $path, $m) === 1 && $method === 'POST') {
+        action_clear_cheque('expenses', (int) $m[1]);
+        return;
+    }
     if ($path === 'expenses') {
         action_expenses($method);
+        return;
+    }
+    if ($path === 'approvals' && $method === 'GET') {
+        action_approvals();
+        return;
+    }
+    if (preg_match('#^approvals/(\d+)$#', $path, $m) === 1 && $method === 'POST') {
+        action_decide_approval((int) $m[1]);
+        return;
+    }
+    if ($path === 'cash-book' && $method === 'GET') {
+        action_cash_book();
+        return;
+    }
+    if ($path === 'cash-book/opening' && $method === 'POST') {
+        action_save_opening();
+        return;
+    }
+    if ($path === 'cash-book/contra' && $method === 'POST') {
+        action_save_contra();
+        return;
+    }
+    if ($path === 'day-book' && $method === 'GET') {
+        action_day_book();
+        return;
+    }
+    if ($path === 'ledger' && $method === 'GET') {
+        action_ledger();
         return;
     }
     if ($path === 'bank') {
@@ -426,6 +466,17 @@ function record_donation(): void
         ['Cash', 'Bank Transfer', 'UPI', 'Cheque', 'In-Kind', 'Card', 'Netbanking'],
         $type === 'Cash' ? 'Cash' : 'In-Kind'
     );
+    $instrument = normalize_payment_instrument(
+        $paymentMode,
+        post_string('upi_reference', 64),
+        post_string('cheque_number', 30),
+        post_string('cheque_date', 10),
+        isset($_POST['cheque_cleared'])
+    );
+    if ($instrument['error'] !== null) {
+        flash('error', $instrument['error']);
+        return;
+    }
     $pdo = db();
     $pdo->beginTransaction();
     try {
@@ -448,8 +499,8 @@ function record_donation(): void
             $donorId = (int) $donor['id'];
         }
         $donationId = db_exec(
-            'INSERT INTO donations (donor_id, donation_type, amount, purpose, donation_date, payment_mode, created_by)
-             VALUES (?,?,?,?,?,?,?)',
+            'INSERT INTO donations (donor_id, donation_type, amount, purpose, donation_date, payment_mode, cheque_number, cheque_date, cheque_cleared, upi_reference, created_by)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?)',
             [
                 $donorId,
                 $type,
@@ -457,6 +508,10 @@ function record_donation(): void
                 post_string('purpose', 200) ?: 'General',
                 post_date('donation_date'),
                 $paymentMode,
+                $instrument['cheque_number'],
+                $instrument['cheque_date'],
+                $instrument['cheque_cleared'],
+                $instrument['upi_reference'],
                 (int) $_SESSION['user_id'],
             ]
         );
@@ -740,6 +795,318 @@ function zip_receipt_files(array $rows): string
     return $tmp;
 }
 
+function action_cash_book(): void
+{
+    login_required();
+    $range = book_range_from_request();
+    if ($range['error'] !== null) {
+        flash('error', $range['error']);
+        $fallback = default_book_range();
+        $range['from'] = $fallback['from'];
+        $range['to'] = $fallback['to'];
+    }
+    $opening = load_opening_balance(financial_year_label($range['from']));
+    $book = build_cash_book(
+        load_book_movements($range['from'], $range['to']),
+        $range['from'],
+        $range['to'],
+        $opening['cash'],
+        $opening['bank']
+    );
+    render('cash_book', [
+        'title' => 'Cash book',
+        'pageTitle' => 'Cash book',
+        'active' => 'cash-book',
+        'book' => $book,
+        'yearOpening' => $opening,
+        'isAdmin' => ($_SESSION['role'] ?? '') === 'Admin',
+        'canSetOpening' => in_array((string) ($_SESSION['role'] ?? ''), ['Admin', 'Treasurer'], true),
+        'waitingCount' => (int) db_value("SELECT COUNT(*) FROM approvals WHERE status = 'Waiting'"),
+    ]);
+}
+
+function action_approvals(): void
+{
+    login_required();
+    render('approvals', [
+        'title' => 'Approvals',
+        'pageTitle' => 'Approvals',
+        'active' => 'approvals',
+        'rows' => db_all(
+            "SELECT a.*, p.full_name AS prepared_name, d.full_name AS decided_name,
+                    e.voucher_number, e.category, e.expense_date, e.description, e.paid_to,
+                    c.direction, c.entry_date AS contra_date, c.note AS contra_note,
+                    o.financial_year, o.pending_cash, o.pending_bank, o.cash_amount, o.bank_amount
+             FROM approvals a
+             JOIN users p ON p.id = a.prepared_by
+             LEFT JOIN users d ON d.id = a.decided_by
+             LEFT JOIN expenses e ON a.subject_type = 'expense' AND e.id = a.subject_id
+             LEFT JOIN contra_entries c ON a.subject_type = 'contra' AND c.id = a.subject_id
+             LEFT JOIN opening_balances o ON a.subject_type = 'opening' AND o.id = a.subject_id
+             WHERE a.status IN ('Draft', 'Waiting', 'Sent back')
+             ORDER BY FIELD(a.status, 'Waiting', 'Sent back', 'Draft'), a.updated_at DESC"
+        ),
+    ]);
+}
+
+function action_decide_approval(int $id): void
+{
+    login_required();
+    $row = db_one('SELECT * FROM approvals WHERE id = ?', [$id]);
+    if ($row === null) {
+        flash('error', 'That approval was not found.');
+        redirect(url('approvals'));
+    }
+    $user = current_user();
+    $decision = post_string('decision', 20);
+    $note = post_string('decision_note', 500);
+    $error = approval_error(
+        (string) ($user['role'] ?? ''),
+        (float) $row['amount'],
+        (int) $row['prepared_by'],
+        (int) ($user['id'] ?? 0),
+        $decision,
+        (string) $row['status'],
+        $note
+    );
+    if ($error !== null) {
+        flash('error', $error);
+        redirect(url('approvals'));
+    }
+    $next = approval_next_status($decision);
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        if (in_array($decision, ['approve', 'send_back', 'reject'], true)) {
+            db_exec(
+                'UPDATE approvals SET status = ?, decided_by = ?, decision_note = ? WHERE id = ?',
+                [$next, (int) $user['id'], $note !== '' ? $note : null, $id]
+            );
+        } else {
+            db_exec(
+                'UPDATE approvals SET status = ?, decided_by = NULL, decision_note = NULL WHERE id = ?',
+                [$next, $id]
+            );
+        }
+        if ($row['subject_type'] === 'opening' && $decision === 'approve') {
+            db_exec(
+                'UPDATE opening_balances
+                 SET cash_amount = COALESCE(pending_cash, cash_amount),
+                     bank_amount = COALESCE(pending_bank, bank_amount),
+                     note = COALESCE(pending_note, note),
+                     pending_cash = NULL, pending_bank = NULL, pending_note = NULL
+                 WHERE id = ?',
+                [(int) $row['subject_id']]
+            );
+        }
+        if ($row['subject_type'] === 'opening' && $decision === 'reject') {
+            db_exec(
+                'UPDATE opening_balances SET pending_cash = NULL, pending_bank = NULL, pending_note = NULL WHERE id = ?',
+                [(int) $row['subject_id']]
+            );
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('[jt_blr] approval: ' . $e->getMessage());
+        flash('error', 'The decision could not be saved.');
+        redirect(url('approvals'));
+    }
+    flash('success', 'Marked ' . $next . '.');
+    redirect(url('approvals'));
+}
+
+function action_day_book(): void
+{
+    login_required();
+    $range = book_range_from_request();
+    if ($range['error'] !== null) {
+        flash('error', $range['error']);
+        $fallback = default_book_range();
+        $range['from'] = $fallback['from'];
+        $range['to'] = $fallback['to'];
+    }
+    $opening = load_opening_balance(financial_year_label($range['from']));
+    $book = build_cash_book(
+        load_book_movements($range['from'], $range['to']),
+        $range['from'],
+        $range['to'],
+        $opening['cash'],
+        $opening['bank']
+    );
+    render('day_book', [
+        'title' => 'Day book',
+        'pageTitle' => 'Day book',
+        'active' => 'day-book',
+        'book' => $book,
+        'rows' => build_day_book($book['lines']),
+    ]);
+}
+
+function action_ledger(): void
+{
+    login_required();
+    $range = ledger_range_from_request();
+    if ($range['error'] !== null) {
+        flash('error', $range['error']);
+        $fallback = default_ledger_range();
+        $range['from'] = $fallback['from'];
+        $range['to'] = $fallback['to'];
+    }
+    $heads = build_ledgers(load_ledger_lines($range['from'], $range['to']), $range['from'], $range['to']);
+    $selectedName = trim((string) ($_GET['head'] ?? ''));
+    if (mb_strlen($selectedName) > 200) {
+        $selectedName = mb_substr($selectedName, 0, 200);
+    }
+    $selected = null;
+    foreach ($heads as $head) {
+        if ($head['head'] === $selectedName) {
+            $selected = $head;
+            break;
+        }
+    }
+    render('ledger', [
+        'title' => 'Ledger',
+        'pageTitle' => 'Ledger',
+        'active' => 'ledger',
+        'from' => $range['from'],
+        'to' => $range['to'],
+        'financialYear' => financial_year_label($range['from']),
+        'heads' => $heads,
+        'selected' => $selected,
+    ]);
+}
+
+/** @return array{from: string, to: string, error: ?string} */
+function ledger_range_from_request(): array
+{
+    $fallback = default_ledger_range();
+    $from = valid_book_date((string) ($_GET['from'] ?? '')) ?? $fallback['from'];
+    $to = valid_book_date((string) ($_GET['to'] ?? '')) ?? $fallback['to'];
+    return ['from' => $from, 'to' => $to, 'error' => cash_book_range_error($from, $to)];
+}
+
+function action_save_opening(): void
+{
+    login_required();
+    $role = (string) ($_SESSION['role'] ?? '');
+    $back = url('cash-book', ['from' => post_string('from', 10), 'to' => post_string('to', 10)]);
+    if ($role !== 'Admin' && $role !== 'Treasurer') {
+        flash('error', 'Only a Treasurer or Admin can set the opening balance.');
+        redirect($back);
+    }
+    $year = post_string('financial_year', 9);
+    $cash = round((float) ($_POST['cash_amount'] ?? 0), 2);
+    $bank = round((float) ($_POST['bank_amount'] ?? 0), 2);
+    $error = validate_opening_amounts($cash, $bank);
+    if ($error === null) {
+        try {
+            financial_year_start($year);
+        } catch (InvalidArgumentException) {
+            $error = 'Choose a valid financial year.';
+        }
+    }
+    if ($error !== null) {
+        flash('error', $error);
+        redirect($back);
+    }
+    $note = post_string('note', 255);
+    $userId = (int) $_SESSION['user_id'];
+    $existing = db_one('SELECT id FROM opening_balances WHERE financial_year = ?', [$year]);
+    if ($existing === null) {
+        $id = db_exec(
+            'INSERT INTO opening_balances (financial_year, cash_amount, bank_amount, note, set_by, pending_cash, pending_bank, pending_note)
+             VALUES (?,?,?,?,?,?,?,?)',
+            [$year, 0, 0, null, $userId, $cash, $bank, $note !== '' ? $note : null]
+        );
+    } else {
+        $id = (int) $existing['id'];
+        db_exec(
+            'UPDATE opening_balances SET pending_cash = ?, pending_bank = ?, pending_note = ?, set_by = ? WHERE id = ?',
+            [$cash, $bank, $note !== '' ? $note : null, $userId, $id]
+        );
+    }
+    record_approval('opening', $id, 'Waiting', max($cash, $bank), $userId);
+    flash('success', 'Opening balance submitted for approval. The books keep the last approved figures until then.');
+    redirect($back);
+}
+
+function action_save_contra(): void
+{
+    login_required();
+    $direction = post_string('direction', 20);
+    $amount = round((float) ($_POST['amount'] ?? 0), 2);
+    $date = post_string('entry_date', 10);
+    $error = validate_contra($direction, $amount, $date);
+    $back = url('cash-book', ['from' => post_string('from', 10), 'to' => post_string('to', 10)]);
+    if ($error !== null) {
+        flash('error', $error);
+        redirect($back);
+    }
+    $contraId = db_exec(
+        'INSERT INTO contra_entries (entry_date, direction, amount, note, entered_by) VALUES (?,?,?,?,?)',
+        [$date, $direction, $amount, post_string('note', 255) ?: null, (int) $_SESSION['user_id']]
+    );
+    record_approval('contra', $contraId, 'Waiting', $amount, (int) $_SESSION['user_id']);
+    flash('success', $direction === 'Deposit' ? 'Cash deposit submitted for approval.' : 'Cash withdrawal submitted for approval.');
+    redirect($back);
+}
+
+/** @return array{from: string, to: string, error: ?string} */
+function book_range_from_request(): array
+{
+    $fallback = default_book_range();
+    $from = valid_book_date((string) ($_GET['from'] ?? '')) ?? $fallback['from'];
+    $to = valid_book_date((string) ($_GET['to'] ?? '')) ?? $fallback['to'];
+    return ['from' => $from, 'to' => $to, 'error' => cash_book_range_error($from, $to)];
+}
+
+function action_clear_cheque(string $table, int $id): void
+{
+    login_required();
+    if ($table !== 'expenses' && $table !== 'donations') {
+        http_response_code(404);
+        echo 'Not found.';
+        return;
+    }
+    $dateColumn = $table === 'expenses' ? 'expense_date' : 'donation_date';
+    $row = db_one("SELECT id, payment_mode, cheque_cleared FROM {$table} WHERE id = ?", [$id]);
+    $back = url($table === 'expenses' ? 'expenses' : 'donations');
+    if ($row === null || $row['payment_mode'] !== 'Cheque' || (int) $row['cheque_cleared'] === 1) {
+        flash('error', 'That cheque cannot be marked cleared.');
+        redirect($back);
+    }
+    db_exec("UPDATE {$table} SET cheque_cleared = 1 WHERE id = ? AND payment_mode = 'Cheque'", [$id]);
+    flash('success', 'Cheque marked cleared.');
+    redirect($back);
+}
+
+function action_expense_bill(int $id): void
+{
+    login_required();
+    $row = db_one('SELECT bill_filename FROM expenses WHERE id = ?', [$id]);
+    $name = basename((string) ($row['bill_filename'] ?? ''));
+    if ($row === null || $name === '' || preg_match('/^VCH-\d{4}-\d{4}\.(pdf|jpg|jpeg|png)$/', $name) !== 1) {
+        http_response_code(404);
+        echo 'Not found.';
+        return;
+    }
+    $path = APP_ROOT . '/storage/vouchers/' . $name;
+    if (!is_file($path)) {
+        http_response_code(404);
+        echo 'Not found.';
+        return;
+    }
+    $type = match (strtolower(pathinfo($name, PATHINFO_EXTENSION))) {
+        'pdf' => 'application/pdf',
+        'png' => 'image/png',
+        default => 'image/jpeg',
+    };
+    send_file($path, $name, $type, false, true);
+}
+
 function action_expenses(string $method): void
 {
     login_required();
@@ -750,28 +1117,83 @@ function action_expenses(string $method): void
             flash('error', 'Enter an amount greater than zero.');
             redirect(url('expenses'));
         }
-        db_exec(
-            'INSERT INTO expenses (category, description, amount, paid_to, expense_date, payment_mode, receipt_ref, added_by)
-             VALUES (?,?,?,?,?,?,?,?)',
-            [
-                $category,
-                post_string('description', 255) ?: null,
-                $amount,
-                post_string('paid_to', 150) ?: null,
-                post_date('expense_date'),
-                one_of(post_string('payment_mode', 20), ['Cash', 'Bank Transfer', 'UPI', 'Cheque'], 'Cash'),
-                post_string('receipt_ref', 100) ?: null,
-                (int) $_SESSION['user_id'],
-            ]
+        $paymentMode = one_of(post_string('payment_mode', 20), ['Cash', 'Bank Transfer', 'UPI', 'Cheque'], 'Cash');
+        $instrument = normalize_payment_instrument(
+            $paymentMode,
+            post_string('upi_reference', 64),
+            post_string('cheque_number', 30),
+            post_string('cheque_date', 10),
+            isset($_POST['cheque_cleared'])
         );
-        flash('success', 'Expense recorded.');
+        if ($instrument['error'] !== null) {
+            flash('error', $instrument['error']);
+            redirect(url('expenses'));
+        }
+        $expenseDate = post_date('expense_date');
+        $billError = posted_bill_error($_FILES['bill'] ?? null);
+        if ($billError !== null) {
+            flash('error', $billError);
+            redirect(url('expenses'));
+        }
+        $pdo = db();
+        $pdo->beginTransaction();
+        $storedBill = null;
+        try {
+            $voucher = next_voucher_number($pdo, $expenseDate);
+            $expenseId = db_exec(
+                'INSERT INTO expenses (category, description, amount, paid_to, expense_date, payment_mode, voucher_number, cheque_number, cheque_date, cheque_cleared, upi_reference, receipt_ref, added_by)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                [
+                    $category,
+                    post_string('description', 255) ?: null,
+                    $amount,
+                    post_string('paid_to', 150) ?: null,
+                    $expenseDate,
+                    $paymentMode,
+                    $voucher,
+                    $instrument['cheque_number'],
+                    $instrument['cheque_date'],
+                    $instrument['cheque_cleared'],
+                    $instrument['upi_reference'],
+                    post_string('receipt_ref', 100) ?: null,
+                    (int) $_SESSION['user_id'],
+                ]
+            );
+            $storedBill = store_bill_upload($_FILES['bill'] ?? null, $voucher);
+            if ($storedBill !== null) {
+                db_exec('UPDATE expenses SET bill_filename = ? WHERE id = ?', [$storedBill, $expenseId]);
+            }
+            $status = post_string('intent', 20) === 'draft' ? 'Draft' : 'Waiting';
+            record_approval('expense', $expenseId, $status, $amount, (int) $_SESSION['user_id']);
+            $pdo->commit();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            if ($storedBill !== null) {
+                $path = APP_ROOT . '/storage/vouchers/' . $storedBill;
+                if (is_file($path)) {
+                    unlink($path);
+                }
+            }
+            error_log('[jt_blr] expense: ' . $e->getMessage());
+            flash('error', $e instanceof RuntimeException ? $e->getMessage() : 'The expense could not be saved.');
+            redirect(url('expenses'));
+        }
+        $savedAs = post_string('intent', 20) === 'draft' ? 'saved as a draft' : 'submitted for approval';
+        flash('success', 'Expense ' . $voucher . ' ' . $savedAs . '. It enters the cash book only after approval.');
         redirect(url('expenses'));
     }
     render('expenses', [
         'title' => 'Expenses',
         'pageTitle' => 'Expense Management',
         'active' => 'expenses',
-        'expenses' => db_all('SELECT * FROM expenses ORDER BY expense_date DESC'),
+        'expenses' => db_all(
+            'SELECT e.*, a.id AS approval_id, a.status AS approval_status, a.prepared_by, a.decision_note
+             FROM expenses e
+             LEFT JOIN approvals a ON a.subject_type = \'expense\' AND a.subject_id = e.id
+             ORDER BY e.expense_date DESC, e.id DESC'
+        ),
         'categories' => EXPENSE_CATEGORIES,
         'today' => date('Y-m-d'),
     ]);
@@ -861,7 +1283,9 @@ function action_bank(string $method): void
              WHERE d.reconciled_bank_txn_id IS NULL AND d.amount IS NOT NULL'
         ),
         'openExpenses' => db_all(
-            'SELECT id, description, amount, expense_date FROM expenses WHERE reconciled_bank_txn_id IS NULL'
+            "SELECT e.id, e.description, e.amount, e.expense_date FROM expenses e
+             JOIN approvals a ON a.subject_type = 'expense' AND a.subject_id = e.id AND a.status = 'Approved'
+             WHERE e.reconciled_bank_txn_id IS NULL"
         ),
     ]);
 }
@@ -894,7 +1318,12 @@ function action_bank_match(): void
             );
             db_exec('UPDATE donations SET reconciled_bank_txn_id = ? WHERE id = ?', [$txnId, $matchId]);
         } elseif ($matchType === 'expense' && $txn['txn_type'] === 'Debit') {
-            $expense = db_one('SELECT id FROM expenses WHERE id = ? AND reconciled_bank_txn_id IS NULL', [$matchId]);
+            $expense = db_one(
+                "SELECT e.id FROM expenses e
+                 JOIN approvals a ON a.subject_type = 'expense' AND a.subject_id = e.id AND a.status = 'Approved'
+                 WHERE e.id = ? AND e.reconciled_bank_txn_id IS NULL",
+                [$matchId]
+            );
             if ($expense === null) {
                 throw new RuntimeException('Choose an open expense.');
             }
@@ -1148,8 +1577,8 @@ function action_pay_confirm(string $token): void
         }
         $donationMode = $paidVia === 'Netbanking' ? 'Netbanking' : ($paidVia === 'Card' ? 'Card' : 'UPI');
         $donationId = db_exec(
-            'INSERT INTO donations (donor_id, donation_type, amount, purpose, donation_date, payment_mode, receipt_generated, created_by)
-             VALUES (?,?,?,?,?,?,0,1)',
+            'INSERT INTO donations (donor_id, donation_type, amount, purpose, donation_date, payment_mode, upi_reference, receipt_generated, created_by)
+             VALUES (?,?,?,?,?,?,?,0,1)',
             [
                 $donorId,
                 'Cash',
@@ -1157,6 +1586,7 @@ function action_pay_confirm(string $token): void
                 'Subscription — ' . $inv['plan_name'] . ' (' . $inv['period_label'] . ')',
                 date('Y-m-d'),
                 $donationMode,
+                $donationMode === 'UPI' ? $ref : null,
             ]
         );
         db_exec(
@@ -1241,7 +1671,7 @@ function action_users(string $method): void
                     $username,
                     password_hash($password, PASSWORD_DEFAULT),
                     $fullName,
-                    one_of(post_string('role', 20), ['Admin', 'Staff'], 'Staff'),
+                    one_of(post_string('role', 20), ['Admin', 'Treasurer', 'Staff'], 'Staff'),
                 ]
             );
             $pdo->commit();

@@ -6,7 +6,7 @@ CREATE TABLE users (
     username        VARCHAR(50) NOT NULL UNIQUE,
     password_hash   VARCHAR(255) NOT NULL,
     full_name       VARCHAR(100) NOT NULL,
-    role            ENUM('Admin', 'Staff') NOT NULL DEFAULT 'Staff',
+    role            ENUM('Admin', 'Treasurer', 'Staff') NOT NULL DEFAULT 'Staff',
     is_active       TINYINT(1) NOT NULL DEFAULT 1,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -85,6 +85,10 @@ CREATE TABLE donations (
     payment_mode            ENUM('Cash','Bank Transfer','UPI','Cheque','In-Kind','Card','Netbanking') NOT NULL,
     receipt_number          VARCHAR(30) UNIQUE,
     receipt_generated       TINYINT(1) DEFAULT 0,
+    cheque_number           VARCHAR(30) NULL,
+    cheque_date             DATE NULL,
+    cheque_cleared          TINYINT(1) NOT NULL DEFAULT 0,
+    upi_reference           VARCHAR(64) NULL,
     reconciled_bank_txn_id  INT NULL,
     notes                   TEXT,
     created_by              INT,
@@ -101,6 +105,12 @@ CREATE TABLE expenses (
     paid_to                 VARCHAR(150),
     expense_date            DATE NOT NULL,
     payment_mode            ENUM('Cash','Bank Transfer','UPI','Cheque') NOT NULL,
+    voucher_number          VARCHAR(30) NULL UNIQUE,
+    cheque_number           VARCHAR(30) NULL,
+    cheque_date             DATE NULL,
+    cheque_cleared          TINYINT(1) NOT NULL DEFAULT 0,
+    upi_reference           VARCHAR(64) NULL,
+    bill_filename           VARCHAR(255) NULL,
     reconciled_bank_txn_id  INT NULL,
     receipt_ref             VARCHAR(100),
     added_by                INT,
@@ -177,6 +187,32 @@ CREATE TABLE subscription_invoices (
     FOREIGN KEY (linked_donation_id) REFERENCES donations(id)
 ) ENGINE=InnoDB;
 
+CREATE TABLE opening_balances (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    financial_year  CHAR(9) NOT NULL,
+    cash_amount     DECIMAL(12,2) NOT NULL DEFAULT 0,
+    bank_amount     DECIMAL(12,2) NOT NULL DEFAULT 0,
+    note            VARCHAR(255) NULL,
+    pending_cash    DECIMAL(12,2) NULL,
+    pending_bank    DECIMAL(12,2) NULL,
+    pending_note    VARCHAR(255) NULL,
+    set_by          INT NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_opening_year (financial_year),
+    FOREIGN KEY (set_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE contra_entries (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    entry_date      DATE NOT NULL,
+    direction       ENUM('Deposit','Withdraw') NOT NULL,
+    amount          DECIMAL(12,2) NOT NULL,
+    note            VARCHAR(255) NULL,
+    entered_by      INT NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (entered_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
 CREATE TABLE food_coupon_batches (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     coupon_name     VARCHAR(100) NOT NULL,
@@ -199,3 +235,19 @@ CREATE INDEX idx_expenses_date ON expenses(expense_date);
 CREATE INDEX idx_bank_txn_date ON bank_transactions(txn_date);
 CREATE INDEX idx_bank_txn_status ON bank_transactions(reconciled_status);
 CREATE INDEX idx_food_usage_date ON food_usage_log(txn_date);
+CREATE INDEX idx_contra_date ON contra_entries(entry_date);
+
+CREATE TABLE approvals (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    subject_type    ENUM('expense','contra','opening','purchase','correction','receipt','stock') NOT NULL,
+    subject_id      INT NOT NULL,
+    status          ENUM('Draft','Waiting','Approved','Sent back','Rejected') NOT NULL DEFAULT 'Draft',
+    amount          DECIMAL(14,2) NOT NULL DEFAULT 0,
+    prepared_by     INT NOT NULL,
+    decided_by      INT NULL,
+    decision_note   VARCHAR(500) NULL,
+    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_approval_subject (subject_type, subject_id),
+    FOREIGN KEY (prepared_by) REFERENCES users(id),
+    FOREIGN KEY (decided_by) REFERENCES users(id)
+) ENGINE=InnoDB;

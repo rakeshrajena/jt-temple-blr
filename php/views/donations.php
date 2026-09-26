@@ -37,6 +37,10 @@
         </select>
       </div>
       <div class="form-group"><label>Donation Date</label><input type="date" name="donation_date" value="<?= e($today) ?>"></div>
+      <div class="form-group"><label>UPI transaction id</label><input type="text" name="upi_reference" maxlength="64" placeholder="Required for UPI"></div>
+      <div class="form-group"><label>Cheque number</label><input type="text" name="cheque_number" maxlength="30" placeholder="Required for cheque"></div>
+      <div class="form-group"><label>Cheque date</label><input type="date" name="cheque_date"></div>
+      <div class="form-group"><label>Cheque cleared</label><input type="checkbox" name="cheque_cleared" value="1"></div>
     </div>
     <div class="form-grid cols-3" id="food_fields" style="display:none;">
       <div class="form-group"><label>Food Item</label>
@@ -75,7 +79,17 @@
       <td><?= e($d['donation_type']) ?></td>
       <td><?= e(money_or_dash($d['amount'])) ?></td>
       <td><?= e(dash($d['purpose'])) ?></td>
-      <td><?= e($d['payment_mode']) ?></td>
+      <td>
+        <?= e($d['payment_mode']) ?>
+        <?php if (($d['payment_mode'] ?? '') === 'UPI' && !empty($d['upi_reference'])): ?><br><span style="color:var(--ink-soft);font-size:12px;"><?= e((string) $d['upi_reference']) ?></span><?php endif; ?>
+        <?php if (($d['payment_mode'] ?? '') === 'Cheque' && !empty($d['cheque_number'])): ?>
+          <br><span style="color:var(--ink-soft);font-size:12px;">Chq <?= e((string) $d['cheque_number']) ?></span>
+          <?php if ((int) ($d['cheque_cleared'] ?? 0) === 1): ?><br><span class="badge badge-green">Cleared</span>
+          <?php else: ?>
+          <form method="POST" action="<?= e(url('donations/' . $d['id'] . '/clear-cheque')) ?>"><?= csrf_field() ?><button class="btn btn-sm btn-outline" type="submit">Mark cleared</button></form>
+          <?php endif; ?>
+        <?php endif; ?>
+      </td>
       <td>
         <?php if ((int) $d['receipt_generated'] === 1): ?>
           <?= receipt_link($d['receipt_number']) ?>

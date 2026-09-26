@@ -33,6 +33,7 @@ final class Seed
             ['admin', 'temple@123', 'Temple Administrator', 'Admin'],
             ['ramesh', 'ramesh@123', 'Ramesh Patra (Trustee)', 'Admin'],
             ['staff1', 'staff@123', 'Suresh (Store Keeper)', 'Staff'],
+            ['treasurer', 'treasurer@123', 'Lakshmi (Treasurer)', 'Treasurer'],
         ];
         foreach ($users as [$username, $password, $name, $role]) {
             $stmt->execute([$username, password_hash($password, PASSWORD_DEFAULT), $name, $role]);

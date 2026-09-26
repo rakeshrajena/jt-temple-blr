@@ -48,7 +48,40 @@ function ensure_schema(PDO $pdo): void
     if ($count === 0) {
         Seed::run($pdo);
     }
+    ensure_books_schema($pdo);
+    ensure_payment_columns($pdo);
+    ensure_approval_schema($pdo);
     backfill_receipt_pdfs();
+}
+
+function ensure_books_schema(PDO $pdo): void
+{
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS opening_balances (
+            id              INT AUTO_INCREMENT PRIMARY KEY,
+            financial_year  CHAR(9) NOT NULL,
+            cash_amount     DECIMAL(12,2) NOT NULL DEFAULT 0,
+            bank_amount     DECIMAL(12,2) NOT NULL DEFAULT 0,
+            note            VARCHAR(255) NULL,
+            set_by          INT NULL,
+            created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_opening_year (financial_year),
+            FOREIGN KEY (set_by) REFERENCES users(id)
+        ) ENGINE=InnoDB"
+    );
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS contra_entries (
+            id              INT AUTO_INCREMENT PRIMARY KEY,
+            entry_date      DATE NOT NULL,
+            direction       ENUM('Deposit','Withdraw') NOT NULL,
+            amount          DECIMAL(12,2) NOT NULL,
+            note            VARCHAR(255) NULL,
+            entered_by      INT NULL,
+            created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (entered_by) REFERENCES users(id),
+            INDEX idx_contra_date (entry_date)
+        ) ENGINE=InnoDB"
+    );
 }
 
 function run_sql_file(PDO $pdo, string $path): void

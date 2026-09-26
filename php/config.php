@@ -16,6 +16,7 @@ const DB_CHARSET = 'utf8mb4';
 const APP_NAME = 'Shree Jagannath Temple';
 const APP_PLACE = 'Sarjapura, Bengaluru';
 const MAX_ADMIN_USERS = 10;
+const TREASURER_APPROVAL_LIMIT = 10000.0;
 const SESSION_NAME = 'jt_blr_session';
 const TIMEZONE = 'Asia/Kolkata';
 

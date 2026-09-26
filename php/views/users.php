@@ -23,7 +23,7 @@
       <div class="form-group"><label>Password</label><input type="password" name="password" required minlength="6"></div>
       <div class="form-group">
         <label>Role</label>
-        <select name="role"><option value="Staff">Staff</option><option value="Admin">Admin</option></select>
+        <select name="role"><option value="Staff">Staff</option><option value="Treasurer">Treasurer</option><option value="Admin">Admin</option></select>
       </div>
     </div>
     <div class="form-actions"><button class="btn btn-primary" type="submit">Add User</button></div>
