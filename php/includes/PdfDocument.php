@@ -142,6 +142,37 @@ final class PdfDocument
         $this->ops .= sprintf("%.2F 0 0 %.2F %.2F %.2F cm\n/Im%d Do\nQ\n", $w, $h, $x, $y, $index);
     }
 
+    /**
+     * Draws a square module grid. Row 0 is the top. 1 is dark and 0 is light.
+     *
+     * @param list<string> $rows
+     */
+    public function matrix(float $x, float $y, float $size, array $rows): void
+    {
+        $count = count($rows);
+        if ($count < 1 || $size <= 0.0) {
+            return;
+        }
+        $module = $size / $count;
+        $this->setFill(0, 0, 0);
+        foreach ($rows as $rowIndex => $row) {
+            $rowY = $y + (($count - 1 - $rowIndex) * $module);
+            $index = 0;
+            $length = strlen($row);
+            while ($index < $length) {
+                if ($row[$index] !== '1') {
+                    $index++;
+                    continue;
+                }
+                $start = $index;
+                while ($index < $length && $row[$index] === '1') {
+                    $index++;
+                }
+                $this->rect($x + ($start * $module), $rowY, ($index - $start) * $module, $module, false, true);
+            }
+        }
+    }
+
     /** Draws a Code 128 module string. 1 is a bar and 0 is a space. */
     public function bars(float $x, float $y, float $width, float $height, string $modules): void
     {

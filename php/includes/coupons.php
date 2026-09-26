@@ -315,9 +315,19 @@ function draw_coupon(
 
     $code = $pdf->fitText($serialCode, 6.5, max(20.0, $perfX - $x - 16), true);
     $pdf->setFill(...$navy);
-    $pdf->text($x + 8, $y + 30, $code, 6.5, 'F2');
-    $modules = code128_modules($serialCode);
-    if ($modules !== '') {
-        $pdf->bars($x + 8, $y + 8, max(20.0, $perfX - $x - 16), 18, $modules);
+    $pdf->text($x + 8, $y + 14, $code, 6.5, 'F2');
+    $symbol = qr_matrix($serialCode);
+    $modules = count($symbol);
+    $available = ($x + $w - 4) - ($perfX + 4);
+    if ($modules > 0 && $available > 8) {
+        $module = $available / ($modules + 8);
+        $symbolSize = $module * $modules;
+        $pad = $module * 4;
+        $box = $symbolSize + (2 * $pad);
+        $qrX = $perfX + 4 + $pad;
+        $qrY = $y + (($h - $box) / 2) + $pad;
+        $pdf->setFill(1, 1, 1);
+        $pdf->rect($qrX - $pad, $qrY - $pad, $box, $box, false, true);
+        $pdf->matrix($qrX, $qrY, $symbolSize, $symbol);
     }
 }

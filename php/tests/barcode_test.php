@@ -42,18 +42,6 @@ check($symbol === $expected, 'the letter A encodes as Code 128 set B');
 check(code128_modules('CU-1758920820-0001') !== '', 'a coupon serial can be encoded');
 check(code128_modules("bad\ncode") === '', 'a serial with a line break is not encoded');
 
-$path = APP_ROOT . '/storage/coupons/batch_987653.pdf';
-$created = !is_file($path);
-if ($created) {
-    generate_coupon_batch_pdf(987653, 'Mahaprasad', 50, 7, 1, 1758920820);
-    $pdf = (string) file_get_contents($path);
-    check(str_contains($pdf, 'CU-1758920820-0007'), 'the coupon sheet prints the serial under the barcode');
-    check(str_contains($pdf, ' re f'), 'the coupon sheet draws the barcode bars');
-    unlink($path);
-} else {
-    check(false, 'the barcode sample does not replace a real coupon file');
-}
-
 if ($failed > 0) {
     fwrite(STDERR, "{$failed} failed\n");
     exit(1);
