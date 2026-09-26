@@ -4,16 +4,16 @@
 $bulkKind = $bulkKind === 'receipt' ? 'receipt' : 'devotee';
 ?>
 <div id="bulkComposer" hidden style="margin:12px 0; padding:12px; border:1px solid var(--line); border-radius:8px;">
-  <h3 id="bulkTitle" style="margin-top:0;">Message</h3>
+  <h3 id="bulkTitle" style="margin-top:0;"><?= e(t('settings.message')) ?></h3>
   <p class="sub" id="bulkHint"></p>
   <p id="bulkCount" style="font-size:13px; margin-top:0;"></p>
   <div class="form-group">
-    <label for="bulkMessage">Message</label>
+    <label for="bulkMessage"><?= e(t('settings.message')) ?></label>
     <textarea id="bulkMessage" maxlength="1000" rows="5" style="width:100%;"></textarea>
   </div>
   <div class="form-actions">
-    <button class="btn btn-gold btn-sm" type="button" id="bulkSend">Send</button>
-    <button class="btn btn-outline btn-sm" type="button" id="bulkCancel">Cancel</button>
+    <button class="btn btn-gold btn-sm" type="button" id="bulkSend"><?= e(t('common.send')) ?></button>
+    <button class="btn btn-outline btn-sm" type="button" id="bulkCancel"><?= e(t('common.cancel')) ?></button>
   </div>
   <p id="bulkStatus" style="font-size:13px;"></p>
 </div>
@@ -25,6 +25,23 @@ $bulkKind = $bulkKind === 'receipt' ? 'receipt' : 'devotee';
 <script>
 (function () {
   const kind = <?= json_encode($bulkKind, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+  const copy = <?= json_encode([
+      'emailTitle' => t('bulk.email_title'),
+      'whatsappTitle' => t('bulk.whatsapp_title'),
+      'receiptEmail' => t('bulk.receipt_email'),
+      'receiptWhatsapp' => t('bulk.receipt_whatsapp'),
+      'donorEmail' => t('bulk.donor_email'),
+      'donorWhatsapp' => t('bulk.donor_whatsapp'),
+      'selected' => t('bulk.selected'),
+      'enter' => t('bulk.enter'),
+      'tooLong' => t('bulk.too_long'),
+      'pickOne' => t('bulk.pick_one'),
+      'limit' => t('bulk.limit'),
+      'noPhone' => t('bulk.no_phone'),
+      'opened' => t('bulk.opened'),
+      'skipped' => t('bulk.skipped'),
+      'popups' => t('bulk.popups'),
+  ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
   const composer = document.getElementById('bulkComposer');
   const title = document.getElementById('bulkTitle');
   const hint = document.getElementById('bulkHint');
@@ -71,17 +88,17 @@ $bulkKind = $bulkKind === 'receipt' ? 'receipt' : 'devotee';
       return;
     }
     mode = next;
-    title.textContent = next === 'email' ? 'Bulk email' : 'Bulk WhatsApp';
+    title.textContent = next === 'email' ? copy.emailTitle : copy.whatsappTitle;
     if (kind === 'receipt' && next === 'email') {
-      hint.textContent = 'This note is emailed to each selected devotee who has a valid address. The receipt PDF and the receipt link are added.';
+      hint.textContent = copy.receiptEmail;
     } else if (kind === 'receipt') {
-      hint.textContent = 'A WhatsApp chat opens for each selected devotee who has a phone. The receipt link is added to the message. Allow pop-up windows if a chat does not open.';
+      hint.textContent = copy.receiptWhatsapp;
     } else if (next === 'email') {
-      hint.textContent = 'This note is emailed to each selected devotee who has a valid address.';
+      hint.textContent = copy.donorEmail;
     } else {
-      hint.textContent = 'A WhatsApp chat opens for each selected devotee who has a phone. Allow pop-up windows if a chat does not open.';
+      hint.textContent = copy.donorWhatsapp;
     }
-    count.textContent = people.length + ' selected.';
+    count.textContent = copy.selected.replace('{count}', String(people.length));
     status.textContent = '';
     composer.hidden = false;
     message.focus();
@@ -101,19 +118,19 @@ $bulkKind = $bulkKind === 'receipt' ? 'receipt' : 'devotee';
     const text = message.value.trim();
     const people = selected();
     if (text === '') {
-      status.textContent = 'Enter the message.';
+      status.textContent = copy.enter;
       return;
     }
     if (text.length > 1000) {
-      status.textContent = 'The message is too long.';
+      status.textContent = copy.tooLong;
       return;
     }
     if (people.length === 0) {
-      status.textContent = 'Select at least one person.';
+      status.textContent = copy.pickOne;
       return;
     }
     if (people.length > 50) {
-      status.textContent = 'Select up to 50 people at a time.';
+      status.textContent = copy.limit;
       return;
     }
     if (mode === 'email') {
@@ -147,15 +164,15 @@ $bulkKind = $bulkKind === 'receipt' ? 'receipt' : 'devotee';
       }
     });
     if (opened === 0 && missing === people.length) {
-      status.textContent = 'None of the selected devotees have a phone number.';
+      status.textContent = copy.noPhone;
       return;
     }
-    status.textContent = 'Opened ' + opened + ' WhatsApp chat' + (opened === 1 ? '' : 's') + '.';
+    status.textContent = copy.opened.replace('{count}', String(opened));
     if (missing > 0) {
-      status.textContent += ' ' + missing + ' skipped because there is no phone number.';
+      status.textContent += ' ' + copy.skipped.replace('{count}', String(missing));
     }
     if (opened < people.length - missing) {
-      status.textContent += ' Allow pop-up windows and press Send again for any chat that did not open.';
+      status.textContent += ' ' + copy.popups;
     }
   });
   document.querySelectorAll('.bulk-checkbox').forEach(function (box) {

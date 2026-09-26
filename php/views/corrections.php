@@ -13,7 +13,7 @@ $badge = static function (string $status): string {
 };
 ?>
 <div class="panel">
-  <h3>Correct a line</h3>
+  <h3><?= e(t('ui.correct_line')) ?></h3>
   <p class="sub">The original donation or expense stays in the book. The correction is a second line, and it changes the balance only after someone else approves it.</p>
   <?php if ($targets === []): ?>
     <p>There is no cash or bank line that can be corrected.</p>
@@ -41,7 +41,7 @@ $badge = static function (string $status): string {
         <input type="number" step="0.01" min="0" name="corrected_amount" value="0">
       </div>
       <div class="form-group">
-        <label>Date</label>
+        <label><?= e(t('common.date')) ?></label>
         <input type="date" name="entry_date" value="<?= e($today) ?>" required>
       </div>
       <div class="form-group full">
@@ -49,7 +49,7 @@ $badge = static function (string $status): string {
         <input type="text" name="reason" maxlength="500" required placeholder="Why this line is wrong">
       </div>
     </div>
-    <div class="form-actions"><button class="btn btn-primary" type="submit">Submit for approval</button></div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.submit_approval')) ?></button></div>
   </form>
   <?php endif; ?>
 </div>
@@ -59,7 +59,7 @@ $badge = static function (string $status): string {
     <p>No corrections yet.</p>
   <?php else: ?>
   <table class="data-table">
-    <tr><th>Date</th><th>Line</th><th>Was</th><th>Now</th><th>Reason</th><th>Prepared by</th><th>Status</th></tr>
+    <tr><th><?= e(t('common.date')) ?></th><th>Line</th><th>Was</th><th>Now</th><th>Reason</th><th>Prepared by</th><th><?= e(t('common.status')) ?></th></tr>
     <?php foreach ($rows as $row): ?>
       <?php
         $who = (string) $row['subject_type'] === 'expense'

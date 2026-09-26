@@ -9,53 +9,64 @@
 /** @var list<array<string,mixed>> $pending */
 ?>
 <div class="panel">
-  <h3>Add stock already on hand</h3>
+  <h3><?= e(t('ui.on_hand')) ?></h3>
   <p class="sub">This records quantity that is already in the store. It does not write a payment. Use the purchase form when money leaves the cash book.</p>
   <form method="POST" action="<?= e(url('inventory')) ?>">
     <?= csrf_field() ?>
     <div class="form-grid cols-3">
       <div class="form-group">
-        <label>Category</label>
+        <label><?= e(t('common.category')) ?></label>
         <select name="category" required>
           <?php foreach ($categories as $c): ?><option value="<?= e($c) ?>"><?= e($c) ?></option><?php endforeach; ?>
         </select>
       </div>
-      <div class="form-group"><label>Item Name</label><input type="text" name="name" required></div>
-      <div class="form-group"><label>Quantity</label><input type="number" name="quantity" min="0" value="1" required></div>
-      <div class="form-group"><label>Rate per unit (₹)</label><input type="number" name="unit_cost" min="0" step="0.01" value="0"></div>
+      <div class="form-group"><label><?= e(t('ui.item_name')) ?></label>
+        <div class="suggest">
+          <input type="text" name="name" required data-suggest data-kind="inventory" data-source="suggest-inventory" data-filter="category:category" data-id="item_id" data-fill="unit:unit,unit_cost:unit_cost,item_condition:condition,location:location,description:description">
+          <input type="hidden" name="item_id" value="0">
+          <div class="suggest-menu" hidden></div>
+        </div>
+      </div>
+      <div class="form-group"><label><?= e(t('common.quantity')) ?></label><input type="number" name="quantity" min="0" value="1" required></div>
+      <div class="form-group"><label><?= e(t('ui.rate')) ?></label><input type="number" name="unit_cost" min="0" step="0.01" value="0"></div>
       <div class="form-group">
-        <label>Unit</label>
+        <label><?= e(t('common.unit')) ?></label>
         <select name="unit">
           <?php foreach (selection_values('units') as $unit): ?><option<?= $unit === 'pcs' ? ' selected' : '' ?>><?= e($unit) ?></option><?php endforeach; ?>
         </select>
       </div>
       <div class="form-group">
-        <label>Condition</label>
+        <label><?= e(t('ui.condition')) ?></label>
         <select name="item_condition">
           <?php foreach ($conditions as $c): ?><option<?= $c === 'Good' ? ' selected' : '' ?>><?= e($c) ?></option><?php endforeach; ?>
         </select>
       </div>
-      <div class="form-group"><label>Location</label><input type="text" name="location" placeholder="e.g. Store Room, Kitchen"></div>
+      <div class="form-group"><label><?= e(t('common.location')) ?></label>
+        <div class="suggest">
+          <input type="text" name="location" placeholder="e.g. Store Room, Kitchen" data-suggest data-kind="location" data-source="suggest-locations">
+          <div class="suggest-menu" hidden></div>
+        </div>
+      </div>
       <div class="form-group">
-        <label>Source</label>
+        <label><?= e(t('common.source')) ?></label>
         <select name="source">
           <?php foreach (selection_values('sources') as $source): ?><option><?= e($source) ?></option><?php endforeach; ?>
         </select>
       </div>
-      <div class="form-group full"><label>Description / Notes</label><textarea name="description" rows="2"></textarea></div>
+      <div class="form-group full"><label><?= e(t('ui.description_notes')) ?></label><textarea name="description" rows="2"></textarea></div>
     </div>
-    <div class="form-actions"><button class="btn btn-primary" type="submit">Add Item</button></div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.add_item')) ?></button></div>
   </form>
 </div>
 <div class="panel">
-  <h3>Buy stock and record the payment</h3>
+  <h3><?= e(t('ui.buy_stock')) ?></h3>
   <p class="sub">The purchase waits for approval. Stock and the cash book change together only after it is approved.</p>
   <form method="POST" action="<?= e(url('inventory')) ?>">
     <?= csrf_field() ?>
     <input type="hidden" name="action" value="purchase">
     <div class="form-grid cols-3">
       <div class="form-group">
-        <label>Existing item</label>
+        <label><?= e(t('ui.existing_item')) ?></label>
         <select name="item_id">
           <option value="0">New item</option>
           <?php foreach ($items as $i): ?>
@@ -63,47 +74,57 @@
           <?php endforeach; ?>
         </select>
       </div>
-      <div class="form-group"><label>New item name</label><input type="text" name="name" placeholder="Used when Existing item is New item"></div>
+      <div class="form-group"><label><?= e(t('ui.new_item_name')) ?></label>
+        <div class="suggest">
+          <input type="text" name="name" placeholder="Used when Existing item is New item" data-suggest data-kind="inventory" data-source="suggest-inventory" data-filter="category:category" data-id="item_id" data-fill="unit:unit,unit_cost:unit_cost,location:location">
+          <div class="suggest-menu" hidden></div>
+        </div>
+      </div>
       <div class="form-group">
-        <label>Category</label>
+        <label><?= e(t('common.category')) ?></label>
         <select name="category">
           <?php foreach ($categories as $c): ?><option value="<?= e($c) ?>"><?= e($c) ?></option><?php endforeach; ?>
         </select>
       </div>
-      <div class="form-group"><label>Quantity</label><input type="number" name="quantity" min="1" value="1" required></div>
-      <div class="form-group"><label>Rate per unit (₹)</label><input type="number" name="unit_cost" min="0.01" step="0.01" required></div>
+      <div class="form-group"><label><?= e(t('common.quantity')) ?></label><input type="number" name="quantity" min="1" value="1" required></div>
+      <div class="form-group"><label><?= e(t('ui.rate')) ?></label><input type="number" name="unit_cost" min="0.01" step="0.01" required></div>
       <div class="form-group">
-        <label>Unit</label>
+        <label><?= e(t('common.unit')) ?></label>
         <select name="unit">
           <?php foreach (selection_values('units') as $unit): ?><option<?= $unit === 'pcs' ? ' selected' : '' ?>><?= e($unit) ?></option><?php endforeach; ?>
         </select>
       </div>
-      <div class="form-group"><label>Location</label><input type="text" name="location" placeholder="For a new item"></div>
-      <div class="form-group"><label>Paid to</label><input type="text" name="paid_to"></div>
-      <div class="form-group"><label>Date</label><input type="date" name="purchase_date" value="<?= e($today) ?>" required></div>
+      <div class="form-group"><label><?= e(t('common.location')) ?></label>
+        <div class="suggest">
+          <input type="text" name="location" placeholder="For a new item" data-suggest data-kind="location" data-source="suggest-locations">
+          <div class="suggest-menu" hidden></div>
+        </div>
+      </div>
+      <div class="form-group"><label><?= e(t('common.paid_to')) ?></label><input type="text" name="paid_to"></div>
+      <div class="form-group"><label><?= e(t('common.date')) ?></label><input type="date" name="purchase_date" value="<?= e($today) ?>" required></div>
       <div class="form-group">
-        <label>Payment</label>
+        <label><?= e(t('common.payment')) ?></label>
         <select name="payment_mode">
           <?php foreach (money_payment_modes() as $mode): ?><option><?= e($mode) ?></option><?php endforeach; ?>
         </select>
       </div>
-      <div class="form-group"><label>UPI transaction id</label><input type="text" name="upi_reference" maxlength="64"></div>
-      <div class="form-group"><label>Cheque number</label><input type="text" name="cheque_number" maxlength="30"></div>
-      <div class="form-group"><label>Cheque date</label><input type="date" name="cheque_date"></div>
+      <div class="form-group"><label><?= e(t('ui.upi')) ?></label><input type="text" name="upi_reference" maxlength="64"></div>
+      <div class="form-group"><label><?= e(t('ui.cheque_no')) ?></label><input type="text" name="cheque_number" maxlength="30"></div>
+      <div class="form-group"><label><?= e(t('ui.cheque_date')) ?></label><input type="date" name="cheque_date"></div>
     </div>
-    <div class="form-actions"><button class="btn btn-primary" type="submit">Submit purchase for approval</button></div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.submit_purchase')) ?></button></div>
   </form>
 </div>
 <div class="panel-row">
   <div class="panel">
-    <h3>Record a movement</h3>
+    <h3><?= e(t('ui.record_movement')) ?></h3>
     <p class="sub">Issue and return are recorded immediately. Damage, loss, and retired quantities above <?= e((string) $writeOffLimit) ?> wait for approval.</p>
     <form method="POST" action="<?= e(url('inventory')) ?>">
       <?= csrf_field() ?>
       <input type="hidden" name="action" value="move">
       <div class="form-grid">
         <div class="form-group">
-          <label>Item</label>
+          <label><?= e(t('common.item')) ?></label>
           <select name="item_id" required>
             <?php foreach ($items as $i): ?>
               <option value="<?= e((string) $i['id']) ?>"><?= e($i['name']) ?> (<?= e((string) $i['quantity']) ?>)</option>
@@ -111,29 +132,29 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Movement</label>
+          <label><?= e(t('common.movement')) ?></label>
           <select name="movement_type">
             <?php foreach ($movements as $m): if ($m === 'Added') { continue; } ?>
               <option><?= e($m) ?></option>
             <?php endforeach; ?>
           </select>
         </div>
-        <div class="form-group"><label>Quantity</label><input type="number" name="quantity" min="1" value="1" required></div>
-        <div class="form-group"><label>Date</label><input type="date" name="movement_date" value="<?= e($today) ?>" required></div>
-        <div class="form-group full"><label>Note</label><input type="text" name="note" maxlength="255"></div>
+        <div class="form-group"><label><?= e(t('common.quantity')) ?></label><input type="number" name="quantity" min="1" value="1" required></div>
+        <div class="form-group"><label><?= e(t('common.date')) ?></label><input type="date" name="movement_date" value="<?= e($today) ?>" required></div>
+        <div class="form-group full"><label><?= e(t('ui.note')) ?></label><input type="text" name="note" maxlength="255"></div>
       </div>
-      <div class="form-actions"><button class="btn btn-primary" type="submit">Record movement</button></div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.record_movement_btn')) ?></button></div>
     </form>
   </div>
   <div class="panel">
-    <h3>Condition and location</h3>
+    <h3><?= e(t('ui.condition_location')) ?></h3>
     <p class="sub">Repair sets Needs Repair. A new location moves the item. Retired writes off the quantity still on hand.</p>
     <form method="POST" action="<?= e(url('inventory')) ?>">
       <?= csrf_field() ?>
       <input type="hidden" name="action" value="place">
       <div class="form-grid">
         <div class="form-group">
-          <label>Item</label>
+          <label><?= e(t('common.item')) ?></label>
           <select name="item_id" required>
             <?php foreach ($items as $i): ?>
               <option value="<?= e((string) $i['id']) ?>"><?= e($i['name']) ?></option>
@@ -141,12 +162,17 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Condition</label>
+          <label><?= e(t('ui.condition')) ?></label>
           <select name="item_condition">
             <?php foreach ($conditions as $c): ?><option><?= e($c) ?></option><?php endforeach; ?>
           </select>
         </div>
-        <div class="form-group full"><label>Location</label><input type="text" name="location" maxlength="100"></div>
+        <div class="form-group full"><label><?= e(t('common.location')) ?></label>
+          <div class="suggest">
+            <input type="text" name="location" maxlength="100" data-suggest data-kind="location" data-source="suggest-locations">
+            <div class="suggest-menu" hidden></div>
+          </div>
+        </div>
       </div>
       <div class="form-actions"><button class="btn btn-outline" type="submit">Update</button></div>
     </form>
@@ -154,9 +180,9 @@
 </div>
 <?php if ($pending): ?>
 <div class="panel">
-  <h3>Waiting write-offs</h3>
+  <h3><?= e(t('ui.write_offs')) ?></h3>
   <table class="data-table">
-    <tr><th>Date</th><th>Item</th><th>Movement</th><th>Quantity</th><th>Status</th></tr>
+    <tr><th><?= e(t('common.date')) ?></th><th><?= e(t('common.item')) ?></th><th><?= e(t('common.movement')) ?></th><th><?= e(t('common.quantity')) ?></th><th><?= e(t('common.status')) ?></th></tr>
     <?php foreach ($pending as $row): ?>
     <tr>
       <td><?= e((string) $row['movement_date']) ?></td>
@@ -173,7 +199,7 @@
   <h3>Inventory List (<?= count($items) ?> items)</h3>
   <?php if ($items): ?>
   <table class="data-table">
-    <tr><th>Category</th><th>Name</th><th>Qty</th><th>Rate</th><th>Value</th><th>Condition</th><th>Location</th><th>Source</th><th>Added</th></tr>
+    <tr><th><?= e(t('common.category')) ?></th><th><?= e(t('common.name')) ?></th><th><?= e(t('ui.qty')) ?></th><th><?= e(t('ui.value')) ?></th><th><?= e(t('ui.value')) ?></th><th><?= e(t('ui.condition')) ?></th><th><?= e(t('common.location')) ?></th><th><?= e(t('common.source')) ?></th><th><?= e(t('ui.added')) ?></th></tr>
     <?php foreach ($items as $i): ?>
     <tr>
       <td><?= e($i['category']) ?></td>
@@ -204,7 +230,7 @@
   <h3>Recent movements</h3>
   <?php if ($history): ?>
   <table class="data-table">
-    <tr><th>Date</th><th>Item</th><th>Movement</th><th>Quantity</th><th>Note</th></tr>
+    <tr><th><?= e(t('common.date')) ?></th><th><?= e(t('common.item')) ?></th><th><?= e(t('common.movement')) ?></th><th><?= e(t('common.quantity')) ?></th><th><?= e(t('ui.note')) ?></th></tr>
     <?php foreach ($history as $row): ?>
     <tr>
       <td><?= e((string) $row['movement_date']) ?></td>
@@ -219,3 +245,5 @@
   <div class="empty-state">No movements yet.</div>
   <?php endif; ?>
 </div>
+<script type="application/json" id="suggest-inventory"><?= json_encode(suggest_inventory_catalog(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) ?></script>
+<script type="application/json" id="suggest-locations"><?= json_encode(suggest_location_catalog(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) ?></script>

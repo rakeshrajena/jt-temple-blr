@@ -187,7 +187,7 @@ function admin_required(): void
 {
     login_required();
     if (($_SESSION['role'] ?? '') !== 'Admin') {
-        flash('error', 'This section is restricted to Admin users.');
+        flash('error', t('shell.admin_only'));
         redirect(url(''));
     }
 }

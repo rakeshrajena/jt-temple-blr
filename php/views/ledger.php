@@ -20,9 +20,9 @@ foreach ($heads as $head) {
   <h3>Ledger by head · <?= e($financialYear) ?></h3>
   <form method="GET" action="<?= e(app_script()) ?>" style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
     <input type="hidden" name="r" value="ledger">
-    <div class="form-group"><label>From</label><input type="date" name="from" value="<?= e($from) ?>"></div>
-    <div class="form-group"><label>To</label><input type="date" name="to" value="<?= e($to) ?>"></div>
-    <button class="btn btn-outline btn-sm" type="submit">Show</button>
+    <div class="form-group"><label><?= e(t('common.from')) ?></label><input type="date" name="from" value="<?= e($from) ?>"></div>
+    <div class="form-group"><label><?= e(t('common.to')) ?></label><input type="date" name="to" value="<?= e($to) ?>"></div>
+    <button class="btn btn-outline btn-sm" type="submit"><?= e(t('common.show')) ?></button>
   </form>
   <p style="color:var(--ink-soft); font-size:13px; margin-top:0;">
     Each donation purpose and each expense category is a head. Received money increases it. Spending decreases it. A gift and an expense with the same name share one balance.
@@ -32,11 +32,11 @@ foreach ($heads as $head) {
   <?php else: ?>
   <table class="data-table">
     <tr>
-      <th>Head</th>
-      <th class="text-right">Opening</th>
-      <th class="text-right">Received</th>
-      <th class="text-right">Spent</th>
-      <th class="text-right">Balance</th>
+      <th><?= e(t('ui.head')) ?></th>
+      <th class="text-right"><?= e(t('ui.opening')) ?></th>
+      <th class="text-right"><?= e(t('ui.received')) ?></th>
+      <th class="text-right"><?= e(t('ui.spent')) ?></th>
+      <th class="text-right"><?= e(t('ui.balance')) ?></th>
       <th></th>
     </tr>
     <?php foreach ($heads as $head): ?>
@@ -63,7 +63,7 @@ foreach ($heads as $head) {
     <div class="empty-state">Nothing new in this period. The balance is the opening brought forward.</div>
   <?php else: ?>
   <table class="data-table">
-    <tr><th>Date</th><th>Particulars</th><th class="text-right">Received</th><th class="text-right">Spent</th><th class="text-right">Balance</th><th>Entered by</th></tr>
+    <tr><th><?= e(t('common.date')) ?></th><th><?= e(t('ui.particulars')) ?></th><th class="text-right"><?= e(t('ui.received')) ?></th><th class="text-right"><?= e(t('ui.spent')) ?></th><th class="text-right"><?= e(t('ui.balance')) ?></th><th><?= e(t('ui.entered_by')) ?></th></tr>
     <?php foreach ($selected['lines'] as $line): ?>
     <tr>
       <td><?= e((string) $line['date']) ?></td>

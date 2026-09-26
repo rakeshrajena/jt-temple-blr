@@ -5,6 +5,7 @@ define('APP_ROOT', dirname(__DIR__));
 
 require APP_ROOT . '/config.php';
 require APP_ROOT . '/includes/helpers.php';
+require APP_ROOT . '/includes/locale.php';
 require APP_ROOT . '/includes/PdfDocument.php';
 require APP_ROOT . '/includes/db.php';
 require APP_ROOT . '/includes/seed.php';
@@ -20,6 +21,7 @@ require APP_ROOT . '/includes/donors.php';
 require APP_ROOT . '/includes/stock.php';
 require APP_ROOT . '/includes/settings.php';
 require APP_ROOT . '/includes/selections.php';
+require APP_ROOT . '/includes/suggest.php';
 require APP_ROOT . '/includes/actions.php';
 
 date_default_timezone_set(TIMEZONE);

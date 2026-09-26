@@ -5,24 +5,24 @@
 /** @var list<array<string,mixed>> $lowStockItems */
 ?>
 <div class="kpi-grid">
-  <div class="kpi-card good"><div class="value"><?= e(money($summary['total_donations'])) ?></div><div class="label">Total Donations Received</div></div>
-  <div class="kpi-card danger"><div class="value"><?= e(money($summary['total_expenses'])) ?></div><div class="label">Total Expenses</div></div>
-  <div class="kpi-card <?= $summary['net_balance'] >= 0 ? 'good' : 'danger' ?>"><div class="value"><?= e(money($summary['net_balance'])) ?></div><div class="label">Net Balance</div></div>
-  <div class="kpi-card"><div class="value"><?= e((string) $summary['donor_count']) ?></div><div class="label">Unique Donors</div></div>
-  <div class="kpi-card<?= $summary['pending_receipts'] ? ' warn' : '' ?>"><div class="value"><?= e((string) $summary['pending_receipts']) ?></div><div class="label">Receipts Pending</div></div>
-  <div class="kpi-card <?= $summary['low_stock'] ? 'warn' : 'good' ?>"><div class="value"><?= e((string) $summary['low_stock']) ?></div><div class="label">Food Items Low on Stock</div></div>
-  <div class="kpi-card <?= $summary['unmatched_txns'] ? 'warn' : 'good' ?>"><div class="value"><?= e((string) $summary['unmatched_txns']) ?></div><div class="label">Bank Txns Needing Review</div></div>
-  <div class="kpi-card"><div class="value"><?= e((string) $summary['inventory_count']) ?></div><div class="label">Inventory Items Tracked</div></div>
-  <div class="kpi-card good"><div class="value"><?= e(money($summary['mrr'])) ?></div><div class="label">Monthly Recurring Revenue</div></div>
-  <div class="kpi-card <?= $summary['pending_invoices'] ? 'warn' : 'good' ?>"><div class="value"><?= e((string) $summary['pending_invoices']) ?></div><div class="label">Subscription Invoices Due</div></div>
+  <div class="kpi-card good"><div class="value"><?= e(money($summary['total_donations'])) ?></div><div class="label"><?= e(t('kpi.donations')) ?></div></div>
+  <div class="kpi-card danger"><div class="value"><?= e(money($summary['total_expenses'])) ?></div><div class="label"><?= e(t('kpi.expenses')) ?></div></div>
+  <div class="kpi-card <?= $summary['net_balance'] >= 0 ? 'good' : 'danger' ?>"><div class="value"><?= e(money($summary['net_balance'])) ?></div><div class="label"><?= e(t('kpi.net')) ?></div></div>
+  <div class="kpi-card"><div class="value"><?= e((string) $summary['donor_count']) ?></div><div class="label"><?= e(t('kpi.donors')) ?></div></div>
+  <div class="kpi-card<?= $summary['pending_receipts'] ? ' warn' : '' ?>"><div class="value"><?= e((string) $summary['pending_receipts']) ?></div><div class="label"><?= e(t('kpi.receipts_pending')) ?></div></div>
+  <div class="kpi-card <?= $summary['low_stock'] ? 'warn' : 'good' ?>"><div class="value"><?= e((string) $summary['low_stock']) ?></div><div class="label"><?= e(t('kpi.low_stock')) ?></div></div>
+  <div class="kpi-card <?= $summary['unmatched_txns'] ? 'warn' : 'good' ?>"><div class="value"><?= e((string) $summary['unmatched_txns']) ?></div><div class="label"><?= e(t('kpi.bank_review')) ?></div></div>
+  <div class="kpi-card"><div class="value"><?= e((string) $summary['inventory_count']) ?></div><div class="label"><?= e(t('kpi.inventory')) ?></div></div>
+  <div class="kpi-card good"><div class="value"><?= e(money($summary['mrr'])) ?></div><div class="label"><?= e(t('kpi.mrr')) ?></div></div>
+  <div class="kpi-card <?= $summary['pending_invoices'] ? 'warn' : 'good' ?>"><div class="value"><?= e((string) $summary['pending_invoices']) ?></div><div class="label"><?= e(t('kpi.invoices_due')) ?></div></div>
 </div>
 
 <div class="panel-row">
   <div class="panel">
-    <h3>Recent Donations</h3>
+    <h3><?= e(t('dash.recent_donations')) ?></h3>
     <?php if ($recentDonations): ?>
     <table class="data-table">
-      <tr><th>Donor</th><th>Type</th><th>Amount</th><th>Date</th><th>Receipt</th></tr>
+      <tr><th><?= e(t('common.donor')) ?></th><th><?= e(t('common.type')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('common.date')) ?></th><th><?= e(t('common.receipt')) ?></th></tr>
       <?php foreach ($recentDonations as $d): ?>
       <tr>
         <td><?= e($d['donor_name']) ?></td>
@@ -33,21 +33,21 @@
           <?php if ((int) $d['receipt_generated'] === 1): ?>
             <?= receipt_link($d['receipt_number']) ?><?= receipt_cancel_badge($d['receipt_cancelled'] ?? 0) ?>
           <?php else: ?>
-            <span class="badge badge-amber">Pending</span>
+            <span class="badge badge-amber"><?= e(t('status.pending')) ?></span>
           <?php endif; ?>
         </td>
       </tr>
       <?php endforeach; ?>
     </table>
     <?php else: ?>
-    <div class="empty-state">No donations recorded yet.</div>
+    <div class="empty-state"><?= e(t('dash.no_donations')) ?></div>
     <?php endif; ?>
   </div>
   <div class="panel">
-    <h3>Low Stock Alerts</h3>
+    <h3><?= e(t('dash.low_stock')) ?></h3>
     <?php if ($lowStockItems): ?>
     <table class="data-table">
-      <tr><th>Item</th><th>Stock</th><th>Threshold</th></tr>
+      <tr><th><?= e(t('common.item')) ?></th><th><?= e(t('common.stock')) ?></th><th><?= e(t('common.threshold')) ?></th></tr>
       <?php foreach ($lowStockItems as $f): ?>
       <tr>
         <td><?= e($f['name']) ?></td>
@@ -57,16 +57,16 @@
       <?php endforeach; ?>
     </table>
     <?php else: ?>
-    <div class="empty-state">All food stock levels are healthy.</div>
+    <div class="empty-state"><?= e(t('dash.stock_healthy')) ?></div>
     <?php endif; ?>
   </div>
 </div>
 
 <div class="panel">
-  <h3>Recent Expenses</h3>
+  <h3><?= e(t('dash.recent_expenses')) ?></h3>
   <?php if ($recentExpenses): ?>
   <table class="data-table">
-    <tr><th>Category</th><th>Description</th><th>Paid To</th><th>Amount</th><th>Date</th></tr>
+    <tr><th><?= e(t('common.category')) ?></th><th><?= e(t('common.description')) ?></th><th><?= e(t('common.paid_to')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('common.date')) ?></th></tr>
     <?php foreach ($recentExpenses as $row): ?>
     <tr>
       <td><?= e($row['category']) ?></td>
@@ -78,6 +78,6 @@
     <?php endforeach; ?>
   </table>
   <?php else: ?>
-  <div class="empty-state">No expenses recorded yet.</div>
+  <div class="empty-state"><?= e(t('dash.no_expenses')) ?></div>
   <?php endif; ?>
 </div>

@@ -6,7 +6,7 @@
 /** @var list<array<string,mixed>> $openExpenses */
 ?>
 <div class="panel">
-  <h3>Upload Bank Statement</h3>
+  <h3><?= e(t('ui.upload_bank')) ?></h3>
   <p style="color:var(--ink-soft); font-size:13px; margin-top:-6px;">
     Accepts CSV or Excel with Date, Description, Amount (or separate Credit/Debit columns), and optionally Balance.
     Credits are auto-matched against donations, debits against expenses — same amount, within 3 days.
@@ -16,7 +16,7 @@
     <div class="form-grid">
       <div class="form-group"><label>Statement File (.csv, .xlsx)</label><input type="file" name="statement_file" accept=".csv,.xlsx" required></div>
     </div>
-    <div class="form-actions"><button class="btn btn-primary" type="submit">Upload &amp; Reconcile</button></div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.upload_reconcile')) ?></button></div>
   </form>
 </div>
 <div class="kpi-grid">
@@ -28,7 +28,7 @@
   <h3>Needs Manual Review (<?= count($unmatched) ?>)</h3>
   <?php if ($unmatched): ?>
   <table class="data-table">
-    <tr><th>Date</th><th>Description</th><th>Amount</th><th>Type</th><th>Link to</th></tr>
+    <tr><th><?= e(t('common.date')) ?></th><th><?= e(t('common.description')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('common.type')) ?></th><th>Link to</th></tr>
     <?php foreach ($unmatched as $u): ?>
     <tr>
       <td><?= e($u['txn_date']) ?></td>
@@ -68,7 +68,7 @@
   <h3>Matched Transactions (<?= count($matched) ?>)</h3>
   <?php if ($matched): ?>
   <table class="data-table">
-    <tr><th>Date</th><th>Description</th><th>Amount</th><th>Type</th><th>Matched To</th></tr>
+    <tr><th><?= e(t('common.date')) ?></th><th><?= e(t('common.description')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('common.type')) ?></th><th><?= e(t('ui.matched_to')) ?></th></tr>
     <?php foreach ($matched as $m): ?>
     <tr>
       <td><?= e($m['txn_date']) ?></td>
@@ -93,7 +93,7 @@
   <h3>Upload History</h3>
   <?php if ($uploads): ?>
   <table class="data-table">
-    <tr><th>File</th><th>Uploaded</th><th>Total Txns</th><th>Auto-Matched</th></tr>
+    <tr><th><?= e(t('ui.file')) ?></th><th>Uploaded</th><th>Total Txns</th><th>Auto-Matched</th></tr>
     <?php foreach ($uploads as $u): ?>
     <tr><td><?= e($u['filename']) ?></td><td><?= e($u['upload_date']) ?></td><td><?= e((string) $u['total_transactions']) ?></td><td><?= e((string) $u['matched_count']) ?></td></tr>
     <?php endforeach; ?>

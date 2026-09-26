@@ -7,46 +7,46 @@
 <div class="kpi-grid">
   <div class="kpi-card <?= $activeCount >= $maxUsers ? 'warn' : 'good' ?>">
     <div class="value"><?= e((string) $activeCount) ?> / <?= e((string) $maxUsers) ?></div>
-    <div class="label">Active Users</div>
+    <div class="label"><?= e(t('ui.users_active')) ?></div>
   </div>
 </div>
 <div class="panel">
-  <h3>Add User</h3>
+  <h3><?= e(t('ui.add_user')) ?></h3>
   <?php if ($activeCount >= $maxUsers): ?>
-  <div class="flash flash-error">User limit reached (<?= e((string) $maxUsers) ?> active users). Deactivate someone below before adding a new one.</div>
+  <div class="flash flash-error"><?= e(t('ui.user_limit', ['max' => (string) $maxUsers])) ?></div>
   <?php else: ?>
   <form method="POST" action="<?= e(url('users')) ?>">
     <?= csrf_field() ?>
     <div class="form-grid cols-3">
-      <div class="form-group"><label>Full Name</label><input type="text" name="full_name" required></div>
-      <div class="form-group"><label>Username</label><input type="text" name="username" required></div>
-      <div class="form-group"><label>Password</label><input type="password" name="password" required minlength="6"></div>
+      <div class="form-group"><label><?= e(t('ui.full_name')) ?></label><input type="text" name="full_name" required></div>
+      <div class="form-group"><label><?= e(t('login.username')) ?></label><input type="text" name="username" required></div>
+      <div class="form-group"><label><?= e(t('login.password')) ?></label><input type="password" name="password" required minlength="6"></div>
       <div class="form-group">
-        <label>Role</label>
-        <select name="role"><option value="Staff">Staff</option><option value="Treasurer">Treasurer</option><option value="Admin">Admin</option></select>
+        <label><?= e(t('common.role')) ?></label>
+        <select name="role"><option value="Staff"><?= e(t_fixed('role', 'Staff')) ?></option><option value="Treasurer"><?= e(t_fixed('role', 'Treasurer')) ?></option><option value="Admin"><?= e(t_fixed('role', 'Admin')) ?></option></select>
       </div>
     </div>
-    <div class="form-actions"><button class="btn btn-primary" type="submit">Add User</button></div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.add_user')) ?></button></div>
   </form>
   <?php endif; ?>
 </div>
 <div class="panel">
-  <h3>All Users</h3>
+  <h3><?= e(t('ui.all_users')) ?></h3>
   <table class="data-table">
-    <tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr>
+    <tr><th><?= e(t('common.name')) ?></th><th><?= e(t('login.username')) ?></th><th><?= e(t('common.role')) ?></th><th><?= e(t('common.status')) ?></th><th><?= e(t('ui.created')) ?></th><th></th></tr>
     <?php foreach ($users as $u): ?>
     <tr>
       <td><?= e($u['full_name']) ?></td>
       <td><?= e($u['username']) ?></td>
-      <td><?= e($u['role']) ?></td>
-      <td><?php if ((int) $u['is_active'] === 1): ?><span class="badge badge-green">Active</span><?php else: ?><span class="badge badge-grey">Inactive</span><?php endif; ?></td>
+      <td><?= e(t_fixed('role', (string) $u['role'])) ?></td>
+      <td><?php if ((int) $u['is_active'] === 1): ?><span class="badge badge-green"><?= e(t('status.active')) ?></span><?php else: ?><span class="badge badge-grey"><?= e(t('status.inactive')) ?></span><?php endif; ?></td>
       <td><?= e($u['created_at']) ?></td>
       <td>
         <?php if ((int) $u['id'] !== (int) ($currentUser['id'] ?? 0)): ?>
         <form method="POST" action="<?= e(url('users/' . $u['id'] . '/toggle')) ?>">
           <?= csrf_field() ?>
           <button class="btn btn-sm <?= (int) $u['is_active'] === 1 ? 'btn-danger' : 'btn-outline' ?>" type="submit">
-            <?= (int) $u['is_active'] === 1 ? 'Deactivate' : 'Reactivate' ?>
+            <?= e((int) $u['is_active'] === 1 ? t('ui.deactivate') : t('ui.reactivate')) ?>
           </button>
         </form>
         <?php endif; ?>

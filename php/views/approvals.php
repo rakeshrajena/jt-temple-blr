@@ -61,13 +61,13 @@ $label = static function (array $row): string {
 };
 ?>
 <div class="panel">
-  <h3>Approval queue</h3>
+  <h3><?= e(t('ui.approval_queue')) ?></h3>
   <p class="sub">Staff prepare an item. A Treasurer can approve up to ₹10,000. Above that, an Admin decides. The person who prepared it cannot approve it. Only an approved line changes the cash book, day book, ledger, bank match, or stock. A write-off above <?= e((string) STOCK_WRITE_OFF_LIMIT) ?> units waits here even when the money amount is zero.</p>
   <?php if (!$rows): ?>
     <p>Nothing is waiting.</p>
   <?php else: ?>
   <table class="data-table">
-    <tr><th>Item</th><th>Amount</th><th>Prepared by</th><th>Status</th><th>Decision</th></tr>
+    <tr><th><?= e(t('common.item')) ?></th><th><?= e(t('common.amount')) ?></th><th>Prepared by</th><th><?= e(t('common.status')) ?></th><th>Decision</th></tr>
     <?php foreach ($rows as $row): ?>
       <?php
         $status = (string) $row['status'];
@@ -88,15 +88,15 @@ $label = static function (array $row): string {
               <?= csrf_field() ?>
               <input type="text" name="decision_note" maxlength="500" placeholder="Note, required to send back or reject">
               <div class="form-actions">
-                <button class="btn btn-sm btn-primary" type="submit" name="decision" value="approve">Approve</button>
-                <button class="btn btn-sm btn-outline" type="submit" name="decision" value="send_back">Send back</button>
-                <button class="btn btn-sm btn-outline" type="submit" name="decision" value="reject">Reject</button>
+                <button class="btn btn-sm btn-primary" type="submit" name="decision" value="approve"><?= e(t('ui.approve')) ?></button>
+                <button class="btn btn-sm btn-outline" type="submit" name="decision" value="send_back"><?= e(t('ui.send_back')) ?></button>
+                <button class="btn btn-sm btn-outline" type="submit" name="decision" value="reject"><?= e(t('ui.reject')) ?></button>
               </div>
             </form>
           <?php elseif ($mine && $status === 'Draft'): ?>
-            <form method="POST" action="<?= e(url('approvals/' . $row['id'])) ?>"><?= csrf_field() ?><button class="btn btn-sm btn-primary" type="submit" name="decision" value="submit">Submit</button></form>
+            <form method="POST" action="<?= e(url('approvals/' . $row['id'])) ?>"><?= csrf_field() ?><button class="btn btn-sm btn-primary" type="submit" name="decision" value="submit"><?= e(t('ui.submit')) ?></button></form>
           <?php elseif ($mine && $status === 'Sent back'): ?>
-            <form method="POST" action="<?= e(url('approvals/' . $row['id'])) ?>"><?= csrf_field() ?><button class="btn btn-sm btn-primary" type="submit" name="decision" value="resubmit">Submit again</button></form>
+            <form method="POST" action="<?= e(url('approvals/' . $row['id'])) ?>"><?= csrf_field() ?><button class="btn btn-sm btn-primary" type="submit" name="decision" value="resubmit"><?= e(t('ui.submit_again')) ?></button></form>
           <?php elseif ($status === 'Waiting' && $mine): ?>
             Waiting for someone else
           <?php else: ?>

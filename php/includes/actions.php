@@ -10,6 +10,10 @@ function dispatch_request(): void
         require_csrf();
     }
 
+    if ($path === 'language' && $method === 'POST') {
+        action_language();
+        return;
+    }
     if ($path === 'login') {
         action_login($method);
         return;
@@ -231,6 +235,10 @@ function dispatch_request(): void
         action_settings($method);
         return;
     }
+    if ($path === 'localization') {
+        action_localization($method);
+        return;
+    }
     if (preg_match('#^users/(\d+)/toggle$#', $path, $m) === 1 && $method === 'POST') {
         action_toggle_user((int) $m[1]);
         return;
@@ -262,7 +270,7 @@ function action_login(string $method): void
             $next = $_GET['next'] ?? $_POST['next'] ?? null;
             redirect(safe_next(is_string($next) ? $next : null));
         }
-        flash('error', 'Invalid username or password.');
+        flash('error', t('login.invalid'));
     }
     $next = $_GET['next'] ?? '';
     render('login', [
@@ -275,8 +283,8 @@ function action_dashboard(): void
 {
     login_required();
     render('dashboard', [
-        'title' => 'Dashboard',
-        'pageTitle' => 'Dashboard',
+        'title' => t('page.dashboard'),
+        'pageTitle' => t('page.dashboard'),
         'active' => 'dashboard',
         'summary' => dashboard_summary(db()),
         'recentDonations' => db_all(
@@ -366,6 +374,40 @@ function action_inventory(string $method): void
             redirect(url('inventory'));
         }
         $condition = one_of(post_string('item_condition', 30), inventory_conditions(), 'Good');
+        $existingId = (int) ($_POST['item_id'] ?? 0);
+        if ($existingId > 0) {
+            $existing = db_one('SELECT * FROM inventory_items WHERE id = ?', [$existingId]);
+            if (
+                $existing !== null
+                && strcasecmp((string) $existing['name'], $name) === 0
+                && (string) $existing['category'] === $category
+            ) {
+                $location = post_string('location', 100);
+                $description = post_string('description', 2000);
+                db_exec(
+                    'UPDATE inventory_items
+                     SET quantity = quantity + ?, unit_cost = ?, unit = ?, item_condition = ?, location = ?, description = ?
+                     WHERE id = ?',
+                    [
+                        $qty,
+                        max(0, (float) ($_POST['unit_cost'] ?? 0)),
+                        one_of(post_string('unit', 30), selection_values('units'), (string) $existing['unit']),
+                        $condition,
+                        $location !== '' ? $location : ($existing['location'] ?? null),
+                        $description !== '' ? $description : ($existing['description'] ?? null),
+                        $existingId,
+                    ]
+                );
+                if ($qty > 0) {
+                    db_exec(
+                        'INSERT INTO inventory_movements (item_id, movement_type, quantity, note, movement_date, logged_by) VALUES (?,?,?,?,?,?)',
+                        [$existingId, 'Added', $qty, 'Added to existing stock', date('Y-m-d'), $userId]
+                    );
+                }
+                flash('success', 'Stock added to the existing item.');
+                redirect(url('inventory'));
+            }
+        }
         $itemId = db_exec(
             'INSERT INTO inventory_items (category, name, description, quantity, unit_cost, unit, item_condition, location, source, added_date, added_by, notes)
              VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
@@ -394,8 +436,8 @@ function action_inventory(string $method): void
         redirect(url('inventory'));
     }
     render('inventory', [
-        'title' => 'Inventory',
-        'pageTitle' => 'Inventory Management',
+        'title' => t('nav.inventory'),
+        'pageTitle' => t('page.inventory'),
         'active' => 'inventory',
         'items' => db_all('SELECT * FROM inventory_items ORDER BY category, name'),
         'categories' => selection_values('inventory_categories'),
@@ -429,16 +471,25 @@ function action_food(string $method): void
                 flash('error', 'Food item name is required.');
                 redirect(url('food'));
             }
-            db_exec(
-                'INSERT INTO food_items (name, unit, current_stock, minimum_threshold) VALUES (?,?,?,?)',
-                [
-                    $name,
-                    one_of(post_string('unit', 30), selection_values('units'), 'kg'),
-                    (float) ($_POST['current_stock'] ?? 0),
-                    (float) ($_POST['minimum_threshold'] ?? 0),
-                ]
-            );
-            flash('success', 'Food item added to stock list.');
+            $unit = one_of(post_string('unit', 30), selection_values('units'), 'kg');
+            $added = (float) ($_POST['current_stock'] ?? 0);
+            $threshold = (float) ($_POST['minimum_threshold'] ?? 0);
+            $existing = db_one('SELECT id FROM food_items WHERE name = ?', [$name]);
+            if ($existing !== null) {
+                db_exec(
+                    'UPDATE food_items
+                     SET unit = ?, current_stock = current_stock + ?, minimum_threshold = ?, last_updated = ?
+                     WHERE id = ?',
+                    [$unit, $added, $threshold, date('Y-m-d H:i:s'), (int) $existing['id']]
+                );
+                flash('success', 'That food item is already on the list. The quantity was added to it.');
+            } else {
+                db_exec(
+                    'INSERT INTO food_items (name, unit, current_stock, minimum_threshold) VALUES (?,?,?,?)',
+                    [$name, $unit, $added, $threshold]
+                );
+                flash('success', 'Food item added to stock list.');
+            }
         } elseif ($action === 'add_stock' || $action === 'use_stock') {
             $result = record_stock_movement(
                 'food',
@@ -462,8 +513,8 @@ function action_food(string $method): void
         redirect(url('food'));
     }
     render('food', [
-        'title' => 'Food Stock',
-        'pageTitle' => 'Raw Food Items & Usage',
+        'title' => t('nav.food'),
+        'pageTitle' => t('page.food'),
         'active' => 'food',
         'items' => db_all('SELECT * FROM food_items ORDER BY name'),
         'logs' => db_all(
@@ -520,8 +571,8 @@ function action_food_coupons(string $method): void
          JOIN approvals a ON a.subject_type = 'coupon' AND a.subject_id = b.id AND a.status = 'Approved'"
     );
     render('food_coupons', [
-        'title' => 'Food Coupons',
-        'pageTitle' => 'Food Coupon Generator',
+        'title' => t('page.coupons'),
+        'pageTitle' => t('page.coupons'),
         'active' => 'food',
         'batches' => $batches,
         'totalCouponsValue' => $totalValue,
@@ -628,8 +679,8 @@ function action_vastra(string $method): void
         redirect(url('vastra'));
     }
     render('vastra', [
-        'title' => 'Deity Vastra',
-        'pageTitle' => 'Deity Vastra (Cloths) Management',
+        'title' => t('nav.vastra'),
+        'pageTitle' => t('page.vastra'),
         'active' => 'vastra',
         'items' => db_all('SELECT * FROM vastra_items ORDER BY deity_name, item_name'),
     ]);
@@ -643,8 +694,8 @@ function action_donations(string $method): void
         redirect(url('donations'));
     }
     render('donations', [
-        'title' => 'Donations',
-        'pageTitle' => 'Donations',
+        'title' => t('page.donations'),
+        'pageTitle' => t('page.donations'),
         'active' => 'donations',
         'donations' => db_all(
             "SELECT d.*, don.name AS donor_name, don.phone AS donor_phone,
@@ -717,13 +768,33 @@ function record_donation(): void
             return;
         }
     }
+    $email = post_string('donor_email', 120);
+    $address = post_string('donor_address', 500);
+    $pan = post_string('pan_number', 20);
+    $postedDonorId = (int) ($_POST['donor_id'] ?? 0);
+    $donor = null;
+    if ($pledge === null && $postedDonorId > 0) {
+        $donor = db_one('SELECT * FROM donors WHERE id = ?', [$postedDonorId]);
+    }
+    if ($donor === null && $pledge === null && $phone !== '') {
+        $donor = db_one('SELECT * FROM donors WHERE phone = ?', [$phone]);
+    }
+    if ($donor !== null) {
+        $saved = save_devotee((int) $donor['id'], [
+            'name' => $name,
+            'phone' => $phone,
+            'email' => $email,
+            'address' => $address,
+            'pan' => $pan,
+        ]);
+        if ($saved['error'] !== null) {
+            flash('error', $saved['error']);
+            return;
+        }
+    }
     $pdo = db();
     $pdo->beginTransaction();
     try {
-        $donor = null;
-        if ($pledge === null && $phone !== '') {
-            $donor = db_one('SELECT * FROM donors WHERE phone = ?', [$phone]);
-        }
         if ($pledge !== null) {
             $donorId = (int) $pledge['donor_id'];
         } elseif ($donor !== null) {
@@ -734,9 +805,9 @@ function record_donation(): void
                 [
                     $name,
                     $phone !== '' ? $phone : null,
-                    post_string('donor_email', 120) ?: null,
-                    post_string('donor_address', 500) ?: null,
-                    post_string('pan_number', 20) ?: null,
+                    $email !== '' ? $email : null,
+                    $address !== '' ? $address : null,
+                    $pan !== '' ? $pan : null,
                 ]
             );
         }
@@ -790,12 +861,30 @@ function record_donation(): void
             }
         } elseif ($type === 'Inventory') {
             $itemName = post_string('inventory_name', 150);
-            if ($itemName !== '') {
+            $inventoryCategory = one_of(post_string('inventory_category', 50), selection_values('inventory_categories'), 'Other');
+            $existingInventoryId = (int) ($_POST['inventory_item_id'] ?? 0);
+            $existingInventory = $existingInventoryId > 0
+                ? db_one('SELECT id, name, category FROM inventory_items WHERE id = ?', [$existingInventoryId])
+                : null;
+            if (
+                $itemName !== ''
+                && $existingInventory !== null
+                && strcasecmp((string) $existingInventory['name'], $itemName) === 0
+                && (string) $existingInventory['category'] === $inventoryCategory
+            ) {
+                $giftQty = max(1, (int) ($_POST['inventory_quantity'] ?? 1));
+                db_exec('UPDATE inventory_items SET quantity = quantity + ? WHERE id = ?', [$giftQty, $existingInventoryId]);
+                db_exec(
+                    'INSERT INTO inventory_movements (item_id, movement_type, quantity, note, movement_date, logged_by) VALUES (?,?,?,?,?,?)',
+                    [$existingInventoryId, 'Added', $giftQty, 'Donated by ' . $name, date('Y-m-d'), (int) $_SESSION['user_id']]
+                );
+                db_exec('UPDATE donations SET linked_inventory_id = ? WHERE id = ?', [$existingInventoryId, $donationId]);
+            } elseif ($itemName !== '') {
                 $inventoryId = db_exec(
                     'INSERT INTO inventory_items (category, name, quantity, unit, source, donation_id, added_date, added_by, notes)
                      VALUES (?,?,?,?,?,?,?,?,?)',
                     [
-                        one_of(post_string('inventory_category', 50), selection_values('inventory_categories'), 'Other'),
+                        $inventoryCategory,
                         $itemName,
                         max(1, (int) ($_POST['inventory_quantity'] ?? 1)),
                         one_of(post_string('inventory_unit', 30), selection_values('units'), 'pcs'),
@@ -833,8 +922,8 @@ function action_donors(): void
         $to = $range['to'];
     }
     render('donors', [
-        'title' => 'Donors',
-        'pageTitle' => 'Donor ledger',
+        'title' => t('nav.donors'),
+        'pageTitle' => t('page.donor_ledger'),
         'active' => 'donors',
         'donors' => load_donor_list($from, $to, (string) ($_GET['q'] ?? '')),
         'from' => $from,
@@ -939,8 +1028,8 @@ function action_devotee_new(string $method): void
         return;
     }
     render('devotee_form', [
-        'title' => 'Add devotee',
-        'pageTitle' => 'Add devotee',
+        'title' => t('page.add_devotee'),
+        'pageTitle' => t('page.add_devotee'),
         'active' => 'donors',
         'values' => $values,
     ]);
@@ -1139,8 +1228,8 @@ function action_receipts(): void
         }
     }
     render('receipts', [
-        'title' => 'Receipts',
-        'pageTitle' => 'Receipts',
+        'title' => t('page.receipts'),
+        'pageTitle' => t('page.receipts'),
         'active' => 'receipts',
         'receipts' => $rows,
         'onDisk' => $onDisk,
@@ -1440,8 +1529,8 @@ function action_cash_book(): void
         $opening['bank']
     );
     render('cash_book', [
-        'title' => 'Cash book',
-        'pageTitle' => 'Cash book',
+        'title' => t('page.cash_book'),
+        'pageTitle' => t('page.cash_book'),
         'active' => 'cash-book',
         'book' => $book,
         'yearOpening' => $opening,
@@ -1460,8 +1549,8 @@ function action_corrections(string $method): void
         return;
     }
     render('corrections', [
-        'title' => 'Corrections',
-        'pageTitle' => 'Corrections',
+        'title' => t('page.corrections'),
+        'pageTitle' => t('page.corrections'),
         'active' => 'corrections',
         'targets' => correction_targets(),
         'rows' => correction_history(),
@@ -1528,8 +1617,8 @@ function action_approvals(): void
 {
     login_required();
     render('approvals', [
-        'title' => 'Approvals',
-        'pageTitle' => 'Approvals',
+        'title' => t('page.approvals'),
+        'pageTitle' => t('page.approvals'),
         'active' => 'approvals',
         'rows' => db_all(
             "SELECT a.*, p.full_name AS prepared_name, d.full_name AS decided_name,
@@ -1676,8 +1765,8 @@ function action_day_book(): void
         $opening['bank']
     );
     render('day_book', [
-        'title' => 'Day book',
-        'pageTitle' => 'Day book',
+        'title' => t('page.day_book'),
+        'pageTitle' => t('page.day_book'),
         'active' => 'day-book',
         'book' => $book,
         'rows' => build_day_book($book['lines']),
@@ -1707,8 +1796,8 @@ function action_ledger(): void
         }
     }
     render('ledger', [
-        'title' => 'Ledger',
-        'pageTitle' => 'Ledger',
+        'title' => t('page.ledger'),
+        'pageTitle' => t('page.ledger'),
         'active' => 'ledger',
         'from' => $range['from'],
         'to' => $range['to'],
@@ -1947,8 +2036,8 @@ function action_expenses(string $method): void
         redirect(url('expenses'));
     }
     render('expenses', [
-        'title' => 'Expenses',
-        'pageTitle' => 'Expense Management',
+        'title' => t('nav.expenses'),
+        'pageTitle' => t('page.expenses'),
         'active' => 'expenses',
         'expenses' => db_all(
             'SELECT e.*, a.id AS approval_id, a.status AS approval_status, a.prepared_by, a.decision_note
@@ -2026,8 +2115,8 @@ function action_bank(string $method): void
         redirect(url('bank'));
     }
     render('bank', [
-        'title' => 'Bank & Reconciliation',
-        'pageTitle' => 'Bank Statement & Reconciliation',
+        'title' => t('nav.bank'),
+        'pageTitle' => t('page.bank'),
         'active' => 'bank',
         'uploads' => db_all('SELECT * FROM bank_statement_uploads ORDER BY upload_date DESC'),
         'unmatched' => db_all("SELECT * FROM bank_transactions WHERE reconciled_status = 'Unmatched' ORDER BY txn_date DESC"),
@@ -2118,8 +2207,8 @@ function action_reports(): void
 {
     login_required();
     render('reports', [
-        'title' => 'Reports',
-        'pageTitle' => 'Reports',
+        'title' => t('page.reports'),
+        'pageTitle' => t('page.reports'),
         'active' => 'reports',
     ]);
 }
@@ -2196,8 +2285,8 @@ function action_subscriptions(string $method): void
         redirect(url('subscriptions'));
     }
     render('subscriptions', [
-        'title' => 'Subscriptions',
-        'pageTitle' => 'Monthly Subscriptions',
+        'title' => t('nav.subscriptions'),
+        'pageTitle' => t('page.subscriptions'),
         'active' => 'subscriptions',
         'subs' => db_all(
             "SELECT s.*,
@@ -2411,8 +2500,8 @@ function action_demo(): void
 {
     login_required();
     render('demo', [
-        'title' => 'Overview',
-        'pageTitle' => 'Overview',
+        'title' => t('page.overview'),
+        'pageTitle' => t('page.overview'),
         'active' => 'demo',
         'summary' => dashboard_summary(db()),
         'recentDonations' => db_all(
@@ -2431,6 +2520,70 @@ function action_demo(): void
         'expenseSample' => db_all('SELECT * FROM expenses ORDER BY expense_date DESC LIMIT 8'),
         'bankSample' => db_all('SELECT * FROM bank_transactions ORDER BY txn_date DESC LIMIT 8'),
         'generatedOn' => date('d M Y, h:i A'),
+    ]);
+}
+
+function action_language(): void
+{
+    $code = post_string('code', 8);
+    if (!set_current_locale($code)) {
+        flash('error', t('locale.keep_english'));
+    }
+    $next = post_string('next', 800);
+    redirect(safe_next($next !== '' ? $next : null));
+}
+
+function action_localization(string $method): void
+{
+    admin_required();
+    if ($method === 'POST') {
+        $op = post_string('op', 10);
+        if ($op === 'add') {
+            $error = add_language(
+                post_string('code', 8),
+                post_string('name', 40),
+                post_string('native', 40)
+            );
+            flash($error !== null ? 'error' : 'success', $error ?? t('locale.added'));
+            $code = strtolower(post_string('code', 8));
+            redirect(url('localization', $error === null ? ['code' => $code] : []));
+        }
+        if ($op === 'delete') {
+            $error = delete_language(post_string('code', 8));
+            flash($error !== null ? 'error' : 'success', $error ?? t('locale.removed'));
+            redirect(url('localization'));
+        }
+        $code = strtolower(post_string('code', 8));
+        $posted = [];
+        $keys = $_POST['phrase_key'] ?? [];
+        $values = $_POST['phrase_value'] ?? [];
+        if (is_array($keys) && is_array($values)) {
+            foreach ($keys as $index => $key) {
+                $value = $values[$index] ?? null;
+                if (is_string($key) && is_string($value)) {
+                    $posted[$key] = mb_substr(trim($value), 0, 500);
+                }
+            }
+        }
+        $error = save_locale_phrases($code, $posted);
+        flash($error !== null ? 'error' : 'success', $error ?? t('locale.saved'));
+        redirect(url('localization', ['code' => $code]));
+    }
+    $selected = strtolower(post_string('code', 8));
+    if ($selected === '' && isset($_GET['code']) && is_string($_GET['code'])) {
+        $selected = strtolower(trim($_GET['code']));
+    }
+    if (!language_exists($selected)) {
+        $selected = 'en';
+    }
+    render('localization', [
+        'title' => t('page.localization'),
+        'pageTitle' => t('page.localization'),
+        'active' => 'localization',
+        'languages' => language_catalog(),
+        'selected' => $selected,
+        'english' => english_phrases(),
+        'phrases' => locale_phrases($selected),
     ]);
 }
 
@@ -2487,8 +2640,8 @@ function action_settings(string $method): void
     $settings['password_saved'] = $settings['smtp_password'] !== '' ? '1' : '';
     unset($settings['smtp_password']);
     render('settings', [
-        'title' => 'Settings',
-        'pageTitle' => 'Settings',
+        'title' => t('page.settings'),
+        'pageTitle' => t('page.settings'),
         'active' => 'settings',
         'settings' => $settings,
         'selectionCatalog' => selection_catalog(),
@@ -2543,8 +2696,8 @@ function action_users(string $method): void
         }
     }
     render('users', [
-        'title' => 'Users',
-        'pageTitle' => 'Admin Users',
+        'title' => t('nav.users'),
+        'pageTitle' => t('page.users'),
         'active' => 'users',
         'users' => $users,
         'activeCount' => $activeCount,
@@ -2579,10 +2732,8 @@ function action_donor_search(): void
 {
     login_required();
     $q = isset($_GET['q']) && is_string($_GET['q']) ? trim($_GET['q']) : '';
-    $q = mb_substr($q, 0, 80);
-    $rows = db_all('SELECT id, name, phone FROM donors WHERE name LIKE ? LIMIT 10', ['%' . $q . '%']);
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode($rows, JSON_UNESCAPED_UNICODE);
+    echo json_encode(suggest_donors($q), JSON_UNESCAPED_UNICODE);
 }
 
 function send_pdf(string $path, string $filename, bool $download = false): never

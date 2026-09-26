@@ -20,34 +20,34 @@
 </div>
 <div class="panel-row">
   <div class="panel">
-    <h3>Add Subscriber</h3>
+    <h3><?= e(t('ui.add_subscriber')) ?></h3>
     <form method="POST" action="<?= e(url('subscriptions')) ?>">
       <?= csrf_field() ?>
       <div class="form-grid">
-        <div class="form-group"><label>Name</label><input type="text" name="name" required></div>
-        <div class="form-group"><label>Mobile Number</label><input type="text" name="mobile" placeholder="9XXXXXXXXX" required></div>
-        <div class="form-group"><label>Email (optional)</label><input type="email" name="email"></div>
+        <div class="form-group"><label><?= e(t('common.name')) ?></label><input type="text" name="name" required></div>
+        <div class="form-group"><label><?= e(t('ui.mobile_number')) ?></label><input type="text" name="mobile" placeholder="9XXXXXXXXX" required></div>
+        <div class="form-group"><label><?= e(t('ui.email_optional')) ?></label><input type="email" name="email"></div>
         <div class="form-group">
-          <label>Plan</label>
+          <label><?= e(t('common.plan')) ?></label>
           <select name="plan_name">
             <?php foreach ($planPresets as $p): ?><option value="<?= e($p) ?>"><?= e($p) ?></option><?php endforeach; ?>
           </select>
         </div>
-        <div class="form-group"><label>Amount (₹)</label><input type="number" step="0.01" name="plan_amount" required></div>
+        <div class="form-group"><label><?= e(t('common.amount')) ?></label><input type="number" step="0.01" name="plan_amount" required></div>
         <div class="form-group">
-          <label>Billing Cycle</label>
+          <label><?= e(t('ui.billing_cycle')) ?></label>
           <select name="frequency">
             <?php foreach (selection_values('billing_cycles') as $cycle): ?><option><?= e($cycle) ?></option><?php endforeach; ?>
           </select>
         </div>
       </div>
-      <div class="form-actions"><button class="btn btn-primary" type="submit">Add Subscriber</button></div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.add_subscriber')) ?></button></div>
     </form>
   </div>
   <div class="panel">
     <h3>Subscribers (<?= count($subs) ?>)</h3>
     <table class="data-table">
-      <tr><th>Name</th><th>Plan</th><th>Amount</th><th>Status</th><th>Due</th><th></th></tr>
+      <tr><th><?= e(t('common.name')) ?></th><th><?= e(t('common.plan')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('common.status')) ?></th><th><?= e(t('common.due')) ?></th><th></th></tr>
       <?php foreach ($subs as $s): ?>
       <tr>
         <td><?= e($s['name']) ?><br><span style="color:var(--ink-soft); font-size:12px;"><?= e($s['mobile']) ?></span></td>
@@ -83,7 +83,7 @@
     <table class="data-table">
       <tr>
         <th style="width:36px;"><input type="checkbox" id="selectAll"></th>
-        <th>Invoice #</th><th>Subscriber</th><th>Contact</th><th>Period</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Payment Link</th><th></th>
+        <th><?= e(t('ui.invoice_no')) ?></th><th><?= e(t('overview.subscriber')) ?></th><th><?= e(t('ui.contact')) ?></th><th><?= e(t('common.period')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('pay.due_date')) ?></th><th><?= e(t('common.status')) ?></th><th><?= e(t('ui.payment_link')) ?></th><th></th>
       </tr>
       <?php foreach ($invoices as $i): ?>
       <tr>
@@ -106,7 +106,7 @@
         </td>
         <td>
           <?php if ($i['status'] !== 'Paid'): ?>
-          <a href="<?= e(url('pay/' . $i['payment_token'])) ?>" target="_blank" class="btn btn-sm btn-outline">Preview Pay Page</a>
+          <a href="<?= e(url('pay/' . $i['payment_token'])) ?>" target="_blank" class="btn btn-sm btn-outline"><?= e(t('ui.preview_pay')) ?></a>
           <?php else: ?>
           <span style="color:var(--ink-soft); font-size:12px;">Ref: <?= e($i['payment_reference']) ?></span>
           <?php endif; ?>
@@ -115,7 +115,7 @@
           <?php if (in_array($i['status'], ['Pending', 'Overdue'], true)): ?>
           <button class="btn btn-sm btn-gold" type="submit" form="singleSend<?= e((string) $i['id']) ?>">📲 Send</button>
           <?php elseif ($i['status'] === 'Sent'): ?>
-          <button class="btn btn-sm btn-outline" type="submit" form="singleSend<?= e((string) $i['id']) ?>">Resend</button>
+          <button class="btn btn-sm btn-outline" type="submit" form="singleSend<?= e((string) $i['id']) ?>"><?= e(t('ui.resend')) ?></button>
           <?php endif; ?>
           <?php
             $waText = fill_message_template($messaging['template'], [
@@ -128,7 +128,7 @@
             $waUrl = $i['status'] === 'Paid' ? null : whatsapp_web_url((string) $i['mobile'], $waText, $messaging['country_code']);
           ?>
           <?php if ($waUrl !== null): ?>
-          <a class="btn btn-sm btn-outline" href="<?= e($waUrl) ?>" target="_blank" rel="noopener">WhatsApp</a>
+          <a class="btn btn-sm btn-outline" href="<?= e($waUrl) ?>" target="_blank" rel="noopener"><?= e(t('common.whatsapp')) ?></a>
           <?php endif; ?>
         </td>
       </tr>

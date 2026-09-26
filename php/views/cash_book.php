@@ -20,9 +20,9 @@ $lines = $book['lines'];
   <h3>Cash book · <?= e($book['financial_year']) ?></h3>
   <form method="GET" action="<?= e(app_script()) ?>" style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
     <input type="hidden" name="r" value="cash-book">
-    <div class="form-group"><label>From</label><input type="date" name="from" value="<?= e($book['from']) ?>"></div>
-    <div class="form-group"><label>To</label><input type="date" name="to" value="<?= e($book['to']) ?>"></div>
-    <button class="btn btn-outline btn-sm" type="submit">Show</button>
+    <div class="form-group"><label><?= e(t('common.from')) ?></label><input type="date" name="from" value="<?= e($book['from']) ?>"></div>
+    <div class="form-group"><label><?= e(t('common.to')) ?></label><input type="date" name="to" value="<?= e($book['to']) ?>"></div>
+    <button class="btn btn-outline btn-sm" type="submit"><?= e(t('common.show')) ?></button>
     <a class="btn btn-outline btn-sm" href="<?= e(url('day-book', ['from' => $book['from'], 'to' => $book['to']])) ?>">Day book</a>
   </form>
   <p style="color:var(--ink-soft); font-size:13px; margin-top:0;">
@@ -30,10 +30,10 @@ $lines = $book['lines'];
   </p>
   <table class="data-table">
     <tr>
-      <th>Date</th><th>Particulars</th>
+      <th><?= e(t('common.date')) ?></th><th><?= e(t('ui.particulars')) ?></th>
       <th class="text-right">Receipt cash</th><th class="text-right">Receipt bank</th>
       <th class="text-right">Payment cash</th><th class="text-right">Payment bank</th>
-      <th>Entered by</th>
+      <th><?= e(t('ui.entered_by')) ?></th>
     </tr>
     <tr>
       <td><?= e($book['from']) ?></td>
@@ -71,17 +71,17 @@ $lines = $book['lines'];
       <input type="hidden" name="to" value="<?= e($book['to']) ?>">
       <div class="form-grid">
         <div class="form-group">
-          <label>Movement</label>
+          <label><?= e(t('common.movement')) ?></label>
           <select name="direction">
             <option value="Deposit">Deposit cash into bank</option>
             <option value="Withdraw">Withdraw cash from bank</option>
           </select>
         </div>
-        <div class="form-group"><label>Amount (₹)</label><input type="number" step="0.01" min="0.01" name="amount" required></div>
-        <div class="form-group"><label>Date</label><input type="date" name="entry_date" value="<?= e($book['to']) ?>" required></div>
-        <div class="form-group"><label>Note</label><input type="text" name="note" maxlength="255"></div>
+        <div class="form-group"><label><?= e(t('common.amount')) ?></label><input type="number" step="0.01" min="0.01" name="amount" required></div>
+        <div class="form-group"><label><?= e(t('common.date')) ?></label><input type="date" name="entry_date" value="<?= e($book['to']) ?>" required></div>
+        <div class="form-group"><label><?= e(t('ui.note')) ?></label><input type="text" name="note" maxlength="255"></div>
       </div>
-      <div class="form-actions"><button class="btn btn-primary" type="submit">Submit for approval</button></div>
+      <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.submit_approval')) ?></button></div>
     </form>
   </div>
   <?php if ($canSetOpening): ?>
@@ -96,7 +96,7 @@ $lines = $book['lines'];
       <div class="form-grid">
         <div class="form-group"><label>Cash in hand (₹)</label><input type="number" step="0.01" min="0" name="cash_amount" value="<?= e(number_format($yearOpening['cash'], 2, '.', '')) ?>" required></div>
         <div class="form-group"><label>Bank (₹)</label><input type="number" step="0.01" min="0" name="bank_amount" value="<?= e(number_format($yearOpening['bank'], 2, '.', '')) ?>" required></div>
-        <div class="form-group full"><label>Note</label><input type="text" name="note" maxlength="255" value="<?= e($yearOpening['note']) ?>"></div>
+        <div class="form-group full"><label><?= e(t('ui.note')) ?></label><input type="text" name="note" maxlength="255" value="<?= e($yearOpening['note']) ?>"></div>
       </div>
       <div class="form-actions"><button class="btn btn-outline" type="submit">Submit opening balance</button></div>
     </form>

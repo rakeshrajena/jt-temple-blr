@@ -6,8 +6,8 @@ $mailReady = trim($settings['smtp_host']) !== ''
     && filter_var($settings['smtp_from_email'], FILTER_VALIDATE_EMAIL) !== false;
 $passwordSaved = $settings['password_saved'] === '1';
 $groups = [
-    'Shared lists' => ['payment_modes', 'units', 'sources', 'deities'],
-    'Lists for one screen' => [
+    t('settings.shared') => ['payment_modes', 'units', 'sources', 'deities'],
+    t('settings.single') => [
         'inventory_categories',
         'expense_categories',
         'conditions',
@@ -20,14 +20,14 @@ $groups = [
     ],
 ];
 $wide = ['payment_modes', 'movements', 'donation_types'];
-$bookLabels = ['cash' => 'Cash book', 'bank' => 'Bank book', 'none' => 'Not in the books'];
-$directionLabels = ['in' => 'In', 'out' => 'Out'];
-$storeLabels = ['inventory' => 'Inventory', 'food' => 'Food', 'both' => 'Inventory and food'];
+$bookLabels = ['cash' => t('settings.book_cash'), 'bank' => t('settings.book_bank'), 'none' => t('settings.book_none')];
+$directionLabels = ['in' => t('settings.dir_in'), 'out' => t('settings.dir_out')];
+$storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('settings.store_food'), 'both' => t('settings.store_both')];
 ?>
 <div class="settings-page">
-  <nav class="settings-nav" aria-label="Settings sections">
-    <a href="#messages">Messages</a>
-    <a href="#choices">Form choices</a>
+  <nav class="settings-nav" aria-label="<?= e(t('settings.nav')) ?>">
+    <a href="#messages"><?= e(t('settings.messages')) ?></a>
+    <a href="#choices"><?= e(t('settings.choices')) ?></a>
   </nav>
 
   <form id="messages" class="settings-block" method="POST" action="<?= e(url('settings')) ?>">
@@ -35,61 +35,61 @@ $storeLabels = ['inventory' => 'Inventory', 'food' => 'Food', 'both' => 'Invento
     <input type="hidden" name="form" value="messages">
     <div class="settings-head">
       <div>
-        <h3>Messages</h3>
-        <p>Outgoing mail for invoices and receipt emails, and the note that opens in WhatsApp Web.</p>
+        <h3><?= e(t('settings.messages')) ?></h3>
+        <p><?= e(t('settings.messages_intro')) ?></p>
       </div>
-      <span class="badge <?= $mailReady ? 'badge-green' : 'badge-amber' ?>"><?= $mailReady ? 'Mail server ready' : 'Mail server not set' ?></span>
+      <span class="badge <?= $mailReady ? 'badge-green' : 'badge-amber' ?>"><?= e($mailReady ? t('settings.mail_ready') : t('settings.mail_missing')) ?></span>
     </div>
     <div class="settings-grid">
       <section class="settings-card">
-        <h4>Outgoing email</h4>
-        <p class="hint">Until a mail server and a From address are saved, messages are written to the notification log only. The password stays hidden. Leave it blank to keep the saved one.</p>
+        <h4><?= e(t('settings.outgoing')) ?></h4>
+        <p class="hint"><?= e(t('settings.outgoing_hint')) ?></p>
         <div class="form-grid">
-          <div class="form-group"><label>SMTP host</label><input type="text" name="smtp_host" value="<?= e($settings['smtp_host']) ?>" placeholder="smtp.example.com" maxlength="200"></div>
-          <div class="form-group"><label>Port</label><input type="number" name="smtp_port" min="1" max="65535" value="<?= e($settings['smtp_port']) ?>" required></div>
+          <div class="form-group"><label><?= e(t('settings.host')) ?></label><input type="text" name="smtp_host" value="<?= e($settings['smtp_host']) ?>" placeholder="smtp.example.com" maxlength="200"></div>
+          <div class="form-group"><label><?= e(t('settings.port')) ?></label><input type="number" name="smtp_port" min="1" max="65535" value="<?= e($settings['smtp_port']) ?>" required></div>
           <div class="form-group">
-            <label>Encryption</label>
+            <label><?= e(t('settings.encryption')) ?></label>
             <select name="smtp_encryption">
-              <?php foreach (['tls' => 'TLS', 'ssl' => 'SSL', 'none' => 'None'] as $value => $label): ?>
+              <?php foreach (['tls' => 'TLS', 'ssl' => 'SSL', 'none' => t('settings.none')] as $value => $label): ?>
                 <option value="<?= e($value) ?>"<?= $settings['smtp_encryption'] === $value ? ' selected' : '' ?>><?= e($label) ?></option>
               <?php endforeach; ?>
             </select>
           </div>
-          <div class="form-group"><label>Username</label><input type="text" name="smtp_username" value="<?= e($settings['smtp_username']) ?>" maxlength="200" autocomplete="off"></div>
+          <div class="form-group"><label><?= e(t('settings.username')) ?></label><input type="text" name="smtp_username" value="<?= e($settings['smtp_username']) ?>" maxlength="200" autocomplete="off"></div>
           <div class="form-group">
-            <label>Password</label>
-            <input type="password" name="smtp_password" value="" maxlength="200" autocomplete="new-password" placeholder="<?= $passwordSaved ? 'Leave blank to keep it' : 'Not set' ?>">
+            <label><?= e(t('settings.password')) ?></label>
+            <input type="password" name="smtp_password" value="" maxlength="200" autocomplete="new-password" placeholder="<?= e($passwordSaved ? t('settings.keep_password') : t('settings.not_set')) ?>">
           </div>
-          <div class="form-group"><label>From email</label><input type="email" name="smtp_from_email" value="<?= e($settings['smtp_from_email']) ?>" maxlength="200"></div>
-          <div class="form-group full"><label>From name</label><input type="text" name="smtp_from_name" value="<?= e($settings['smtp_from_name']) ?>" maxlength="120"></div>
+          <div class="form-group"><label><?= e(t('settings.from_email')) ?></label><input type="email" name="smtp_from_email" value="<?= e($settings['smtp_from_email']) ?>" maxlength="200"></div>
+          <div class="form-group full"><label><?= e(t('settings.from_name')) ?></label><input type="text" name="smtp_from_name" value="<?= e($settings['smtp_from_name']) ?>" maxlength="120"></div>
         </div>
         <?php if ($passwordSaved): ?>
-          <label class="settings-check"><input type="checkbox" name="clear_smtp_password" value="1"> Remove the saved password</label>
+          <label class="settings-check"><input type="checkbox" name="clear_smtp_password" value="1"> <?= e(t('settings.remove_password')) ?></label>
         <?php endif; ?>
       </section>
       <section class="settings-card">
-        <h4>WhatsApp Web</h4>
-        <p class="hint">This opens WhatsApp Web with the devotee’s number and this message. Nothing is sent through a WhatsApp API.</p>
+        <h4><?= e(t('settings.whatsapp')) ?></h4>
+        <p class="hint"><?= e(t('settings.whatsapp_hint')) ?></p>
         <div class="settings-tokens" aria-label="Message placeholders">
           <?php foreach (['{name}', '{period}', '{amount}', '{link}', '{invoice}'] as $token): ?>
             <code><?= e($token) ?></code>
           <?php endforeach; ?>
         </div>
-        <div class="form-group"><label>Country code</label><input type="text" name="whatsapp_country_code" value="<?= e($settings['whatsapp_country_code']) ?>" maxlength="4" required></div>
-        <div class="form-group" style="margin-top:14px;"><label>Message</label><textarea name="whatsapp_template" rows="8" maxlength="1000" required><?= e($settings['whatsapp_template']) ?></textarea></div>
+        <div class="form-group"><label><?= e(t('settings.country')) ?></label><input type="text" name="whatsapp_country_code" value="<?= e($settings['whatsapp_country_code']) ?>" maxlength="4" required></div>
+        <div class="form-group" style="margin-top:14px;"><label><?= e(t('settings.message')) ?></label><textarea name="whatsapp_template" rows="8" maxlength="1000" required><?= e($settings['whatsapp_template']) ?></textarea></div>
       </section>
     </div>
     <div class="settings-save is-static">
-      <p>Saving here updates mail and WhatsApp only.</p>
-      <button class="btn btn-primary" type="submit">Save messages</button>
+      <p><?= e(t('settings.save_scope')) ?></p>
+      <button class="btn btn-primary" type="submit"><?= e(t('settings.save')) ?></button>
     </div>
   </form>
 
   <div id="choices" class="settings-block">
     <div class="settings-head">
       <div>
-        <h3>Form choices</h3>
-        <p>Add a choice with the form. Update or remove it in the table. The same name cannot be added twice in one list.</p>
+        <h3><?= e(t('settings.choices')) ?></h3>
+        <p><?= e(t('settings.choices_intro')) ?></p>
       </div>
     </div>
     <?php foreach ($groups as $group => $keys): ?>
@@ -102,44 +102,44 @@ $storeLabels = ['inventory' => 'Inventory', 'food' => 'Food', 'both' => 'Invento
             $limit = selection_name_limit($key);
           ?>
           <section id="choice-<?= e($key) ?>" class="settings-choice<?= in_array($key, $wide, true) ? ' wide' : '' ?>">
-            <header><h4><?= e($meta['label']) ?></h4></header>
-            <p class="where"><?= e($meta['modules']) ?></p>
+            <header><h4><?= e(t('settings.choice.' . $key)) ?></h4></header>
+            <p class="where"><?= e(t('settings.where.' . $key)) ?></p>
             <form class="choice-add" method="POST" action="<?= e(url('settings')) ?>">
               <?= csrf_field() ?>
               <input type="hidden" name="form" value="selections">
               <input type="hidden" name="op" value="add">
               <input type="hidden" name="choice_key" value="<?= e($key) ?>">
               <?php if ($meta['kind'] === 'labeled'): ?>
-                <div class="form-group"><label>Value</label><input type="text" name="choice_value" maxlength="30" required></div>
-                <div class="form-group"><label>Label</label><input type="text" name="choice_label" maxlength="80" placeholder="Shown in the box"></div>
+                <div class="form-group"><label><?= e(t('settings.value')) ?></label><input type="text" name="choice_value" maxlength="30" required></div>
+                <div class="form-group"><label><?= e(t('settings.label')) ?></label><input type="text" name="choice_label" maxlength="80" placeholder="<?= e(t('settings.shown')) ?>"></div>
               <?php else: ?>
-                <div class="form-group"><label>Name</label><input type="text" name="choice_name" maxlength="<?= e((string) $limit) ?>" required></div>
+                <div class="form-group"><label><?= e(t('common.name')) ?></label><input type="text" name="choice_name" maxlength="<?= e((string) $limit) ?>" required></div>
               <?php endif; ?>
               <?php if ($meta['kind'] === 'payment'): ?>
-                <div class="form-group"><label>Books</label>
+                <div class="form-group"><label><?= e(t('settings.books')) ?></label>
                   <select name="choice_book"><?php foreach ($bookLabels as $value => $label): ?><option value="<?= e($value) ?>"><?= e($label) ?></option><?php endforeach; ?></select>
                 </div>
               <?php elseif ($meta['kind'] === 'movement'): ?>
-                <div class="form-group"><label>Direction</label>
+                <div class="form-group"><label><?= e(t('settings.direction')) ?></label>
                   <select name="choice_direction"><?php foreach ($directionLabels as $value => $label): ?><option value="<?= e($value) ?>"><?= e($label) ?></option><?php endforeach; ?></select>
                 </div>
-                <div class="form-group"><label>Store</label>
+                <div class="form-group"><label><?= e(t('settings.store')) ?></label>
                   <select name="choice_store"><?php foreach ($storeLabels as $value => $label): ?><option value="<?= e($value) ?>"><?= e($label) ?></option><?php endforeach; ?></select>
                 </div>
-                <label class="settings-check"><input type="checkbox" name="choice_approval" value="1"> Wait for approval</label>
+                <label class="settings-check"><input type="checkbox" name="choice_approval" value="1"> <?= e(t('settings.approval_wait')) ?></label>
               <?php endif; ?>
-              <button class="btn btn-primary" type="submit">Add</button>
+              <button class="btn btn-primary" type="submit"><?= e(t('common.add')) ?></button>
             </form>
             <div class="choice-table-wrap">
               <table class="choice-table">
                 <tr>
                   <?php if ($meta['kind'] === 'labeled'): ?>
-                    <th>Value</th><th>Label</th>
+                    <th><?= e(t('settings.value')) ?></th><th><?= e(t('settings.label')) ?></th>
                   <?php else: ?>
-                    <th>Name</th>
+                    <th><?= e(t('common.name')) ?></th>
                   <?php endif; ?>
-                  <?php if ($meta['kind'] === 'payment'): ?><th>Books</th><?php endif; ?>
-                  <?php if ($meta['kind'] === 'movement'): ?><th>Direction</th><th>Store</th><th>Approval</th><?php endif; ?>
+                  <?php if ($meta['kind'] === 'payment'): ?><th><?= e(t('settings.books')) ?></th><?php endif; ?>
+                  <?php if ($meta['kind'] === 'movement'): ?><th><?= e(t('settings.direction')) ?></th><th><?= e(t('settings.store')) ?></th><th><?= e(t('common.approval')) ?></th><?php endif; ?>
                   <th></th>
                 </tr>
                 <?php foreach ($rows as $index => $row): ?>
@@ -195,12 +195,12 @@ $storeLabels = ['inventory' => 'Inventory', 'food' => 'Food', 'both' => 'Invento
                           <?php endforeach; ?>
                         </select>
                       </td>
-                      <td><label class="settings-check"><input form="<?= e($formId) ?>" type="checkbox" name="choice_approval" value="1"<?= !empty($row['approval']) ? ' checked' : '' ?>> Wait</label></td>
+                      <td><label class="settings-check"><input form="<?= e($formId) ?>" type="checkbox" name="choice_approval" value="1"<?= !empty($row['approval']) ? ' checked' : '' ?>> <?= e(t('settings.wait')) ?></label></td>
                     <?php endif; ?>
                     <td class="choice-actions">
-                      <button form="<?= e($formId) ?>" class="btn btn-outline btn-sm" type="submit" name="op" value="update">Update</button>
+                      <button form="<?= e($formId) ?>" class="btn btn-outline btn-sm" type="submit" name="op" value="update"><?= e(t('common.update')) ?></button>
                       <?php if (!$locked): ?>
-                        <button form="<?= e($formId) ?>" class="btn btn-danger btn-sm" type="submit" name="op" value="delete" onclick="return confirm('Remove this choice?')">Remove</button>
+                        <button form="<?= e($formId) ?>" class="btn btn-danger btn-sm" type="submit" name="op" value="delete" onclick="return confirm(<?= e(json_encode(t('settings.remove_confirm'), JSON_UNESCAPED_UNICODE)) ?>)"><?= e(t('common.remove')) ?></button>
                       <?php endif; ?>
                     </td>
                   </tr>
@@ -211,6 +211,6 @@ $storeLabels = ['inventory' => 'Inventory', 'food' => 'Food', 'both' => 'Invento
         <?php endforeach; ?>
       </div>
     <?php endforeach; ?>
-    <p class="settings-note">A name already in a list cannot be added again. Names the forms rely on stay in the table and cannot be removed. A pledge is a record on the devotee page. Approval status, subscriber status, invoice status, bank match, user role, and cash-book deposit or withdraw stay fixed.</p>
+    <p class="settings-note"><?= e(t('settings.note')) ?></p>
   </div>
 </div>

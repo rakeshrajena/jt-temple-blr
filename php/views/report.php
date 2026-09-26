@@ -36,7 +36,7 @@ $filterable = $reportType === 'donations' || $reportType === 'expenses';
         <input type="date" name="start" value="<?= e((string) $start) ?>" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
         <span>to</span>
         <input type="date" name="end" value="<?= e((string) $end) ?>" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
-        <button class="btn btn-sm btn-outline" type="submit">Filter</button>
+        <button class="btn btn-sm btn-outline" type="submit"><?= e(t('common.filter')) ?></button>
       </form>
       <?php endif; ?>
       <button class="btn btn-sm btn-primary" onclick="window.print()">🖨️ Print</button>
@@ -49,7 +49,7 @@ $filterable = $reportType === 'donations' || $reportType === 'expenses';
   </div>
   <table class="data-table">
     <?php if ($reportType === 'donations'): ?>
-      <tr><th>Date</th><th>Donor</th><th>Type</th><th class="text-right">Amount</th><th>Purpose</th><th>Payment Mode</th><th>Receipt No.</th></tr>
+      <tr><th><?= e(t('common.date')) ?></th><th><?= e(t('common.donor')) ?></th><th><?= e(t('common.type')) ?></th><th class="text-right">Amount</th><th><?= e(t('common.purpose')) ?></th><th><?= e(t('common.payment')) ?></th><th><?= e(t('ui.receipt_no')) ?></th></tr>
       <?php foreach ($data as $d): ?>
       <tr>
         <td><?= e($d['donation_date']) ?></td>
@@ -62,7 +62,7 @@ $filterable = $reportType === 'donations' || $reportType === 'expenses';
       </tr>
       <?php endforeach; ?>
     <?php elseif ($reportType === 'expenses'): ?>
-      <tr><th>Date</th><th>Category</th><th>Description</th><th>Paid To</th><th class="text-right">Amount</th><th>Payment Mode</th></tr>
+      <tr><th><?= e(t('common.date')) ?></th><th><?= e(t('common.category')) ?></th><th><?= e(t('common.description')) ?></th><th><?= e(t('common.paid_to')) ?></th><th class="text-right">Amount</th><th><?= e(t('common.payment')) ?></th></tr>
       <?php foreach ($data as $row): ?>
       <tr>
         <td><?= e($row['expense_date']) ?></td>
@@ -74,7 +74,7 @@ $filterable = $reportType === 'donations' || $reportType === 'expenses';
       </tr>
       <?php endforeach; ?>
     <?php elseif ($reportType === 'inventory'): ?>
-      <tr><th>Category</th><th>Name</th><th>Qty</th><th>Condition</th><th>Location</th><th>Source</th><th>Added</th></tr>
+      <tr><th><?= e(t('common.category')) ?></th><th><?= e(t('common.name')) ?></th><th><?= e(t('ui.qty')) ?></th><th><?= e(t('ui.condition')) ?></th><th><?= e(t('common.location')) ?></th><th><?= e(t('common.source')) ?></th><th><?= e(t('ui.added')) ?></th></tr>
       <?php foreach ($data as $i): ?>
       <tr>
         <td><?= e($i['category']) ?></td><td><?= e($i['name']) ?></td><td><?= e($i['quantity']) ?> <?= e($i['unit']) ?></td>
@@ -82,7 +82,7 @@ $filterable = $reportType === 'donations' || $reportType === 'expenses';
       </tr>
       <?php endforeach; ?>
     <?php elseif ($reportType === 'food'): ?>
-      <tr><th>Item</th><th>Current Stock</th><th>Low-Stock Threshold</th><th>Status</th><th>Last Updated</th></tr>
+      <tr><th><?= e(t('common.item')) ?></th><th><?= e(t('ui.current_stock_col')) ?></th><th><?= e(t('ui.low_threshold')) ?></th><th><?= e(t('common.status')) ?></th><th><?= e(t('ui.last_updated')) ?></th></tr>
       <?php foreach ($data as $f): ?>
       <tr>
         <td><?= e($f['name']) ?></td>
@@ -93,7 +93,7 @@ $filterable = $reportType === 'donations' || $reportType === 'expenses';
       </tr>
       <?php endforeach; ?>
     <?php elseif ($reportType === 'vastra'): ?>
-      <tr><th>Deity</th><th>Item</th><th>Color</th><th>Qty</th><th>Source</th><th>Status</th><th>Added</th></tr>
+      <tr><th><?= e(t('common.deity')) ?></th><th><?= e(t('common.item')) ?></th><th><?= e(t('common.color')) ?></th><th><?= e(t('ui.qty')) ?></th><th><?= e(t('common.source')) ?></th><th><?= e(t('common.status')) ?></th><th><?= e(t('ui.added')) ?></th></tr>
       <?php foreach ($data as $v): ?>
       <tr>
         <td><?= e($v['deity_name']) ?></td><td><?= e($v['item_name']) ?></td><td><?= e(dash($v['color'])) ?></td>
@@ -101,7 +101,7 @@ $filterable = $reportType === 'donations' || $reportType === 'expenses';
       </tr>
       <?php endforeach; ?>
     <?php else: ?>
-      <tr><th>Date</th><th>Description</th><th class="text-right">Amount</th><th>Type</th><th>Status</th><th>Matched To</th></tr>
+      <tr><th><?= e(t('common.date')) ?></th><th><?= e(t('common.description')) ?></th><th class="text-right">Amount</th><th><?= e(t('common.type')) ?></th><th><?= e(t('common.status')) ?></th><th><?= e(t('ui.matched_to')) ?></th></tr>
       <?php foreach ($data as $t): ?>
       <tr>
         <td><?= e($t['txn_date']) ?></td>

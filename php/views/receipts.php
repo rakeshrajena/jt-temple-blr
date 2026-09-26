@@ -9,7 +9,7 @@
   <div class="kpi-card good"><div class="value"><?= (int) $onDisk ?></div><div class="label">PDF files ready</div></div>
 </div>
 <div class="panel">
-  <h3>All receipts</h3>
+  <h3><?= e(t('ui.all_receipts')) ?></h3>
   <p style="color:var(--ink-soft); font-size:13px; margin-top:0;">
     Click a receipt number to open the PDF. <strong>Email</strong> sends that PDF from the saved mail account. <strong>WhatsApp</strong> opens the devotee's chat with the receipt link in the message. On a phone, the same button also attaches the PDF when the device can share a file. <strong>Bulk email</strong> and <strong>Bulk WhatsApp</strong> open a message box for the selected receipts; Send delivers it and Cancel closes the box. Cancelling a receipt keeps the number and the file, and it waits for approval. <?php if ($isAdmin): ?>Bulk download is limited to Admin.<?php else: ?>Ask an Admin to download several at once.<?php endif; ?>
   </p>
@@ -24,21 +24,21 @@
       <button class="btn btn-outline btn-sm" type="submit" formaction="<?= e(url('receipts/download')) ?>" name="scope" value="all">Download all (<?= (int) $onDisk ?>)</button>
       <?php endif; ?>
       <input type="text" name="reason" maxlength="500" placeholder="Reason for cancellation" style="min-width:220px;">
-      <button class="btn btn-outline btn-sm" type="submit" id="cancelSelected" disabled>Request cancellation</button>
+      <button class="btn btn-outline btn-sm" type="submit" id="cancelSelected" disabled><?= e(t('ui.request_cancel')) ?></button>
       <button class="btn btn-gold btn-sm" type="button" id="bulkEmail" disabled>Bulk email (<span id="bulkEmailCount">0</span>)</button>
       <button class="btn btn-outline btn-sm" type="button" id="bulkWhatsapp" disabled>Bulk WhatsApp (<span id="bulkWhatsappCount">0</span>)</button>
     </div>
     <table class="data-table">
       <tr>
         <th style="width:36px;"><input type="checkbox" id="selectAll" aria-label="Select all receipts"></th>
-        <th>Receipt</th>
-        <th>Date</th>
-        <th>Donor</th>
-        <th>Amount</th>
-        <th>Purpose</th>
-        <th>Generated</th>
-        <th>File</th>
-        <th>Share</th>
+        <th><?= e(t('common.receipt')) ?></th>
+        <th><?= e(t('common.date')) ?></th>
+        <th><?= e(t('common.donor')) ?></th>
+        <th><?= e(t('common.amount')) ?></th>
+        <th><?= e(t('common.purpose')) ?></th>
+        <th><?= e(t('ui.generated')) ?></th>
+        <th><?= e(t('ui.file')) ?></th>
+        <th><?= e(t('ui.share')) ?></th>
       </tr>
       <?php foreach ($receipts as $row): ?>
       <?php
@@ -77,7 +77,7 @@
           <span style="color:var(--ink-soft);font-size:12px;">No email</span>
           <?php endif; ?>
           <?php if ($waUrl !== null): ?>
-          <a class="btn btn-sm btn-outline wa-share" href="<?= e($waUrl) ?>" target="_blank" rel="noopener"<?php if ($publicUrl !== ''): ?> data-pdf="<?= e(url('receipts/' . $number . '.pdf')) ?>" data-file="<?= e($number . '.pdf') ?>" data-text="<?= e($shareText) ?>"<?php endif; ?>>WhatsApp</a>
+          <a class="btn btn-sm btn-outline wa-share" href="<?= e($waUrl) ?>" target="_blank" rel="noopener"<?php if ($publicUrl !== ''): ?> data-pdf="<?= e(url('receipts/' . $number . '.pdf')) ?>" data-file="<?= e($number . '.pdf') ?>" data-text="<?= e($shareText) ?>"<?php endif; ?>><?= e(t('common.whatsapp')) ?></a>
           <?php else: ?>
           <span style="color:var(--ink-soft);font-size:12px;">No phone</span>
           <?php endif; ?>

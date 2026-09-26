@@ -29,43 +29,45 @@ $icon = static function (string $name): string {
         'receipt' => '<path d="M7 3.5h7l4.5 4.5V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5V8h4.5"/><path d="M9 13h6M9 16.5h4"/>',
         'users' => '<circle cx="9" cy="9" r="2.4"/><circle cx="15.5" cy="9.5" r="2"/><path d="M4.8 17.2c.6-2.2 2.3-3.4 4.2-3.4s3.6 1.2 4.2 3.4"/><path d="M13 13.8c1.4-.3 2.8.2 3.6 1.6"/>',
         'gear' => '<circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6 6l1.6 1.6M16.4 16.4 18 18M18 6l-1.6 1.6M7.6 16.4 6 18"/>',
+        'globe' => '<circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.2 2.4 3.3 5.2 3.3 8s-1.1 5.6-3.3 8c-2.2-2.4-3.3-5.2-3.3-8s1.1-5.6 3.3-8z"/>',
     ];
     $path = $paths[$name] ?? $paths['grid'];
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $path . '</svg>';
 };
 
 $sections = [
-    'Overview' => [
-        ['demo', 'star', 'Overview', 'demo'],
-        ['dashboard', 'grid', 'Dashboard', ''],
+    t('nav.section.overview') => [
+        ['demo', 'star', t('nav.overview'), 'demo'],
+        ['dashboard', 'grid', t('nav.dashboard'), ''],
     ],
-    'Temple' => [
-        ['inventory', 'box', 'Inventory', 'inventory'],
-        ['food', 'leaf', 'Food stock', 'food'],
-        ['vastra', 'cloth', 'Deity vastra', 'vastra'],
+    t('nav.section.temple') => [
+        ['inventory', 'box', t('nav.inventory'), 'inventory'],
+        ['food', 'leaf', t('nav.food'), 'food'],
+        ['vastra', 'cloth', t('nav.vastra'), 'vastra'],
     ],
-    'Finance' => [
-        ['donations', 'hands', 'Donations', 'donations'],
-        ['receipts', 'receipt', 'Receipts', 'receipts'],
-        ['subscriptions', 'bell', 'Subscriptions', 'subscriptions'],
-        ['expenses', 'card', 'Expenses', 'expenses'],
-        ['approvals', 'users', 'Approvals', 'approvals'],
-        ['corrections', 'ledger', 'Corrections', 'corrections'],
-        ['cash-book', 'book', 'Cash book', 'cash-book'],
-        ['day-book', 'book', 'Day book', 'day-book'],
-        ['ledger', 'ledger', 'Ledger', 'ledger'],
-        ['bank', 'bank', 'Bank reconciliation', 'bank'],
-        ['reports', 'print', 'Reports', 'reports'],
+    t('nav.section.finance') => [
+        ['donations', 'hands', t('nav.donations'), 'donations'],
+        ['receipts', 'receipt', t('nav.receipts'), 'receipts'],
+        ['subscriptions', 'bell', t('nav.subscriptions'), 'subscriptions'],
+        ['expenses', 'card', t('nav.expenses'), 'expenses'],
+        ['approvals', 'users', t('nav.approvals'), 'approvals'],
+        ['corrections', 'ledger', t('nav.corrections'), 'corrections'],
+        ['cash-book', 'book', t('nav.cash_book'), 'cash-book'],
+        ['day-book', 'book', t('nav.day_book'), 'day-book'],
+        ['ledger', 'ledger', t('nav.ledger'), 'ledger'],
+        ['bank', 'bank', t('nav.bank'), 'bank'],
+        ['reports', 'print', t('nav.reports'), 'reports'],
     ],
 ];
+$returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= e(current_locale()) ?>">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= e($title) ?> — <?= e(APP_NAME) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=8">
+  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=10">
 </head>
 <body>
   <div class="app-shell">
@@ -74,7 +76,7 @@ $sections = [
       <div class="brand">
         <div class="brand-mark"><img src="<?= e(asset('logo.svg')) ?>" alt="" class="brand-logo"></div>
         <h1><?= e(APP_NAME) ?></h1>
-        <p>Administration</p>
+        <p><?= e(t('shell.brand')) ?></p>
       </div>
       <?php foreach ($sections as $section => $links): ?>
         <div class="nav-label"><?= e($section) ?></div>
@@ -82,19 +84,20 @@ $sections = [
           <a class="nav-link<?= $active === $key ? ' active' : '' ?>" href="<?= e(url($route)) ?>"><?= $icon($glyph) ?> <?= e($label) ?></a>
         <?php endforeach; ?>
       <?php endforeach; ?>
-      <div class="nav-label">Administration</div>
-      <a class="nav-link<?= $active === 'donors' ? ' active' : '' ?>" href="<?= e(url('donors')) ?>"><?= $icon('users') ?> Donors</a>
+      <div class="nav-label"><?= e(t('nav.section.administration')) ?></div>
+      <a class="nav-link<?= $active === 'donors' ? ' active' : '' ?>" href="<?= e(url('donors')) ?>"><?= $icon('users') ?> <?= e(t('nav.donors')) ?></a>
       <?php if ($role === 'Admin'): ?>
-        <a class="nav-link<?= $active === 'users' ? ' active' : '' ?>" href="<?= e(url('users')) ?>"><?= $icon('users') ?> Users</a>
-        <a class="nav-link<?= $active === 'settings' ? ' active' : '' ?>" href="<?= e(url('settings')) ?>"><?= $icon('gear') ?> Settings</a>
+        <a class="nav-link<?= $active === 'users' ? ' active' : '' ?>" href="<?= e(url('users')) ?>"><?= $icon('users') ?> <?= e(t('nav.users')) ?></a>
+        <a class="nav-link<?= $active === 'settings' ? ' active' : '' ?>" href="<?= e(url('settings')) ?>"><?= $icon('gear') ?> <?= e(t('nav.settings')) ?></a>
+        <a class="nav-link<?= $active === 'localization' ? ' active' : '' ?>" href="<?= e(url('localization')) ?>"><?= $icon('globe') ?> <?= e(t('nav.localization')) ?></a>
       <?php endif; ?>
-      <div class="sidebar-footer">Signed in as<br><strong><?= e($fullName) ?></strong><br><?= e($role) ?></div>
+      <div class="sidebar-footer"><?= e(t('shell.signed_in')) ?><br><strong><?= e($fullName) ?></strong><br><?= e(t_fixed('role', $role)) ?></div>
     </aside>
 
     <div class="main">
       <div class="topbar no-print">
         <div style="display:flex; align-items:center; min-width:0;">
-          <label for="nav-toggle" class="nav-toggle-btn">Menu</label>
+          <label for="nav-toggle" class="nav-toggle-btn"><?= e(t('shell.menu')) ?></label>
           <div>
             <h2><?= e($pageTitle) ?></h2>
             <span class="topbar-kicker"><?= e(APP_PLACE) ?></span>
@@ -102,8 +105,18 @@ $sections = [
         </div>
         <div class="user-chip">
           <div class="avatar"><?= e($initial) ?></div>
-          <span class="user-name"><?= e($fullName) ?><span class="user-role"><?= e($role) ?></span></span>
-          <a class="logout-link" href="<?= e(url('logout')) ?>">Sign out</a>
+          <span class="user-name"><?= e($fullName) ?><span class="user-role"><?= e(t_fixed('role', $role)) ?></span></span>
+          <form method="POST" action="<?= e(url('language')) ?>" class="locale-switch">
+            <?= csrf_field() ?>
+            <input type="hidden" name="next" value="<?= e($returnTo) ?>">
+            <label class="sr-only" for="locale-code"><?= e(t('locale.language')) ?></label>
+            <select id="locale-code" name="code" onchange="this.form.submit()">
+              <?php foreach (language_catalog() as $language): ?>
+                <option value="<?= e($language['code']) ?>"<?= current_locale() === $language['code'] ? ' selected' : '' ?>><?= e($language['native']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </form>
+          <a class="logout-link" href="<?= e(url('logout')) ?>"><?= e(t('shell.sign_out')) ?></a>
         </div>
       </div>
       <div class="content">
@@ -122,5 +135,6 @@ $sections = [
       });
     });
   </script>
+  <script src="<?= e(asset('js/suggest.js')) ?>?v=1"></script>
 </body>
 </html>

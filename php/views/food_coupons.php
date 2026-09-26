@@ -11,16 +11,16 @@
   <div class="kpi-card"><div class="value"><?= e((string) $totalCouponQty) ?></div><div class="label">Approved coupons</div></div>
 </div>
 <div class="panel">
-  <h3>Generate a new coupon batch</h3>
+  <h3><?= e(t('ui.generate_batch')) ?></h3>
   <p class="sub">A batch is a print run. It does not enter the cash book, day book, or ledger. The amount that waits for approval is the face value of the whole batch, cost times quantity. A Treasurer can approve up to ₹<?= e(number_format(TREASURER_APPROVAL_LIMIT, 0)) ?>. Above that, an Admin decides. The person who prepared the batch cannot approve it. It can be printed only after approval.</p>
   <form method="POST" action="<?= e(url('food/coupons')) ?>">
     <?= csrf_field() ?>
     <div class="form-grid cols-3">
-      <div class="form-group"><label>Coupon Name</label><input type="text" name="coupon_name" placeholder="e.g. Lunch Mahaprasad" required></div>
-      <div class="form-group"><label>Cost per Coupon (₹)</label><input type="number" step="0.01" min="0.01" name="cost" required></div>
-      <div class="form-group"><label>Quantity</label><input type="number" name="quantity" min="1" max="400" required></div>
+      <div class="form-group"><label><?= e(t('ui.coupon_name')) ?></label><input type="text" name="coupon_name" placeholder="e.g. Lunch Mahaprasad" required></div>
+      <div class="form-group"><label><?= e(t('ui.cost_per')) ?></label><input type="number" step="0.01" min="0.01" name="cost" required></div>
+      <div class="form-group"><label><?= e(t('common.quantity')) ?></label><input type="number" name="quantity" min="1" max="400" required></div>
     </div>
-    <div class="form-actions"><button class="btn btn-primary" type="submit">Submit batch for approval</button></div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.submit_batch')) ?></button></div>
   </form>
 </div>
 <div class="panel">
@@ -28,7 +28,7 @@
   <p class="sub">Edit the name, the cost, or the quantity. A change goes back to approval, and the printed sheet is rebuilt only after it is approved. Removing a batch does not change the cash book. Serial numbers stay in their range, so a larger quantity is refused when it would overlap the next batch.</p>
   <?php if ($batches): ?>
   <table class="data-table">
-    <tr><th>Coupon</th><th>Sl No</th><th>Value</th><th>Approval</th><th>Edit</th><th></th></tr>
+    <tr><th><?= e(t('ui.coupon_name')) ?></th><th><?= e(t('ui.serial')) ?></th><th><?= e(t('ui.value')) ?></th><th><?= e(t('common.approval')) ?></th><th><?= e(t('common.update')) ?></th><th></th></tr>
     <?php foreach ($batches as $b): ?>
     <?php $status = (string) ($b['approval_status'] ?? 'Waiting'); ?>
     <tr>
@@ -56,7 +56,7 @@
           <input type="text" name="coupon_name" value="<?= e((string) $b['coupon_name']) ?>" maxlength="100" required>
           <input type="number" name="cost" step="0.01" min="0.01" value="<?= e(number_format((float) $b['cost'], 2, '.', '')) ?>" required>
           <input type="number" name="quantity" min="1" max="400" value="<?= e((string) $b['quantity']) ?>" required>
-          <button class="btn btn-sm btn-outline" type="submit">Save</button>
+          <button class="btn btn-sm btn-outline" type="submit"><?= e(t('common.save')) ?></button>
         </form>
       </td>
       <td>
@@ -66,7 +66,7 @@
         <?php if ($status !== 'Approved' || $role === 'Admin'): ?>
         <form method="POST" action="<?= e(url('food/coupons/' . $b['id'] . '/remove')) ?>" onsubmit="return confirm('Remove this coupon batch? The cash book does not change.');">
           <?= csrf_field() ?>
-          <button class="btn btn-sm btn-outline" type="submit">Remove</button>
+          <button class="btn btn-sm btn-outline" type="submit"><?= e(t('common.remove')) ?></button>
         </form>
         <?php endif; ?>
       </td>
