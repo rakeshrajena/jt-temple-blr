@@ -18,13 +18,13 @@ $filterable = $reportType === 'donations' || $reportType === 'expenses';
 <head>
   <meta charset="UTF-8">
   <title><?= e($title) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=3">
+  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=23">
 </head>
 <body style="background:#fff;">
 <div class="report-sheet">
   <div class="print-header">
-    <img src="<?= e(asset('logo.svg')) ?>" alt="Temple Logo" class="print-logo">
-    <h1><?= e(APP_NAME) ?>, Sarjapura</h1>
+    <img src="<?= e(app_logo_url()) ?>" alt="<?= e(app_display_name()) ?>" class="print-logo">
+    <h1><?= e(app_display_name()) ?>, Sarjapura</h1>
     <p><?= e($title) ?> — Generated on <?= e($generatedOn) ?></p>
   </div>
   <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:12px; flex-wrap:wrap;">

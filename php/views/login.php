@@ -8,16 +8,16 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title><?= e(t('page.login')) ?> — <?= e(APP_NAME) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=13">
+  <title><?= e(t('page.login')) ?> — <?= e(app_display_name()) ?></title>
+  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=14">
 </head>
 <body>
   <div class="login-split">
     <section class="login-brand">
       <div>
-        <img src="<?= e(asset('logo.svg')) ?>" alt="" width="56" height="56">
+        <img src="<?= e(app_logo_url()) ?>" alt="" width="56" height="56">
         <p class="place"><?= e(APP_PLACE) ?></p>
-        <h1><?= e(APP_NAME) ?></h1>
+        <h1><?= e(app_display_name()) ?></h1>
         <p class="lede"><?= e(t('login.lede')) ?></p>
         <ul class="login-points">
           <li><?= e(t('login.point_receipts')) ?></li>

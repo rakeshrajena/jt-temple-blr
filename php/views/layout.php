@@ -66,8 +66,8 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title><?= e($title) ?> — <?= e(APP_NAME) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=22">
+  <title><?= e($title) ?> — <?= e(app_display_name()) ?></title>
+  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=23">
 </head>
 <body>
   <div class="app-shell">
@@ -75,8 +75,8 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
     <label for="nav-toggle" class="nav-scrim" aria-hidden="true"></label>
     <aside class="sidebar no-print">
       <div class="brand">
-        <div class="brand-mark"><img src="<?= e(asset('logo.svg')) ?>" alt="" class="brand-logo"></div>
-        <h1><?= e(APP_NAME) ?></h1>
+        <div class="brand-mark"><img src="<?= e(app_logo_url()) ?>" alt="" class="brand-logo"></div>
+        <h1><?= e(app_display_name()) ?></h1>
         <p><?= e(t('shell.brand')) ?></p>
       </div>
       <?php foreach ($sections as $section => $links): ?>

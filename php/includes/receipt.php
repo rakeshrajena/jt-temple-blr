@@ -106,9 +106,9 @@ function receipt_share_message(array $row, string $link = ''): string
         . ' (' . $purpose . $modeText . ') is ready.';
     $link = trim($link);
     if ($link !== '') {
-        return $text . "\nReceipt: " . $link . "\n— " . APP_NAME;
+        return $text . "\nReceipt: " . $link . "\n— " . app_display_name();
     }
-    return $text . ' — ' . APP_NAME;
+    return $text . ' — ' . app_display_name();
 }
 
 function receipt_public_url(string $token): string

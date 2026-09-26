@@ -6,8 +6,8 @@ $lines = $statement['lines'];
 $pledges = $statement['pledges'];
 ?>
 <div class="print-header">
-  <img src="<?= e(asset('logo.svg')) ?>" alt="" class="print-logo">
-  <h1><?= e(APP_NAME) ?></h1>
+  <img src="<?= e(app_logo_url()) ?>" alt="" class="print-logo">
+  <h1><?= e(app_display_name()) ?></h1>
   <p><?= e(APP_PLACE) ?> · Yearly statement <?= e($statement['financial_year']) ?></p>
 </div>
 <div class="panel">

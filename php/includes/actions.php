@@ -10,6 +10,10 @@ function dispatch_request(): void
         require_csrf();
     }
 
+    if ($path === 'brand/logo' && $method === 'GET') {
+        serve_brand_logo();
+        return;
+    }
     if ($path === 'language' && $method === 'POST') {
         action_language();
         return;
@@ -952,7 +956,7 @@ function action_donors_bulk_email(): void
     $sent = 0;
     $skipped = 0;
     $failed = 0;
-    $subject = 'Message from ' . APP_NAME;
+    $subject = 'Message from ' . app_display_name();
     foreach ($ids as $donorId) {
         $donor = db_one('SELECT name, email FROM donors WHERE id = ?', [$donorId]);
         $email = trim((string) ($donor['email'] ?? ''));
@@ -2611,6 +2615,21 @@ function action_settings(string $method): void
         };
         flash($error !== null ? 'error' : 'success', $error ?? $done);
         redirect(url('settings') . '#choice-' . rawurlencode($key));
+    }
+    if ($method === 'POST' && post_string('form', 20) === 'brand') {
+        try {
+            $error = save_brand_identity(
+                post_string('app_name', 80),
+                $_FILES['logo'] ?? null,
+                isset($_POST['use_default_logo'])
+            );
+        } catch (Throwable $e) {
+            error_log('[jt_blr] brand: ' . $e->getMessage());
+            flash('error', 'The name and logo could not be saved.');
+            redirect(url('settings') . '#identity');
+        }
+        flash($error !== null ? 'error' : 'success', $error ?? 'Temple name and logo saved.');
+        redirect(url('settings') . '#identity');
     }
     if ($method === 'POST') {
         $current = load_messaging_settings();

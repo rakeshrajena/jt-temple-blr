@@ -405,3 +405,337 @@ function messaging_for_page(): array
         'smtp_ready' => smtp_is_ready($settings),
     ];
 }
+
+const BRAND_NAME_KEY = 'brand_name';
+const BRAND_LOGO_KEY = 'brand_logo';
+const BRAND_LOGO_MAX_BYTES = 2097152;
+
+function brand_setting(string $key): string
+{
+    $row = db_one('SELECT setting_value FROM app_settings WHERE setting_key = ?', [$key]);
+    if ($row === null) {
+        return '';
+    }
+    return trim((string) ($row['setting_value'] ?? ''));
+}
+
+function app_display_name(): string
+{
+    $name = brand_setting(BRAND_NAME_KEY);
+    return $name !== '' ? $name : APP_NAME;
+}
+
+function app_logo_url(): string
+{
+    $path = brand_logo_path();
+    if ($path === null) {
+        $fallback = APP_ROOT . '/static/logo.svg';
+        $version = is_file($fallback) ? (string) filemtime($fallback) : '1';
+        return asset('logo.svg') . '?v=' . rawurlencode($version);
+    }
+    return url('brand/logo', ['v' => (string) filemtime($path)]);
+}
+
+function brand_has_custom_logo(): bool
+{
+    return brand_logo_path() !== null;
+}
+
+function brand_logo_path(): ?string
+{
+    $file = brand_setting(BRAND_LOGO_KEY);
+    if (preg_match('/^logo\.[a-z0-9]{1,8}$/', $file) !== 1) {
+        return null;
+    }
+    $dir = APP_ROOT . '/storage/brand';
+    $candidate = $dir . DIRECTORY_SEPARATOR . $file;
+    if (!is_file($candidate)) {
+        return null;
+    }
+    $real = realpath($candidate);
+    $root = realpath($dir);
+    if ($real === false || $root === false || !str_starts_with($real, $root . DIRECTORY_SEPARATOR)) {
+        return null;
+    }
+    return $real;
+}
+
+/**
+ * @return array{extension: string}|array{error: string}
+ */
+function inspect_brand_logo(string $path, string $originalName): array
+{
+    if (!is_file($path)) {
+        return ['error' => 'The logo file could not be read.'];
+    }
+    $size = filesize($path);
+    if ($size === false || $size < 1) {
+        return ['error' => 'The logo file is empty.'];
+    }
+    if ($size > BRAND_LOGO_MAX_BYTES) {
+        return ['error' => 'The logo must be 2 MB or smaller.'];
+    }
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path);
+    $mime = is_string($mime) ? strtolower($mime) : '';
+    $info = @getimagesize($path);
+    $typeExtension = is_array($info) ? brand_extension_for_image_type((int) ($info[2] ?? 0)) : null;
+    $imageMime = (is_array($info) && isset($info['mime']) && is_string($info['mime'])) ? strtolower($info['mime']) : '';
+    if (str_starts_with($imageMime, 'image/')) {
+        $mime = $imageMime;
+    }
+    $originalExtension = brand_original_extension($originalName);
+
+    if ($typeExtension !== null) {
+        return ['extension' => $typeExtension];
+    }
+    $looksLikeSvg = $mime === 'image/svg+xml'
+        || ($originalExtension === 'svg' && ($mime === '' || str_starts_with($mime, 'text/') || str_starts_with($mime, 'image/') || $mime === 'application/xml' || $mime === 'application/octet-stream'));
+    if ($looksLikeSvg) {
+        if (!brand_svg_is_safe($path)) {
+            return ['error' => 'This SVG logo cannot be used. Remove scripts and event handlers, then try again.'];
+        }
+        return ['extension' => 'svg'];
+    }
+    if (str_starts_with($mime, 'image/')) {
+        $mapped = brand_extension_for_mime($mime) ?? $typeExtension;
+        if ($mapped !== null) {
+            return ['extension' => $mapped];
+        }
+        if ($originalExtension !== null) {
+            return ['extension' => $originalExtension];
+        }
+        return ['error' => 'This image type needs a normal file extension, such as .heic or .bmp.'];
+    }
+    if ($typeExtension !== null) {
+        return ['extension' => $typeExtension];
+    }
+    return ['error' => 'Choose an image file. Other file types cannot be used as the logo.'];
+}
+
+/**
+ * Saves the temple name. A new logo replaces the current one. Restoring the built-in logo
+ * applies only when no new file was chosen.
+ *
+ * @param mixed $file
+ */
+function save_brand_identity(string $name, mixed $file, bool $useDefaultLogo): ?string
+{
+    $name = trim($name);
+    if ($name === '') {
+        return 'Enter the temple name.';
+    }
+    if (mb_strlen($name) > 80) {
+        return 'The temple name can be at most 80 characters.';
+    }
+    if (preg_match('/[\x00-\x1F\x7F<>]/u', $name) === 1) {
+        return 'The temple name cannot contain those characters.';
+    }
+
+    $upload = brand_upload($file);
+    if (isset($upload['error'])) {
+        return $upload['error'];
+    }
+    $extension = null;
+    if ($upload['path'] !== null) {
+        $inspected = inspect_brand_logo($upload['path'], $upload['name']);
+        if (isset($inspected['error'])) {
+            return $inspected['error'];
+        }
+        $extension = $inspected['extension'];
+    }
+
+    $pdo = db();
+    $own = !$pdo->inTransaction();
+    if ($own) {
+        $pdo->beginTransaction();
+    }
+    $written = null;
+    try {
+        brand_upsert(BRAND_NAME_KEY, $name);
+        if ($extension !== null && $upload['path'] !== null) {
+            $written = brand_write_logo($upload['path'], $extension, $upload['uploaded']);
+            brand_upsert(BRAND_LOGO_KEY, 'logo.' . $extension);
+            brand_remove_other_logos('logo.' . $extension);
+        } elseif ($useDefaultLogo) {
+            brand_remove_other_logos('');
+            db_exec('DELETE FROM app_settings WHERE setting_key = ?', [BRAND_LOGO_KEY]);
+        }
+        if ($own) {
+            $pdo->commit();
+        }
+        return null;
+    } catch (Throwable $e) {
+        if ($written !== null && is_file($written)) {
+            unlink($written);
+        }
+        if ($own && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
+}
+
+function serve_brand_logo(): void
+{
+    $path = brand_logo_path();
+    if ($path === null) {
+        http_response_code(404);
+        echo 'Logo not found.';
+        return;
+    }
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path);
+    if (!is_string($mime) || !str_starts_with(strtolower($mime), 'image/')) {
+        http_response_code(404);
+        echo 'Logo not found.';
+        return;
+    }
+    header('Content-Type: ' . $mime);
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: public, max-age=86400');
+    header('Content-Length: ' . (string) filesize($path));
+    readfile($path);
+}
+
+function brand_extension_for_mime(string $mime): ?string
+{
+    return match ($mime) {
+        'image/jpeg', 'image/jpg', 'image/pjpeg' => 'jpg',
+        'image/png', 'image/apng', 'image/x-png' => 'png',
+        'image/gif' => 'gif',
+        'image/webp' => 'webp',
+        'image/svg+xml' => 'svg',
+        'image/bmp', 'image/x-ms-bmp', 'image/x-bmp' => 'bmp',
+        'image/tiff', 'image/tif' => 'tif',
+        'image/avif' => 'avif',
+        'image/heic' => 'heic',
+        'image/heif', 'image/heic-sequence', 'image/heif-sequence' => 'heif',
+        'image/x-icon', 'image/vnd.microsoft.icon' => 'ico',
+        'image/jxl' => 'jxl',
+        'image/jp2', 'image/jpx', 'image/jpm' => 'jp2',
+        'image/vnd.wap.wbmp' => 'wbmp',
+        default => null,
+    };
+}
+
+function brand_extension_for_image_type(int $type): ?string
+{
+    $map = [
+        IMAGETYPE_JPEG => 'jpg',
+        IMAGETYPE_PNG => 'png',
+        IMAGETYPE_GIF => 'gif',
+        IMAGETYPE_WEBP => 'webp',
+        IMAGETYPE_BMP => 'bmp',
+        IMAGETYPE_ICO => 'ico',
+        IMAGETYPE_TIFF_II => 'tif',
+        IMAGETYPE_TIFF_MM => 'tif',
+    ];
+    if (defined('IMAGETYPE_AVIF')) {
+        $map[IMAGETYPE_AVIF] = 'avif';
+    }
+    return $map[$type] ?? null;
+}
+
+function brand_original_extension(string $originalName): ?string
+{
+    $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+    if (preg_match('/^[a-z0-9]{1,8}$/', $extension) !== 1) {
+        return null;
+    }
+    $blocked = [
+        'php', 'phtml', 'php3', 'php4', 'php5', 'phar', 'pht', 'cgi', 'pl', 'py',
+        'exe', 'dll', 'so', 'js', 'mjs', 'html', 'htm', 'xhtml', 'shtml', 'asp',
+        'aspx', 'jsp', 'sh', 'bat', 'cmd', 'com', 'msi', 'jar', 'svgz',
+    ];
+    return in_array($extension, $blocked, true) ? null : $extension;
+}
+
+function brand_svg_is_safe(string $path): bool
+{
+    $raw = file_get_contents($path, false, null, 0, BRAND_LOGO_MAX_BYTES);
+    if (!is_string($raw) || $raw === '') {
+        return false;
+    }
+    if (!str_contains(strtolower($raw), '<svg')) {
+        return false;
+    }
+    $lower = strtolower($raw);
+    foreach (['<script', 'javascript:', '<foreignobject', 'data:text/html', '<?php', '<!entity'] as $blocked) {
+        if (str_contains($lower, $blocked)) {
+            return false;
+        }
+    }
+    return preg_match('/\son[a-z]+\s*=/i', $raw) !== 1;
+}
+
+/**
+ * @param mixed $file
+ * @return array{path: ?string, name: string, uploaded: bool}|array{error: string}
+ */
+function brand_upload(mixed $file): array
+{
+    if (is_array($file) && ($file['uploaded'] ?? null) === false && isset($file['source']) && is_string($file['source'])) {
+        if (!is_file($file['source'])) {
+            return ['error' => 'The logo file could not be read.'];
+        }
+        return [
+            'path' => $file['source'],
+            'name' => (string) ($file['name'] ?? 'logo'),
+            'uploaded' => false,
+        ];
+    }
+    if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        return ['path' => null, 'name' => '', 'uploaded' => false];
+    }
+    $error = (int) ($file['error'] ?? UPLOAD_ERR_OK);
+    if ($error === UPLOAD_ERR_INI_SIZE || $error === UPLOAD_ERR_FORM_SIZE) {
+        return ['error' => 'The logo must be 2 MB or smaller.'];
+    }
+    if ($error !== UPLOAD_ERR_OK) {
+        return ['error' => 'The logo upload did not complete.'];
+    }
+    $tmp = (string) ($file['tmp_name'] ?? '');
+    if ($tmp === '' || !is_uploaded_file($tmp)) {
+        return ['error' => 'The logo upload did not complete.'];
+    }
+    return [
+        'path' => $tmp,
+        'name' => (string) ($file['name'] ?? 'logo'),
+        'uploaded' => true,
+    ];
+}
+
+function brand_write_logo(string $source, string $extension, bool $uploaded): string
+{
+    $dir = APP_ROOT . '/storage/brand';
+    if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+        throw new RuntimeException('Could not store the logo.');
+    }
+    $dest = $dir . DIRECTORY_SEPARATOR . 'logo.' . $extension;
+    $stored = $uploaded ? move_uploaded_file($source, $dest) : copy($source, $dest);
+    if ($stored !== true) {
+        throw new RuntimeException('Could not store the logo.');
+    }
+    return $dest;
+}
+
+function brand_remove_other_logos(string $keep): void
+{
+    $dir = APP_ROOT . '/storage/brand';
+    if (!is_dir($dir)) {
+        return;
+    }
+    foreach (glob($dir . DIRECTORY_SEPARATOR . 'logo.*') ?: [] as $existing) {
+        if (basename($existing) !== $keep && is_file($existing)) {
+            unlink($existing);
+        }
+    }
+}
+
+function brand_upsert(string $key, string $value): void
+{
+    db_exec(
+        'INSERT INTO app_settings (setting_key, setting_value) VALUES (?,?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)',
+        [$key, $value]
+    );
+}
