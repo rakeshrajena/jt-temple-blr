@@ -320,6 +320,15 @@ function selection_text(string $key): string
     return implode("\n", $lines);
 }
 
+function selection_name_limit(string $key): int
+{
+    return match ($key) {
+        'plans', 'expense_categories' => 80,
+        'payment_modes', 'movements', 'donation_types' => 30,
+        default => 50,
+    };
+}
+
 function selection_name_error(string $name, int $max): ?string
 {
     if ($name === '' || mb_strlen($name) > $max) {
@@ -329,6 +338,43 @@ function selection_name_error(string $name, int $max): ?string
         return 'A choice cannot contain |, quotes, or < >.';
     }
     return null;
+}
+
+function selection_identity(string $kind, mixed $item): string
+{
+    if ($kind === 'lines' && is_string($item)) {
+        return mb_strtolower($item);
+    }
+    if (!is_array($item)) {
+        return '';
+    }
+    $name = $kind === 'labeled' ? (string) ($item['value'] ?? '') : (string) ($item['name'] ?? '');
+    return mb_strtolower($name);
+}
+
+/** @return list<array<string, mixed>> */
+function selection_editor_rows(string $key): array
+{
+    $kind = selection_catalog()[$key]['kind'] ?? 'lines';
+    $rows = [];
+    foreach (load_selections()[$key] ?? [] as $row) {
+        if ($kind === 'lines' && is_string($row) && $row !== '') {
+            $rows[] = ['name' => $row];
+        } elseif ($kind === 'payment' && is_array($row)) {
+            $rows[] = ['name' => (string) ($row['name'] ?? ''), 'book' => (string) ($row['book'] ?? '')];
+        } elseif ($kind === 'movement' && is_array($row)) {
+            $rows[] = [
+                'name' => (string) ($row['name'] ?? ''),
+                'direction' => (string) ($row['direction'] ?? 'out'),
+                'store' => (string) ($row['store'] ?? 'inventory'),
+                'approval' => !empty($row['approval']),
+            ];
+        } elseif ($kind === 'labeled' && is_array($row)) {
+            $value = (string) ($row['value'] ?? '');
+            $rows[] = ['value' => $value, 'label' => (string) ($row['label'] ?? $value)];
+        }
+    }
+    return $rows;
 }
 
 /**
@@ -361,21 +407,16 @@ function parse_selection_block(string $key, string $raw): array|string
     $meta = selection_catalog()[$key];
     $lines = preg_split('/\r\n|\r|\n/', $raw) ?: [];
     $items = [];
-    $seen = [];
     foreach ($lines as $line) {
         $line = trim($line);
         if ($line === '') {
             continue;
         }
         if ($meta['kind'] === 'lines') {
-            $error = selection_name_error($line, $key === 'plans' || $key === 'expense_categories' ? 80 : 50);
+            $error = selection_name_error($line, selection_name_limit($key));
             if ($error !== null) {
                 return $error;
             }
-            if (isset($seen[$line])) {
-                return $line . ' is listed twice.';
-            }
-            $seen[$line] = true;
             $items[] = $line;
         } elseif ($meta['kind'] === 'payment') {
             $parts = array_map('trim', explode('|', $line));
@@ -388,10 +429,6 @@ function parse_selection_block(string $key, string $raw): array|string
             if (!in_array($book, ['cash', 'bank', 'none'], true)) {
                 return $name . ' needs cash, bank, or none after the |.';
             }
-            if (isset($seen[$name])) {
-                return $name . ' is listed twice.';
-            }
-            $seen[$name] = true;
             $items[] = ['name' => $name, 'book' => $book];
         } elseif ($meta['kind'] === 'movement') {
             $parts = array_map('trim', explode('|', $line));
@@ -409,10 +446,6 @@ function parse_selection_block(string $key, string $raw): array|string
             if (!in_array($store, ['inventory', 'food', 'both'], true)) {
                 return $name . ' needs inventory, food, or both after the second |.';
             }
-            if (isset($seen[$name])) {
-                return $name . ' is listed twice.';
-            }
-            $seen[$name] = true;
             $items[] = ['name' => $name, 'direction' => $direction, 'approval' => $approval, 'store' => $store];
         } else {
             $parts = array_map('trim', explode('|', $line, 2));
@@ -426,24 +459,51 @@ function parse_selection_block(string $key, string $raw): array|string
             if ($labelError !== null) {
                 return $labelError;
             }
-            if (isset($seen[$value])) {
-                return $value . ' is listed twice.';
-            }
-            $seen[$value] = true;
             $items[] = ['value' => $value, 'label' => $label];
         }
     }
+    return validate_selection_list($key, $items);
+}
+
+/** @param list<mixed> $items
+ *  @return list<mixed>|string
+ */
+function validate_selection_list(string $key, array $items): array|string
+{
+    $meta = selection_catalog()[$key];
     if ($items === []) {
         return 'Enter at least one choice.';
     }
+    $seen = [];
+    foreach ($items as $item) {
+        $identity = selection_identity($meta['kind'], $item);
+        $label = $meta['kind'] === 'lines' && is_string($item)
+            ? $item
+            : (string) (is_array($item) ? ($item['value'] ?? $item['name'] ?? '') : '');
+        if ($identity === '' || isset($seen[$identity])) {
+            return $label . ' is already in this list.';
+        }
+        $seen[$identity] = true;
+    }
+    $exact = [];
+    foreach ($items as $item) {
+        if ($meta['kind'] === 'lines' && is_string($item)) {
+            $exact[$item] = true;
+        } elseif (is_array($item)) {
+            $exact[(string) ($item['value'] ?? $item['name'] ?? '')] = true;
+        }
+    }
     foreach ($meta['required'] as $required) {
-        if (!isset($seen[$required])) {
+        if (!isset($exact[$required])) {
             return 'Keep ' . $required . '. The forms rely on that name.';
         }
     }
     if ($key === 'payment_modes') {
         $books = [];
         foreach ($items as $item) {
+            if (!is_array($item)) {
+                return 'A payment mode is incomplete.';
+            }
             if ($item['name'] === 'Cash' && $item['book'] !== 'cash') {
                 return 'Cash must stay a cash mode.';
             }
@@ -459,14 +519,91 @@ function parse_selection_block(string $key, string $raw): array|string
     return $items;
 }
 
-/** @param array<string, mixed> $posted */
-function save_selections(array $posted): ?string
+/**
+ * @param array<string, string> $input
+ * @return array{error: ?string, item: mixed}
+ */
+function selection_item_from_input(string $key, array $input): array
 {
-    $parsed = parse_selections($posted);
-    if ($parsed['error'] !== null) {
-        return $parsed['error'];
+    $kind = selection_catalog()[$key]['kind'] ?? 'lines';
+    if ($kind === 'lines') {
+        $name = trim($input['name'] ?? '');
+        return ['error' => selection_name_error($name, selection_name_limit($key)), 'item' => $name];
     }
-    $json = json_encode($parsed['data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    if ($kind === 'payment') {
+        $name = trim($input['name'] ?? '');
+        $book = strtolower(trim($input['book'] ?? ''));
+        $error = selection_name_error($name, 30);
+        if ($error === null && !in_array($book, ['cash', 'bank', 'none'], true)) {
+            $error = 'Choose cash, bank, or none.';
+        }
+        return ['error' => $error, 'item' => ['name' => $name, 'book' => $book]];
+    }
+    if ($kind === 'movement') {
+        $name = trim($input['name'] ?? '');
+        $direction = strtolower(trim($input['direction'] ?? ''));
+        $store = strtolower(trim($input['store'] ?? ''));
+        $error = selection_name_error($name, 30);
+        if ($error === null && !in_array($direction, ['in', 'out'], true)) {
+            $error = 'Choose whether the quantity comes in or goes out.';
+        }
+        if ($error === null && !in_array($store, ['inventory', 'food', 'both'], true)) {
+            $error = 'Choose inventory, food, or both.';
+        }
+        return ['error' => $error, 'item' => [
+            'name' => $name,
+            'direction' => $direction,
+            'store' => $store,
+            'approval' => ($input['approval'] ?? '') === '1',
+        ]];
+    }
+    $value = trim($input['value'] ?? '');
+    $label = trim($input['label'] ?? '');
+    if ($label === '') {
+        $label = $value;
+    }
+    $error = selection_name_error($value, 30) ?? selection_name_error($label, 80);
+    return ['error' => $error, 'item' => ['value' => $value, 'label' => $label]];
+}
+
+/** @param array<string, string> $input */
+function apply_selection_change(string $key, string $op, int $index, array $input): ?string
+{
+    $catalog = selection_catalog();
+    if (!isset($catalog[$key]) || !in_array($op, ['add', 'update', 'delete'], true)) {
+        return 'That choice list was not recognised.';
+    }
+    $items = array_values(load_selections()[$key] ?? []);
+    if (($op === 'update' || $op === 'delete') && !isset($items[$index])) {
+        return 'That choice is no longer in the list.';
+    }
+    if ($op === 'delete') {
+        array_splice($items, $index, 1);
+    } else {
+        $built = selection_item_from_input($key, $input);
+        if ($built['error'] !== null) {
+            return $catalog[$key]['label'] . ': ' . $built['error'];
+        }
+        $item = $built['item'];
+        if ($op === 'add') {
+            $items[] = $item;
+        } else {
+            $items[$index] = $item;
+        }
+    }
+    $checked = validate_selection_list($key, $items);
+    if (is_string($checked)) {
+        return $catalog[$key]['label'] . ': ' . $checked;
+    }
+    $data = load_selections();
+    $data[$key] = $checked;
+    return write_selection_file($data);
+}
+
+/** @param array<string, mixed> $data */
+function write_selection_file(array $data): ?string
+{
+    $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     if ($json === false) {
         return 'The choice list could not be saved.';
     }
@@ -479,6 +616,16 @@ function save_selections(array $posted): ?string
     }
     load_selections(true);
     return null;
+}
+
+/** @param array<string, mixed> $posted */
+function save_selections(array $posted): ?string
+{
+    $parsed = parse_selections($posted);
+    if ($parsed['error'] !== null) {
+        return $parsed['error'];
+    }
+    return write_selection_file($parsed['data']);
 }
 
 function write_default_selections(): void

@@ -2435,13 +2435,26 @@ function action_settings(string $method): void
 {
     admin_required();
     if ($method === 'POST' && post_string('form', 20) === 'selections') {
-        $posted = [];
-        foreach (array_keys(selection_catalog()) as $key) {
-            $posted[$key] = post_string($key, 4000);
-        }
-        $error = save_selections($posted);
-        flash($error !== null ? 'error' : 'success', $error ?? 'Form choices saved.');
-        redirect(url('settings'));
+        $key = post_string('choice_key', 40);
+        $op = post_string('op', 10);
+        $index = (int) post_string('choice_index', 6);
+        $label = selection_catalog()[$key]['label'] ?? 'Form choice';
+        $error = apply_selection_change($key, $op, $index, [
+            'name' => post_string('choice_name', 80),
+            'book' => post_string('choice_book', 10),
+            'direction' => post_string('choice_direction', 10),
+            'store' => post_string('choice_store', 20),
+            'approval' => isset($_POST['choice_approval']) ? '1' : '',
+            'value' => post_string('choice_value', 30),
+            'label' => post_string('choice_label', 80),
+        ]);
+        $done = match ($op) {
+            'add' => 'Added to ' . $label . '.',
+            'delete' => 'Removed from ' . $label . '.',
+            default => $label . ' updated.',
+        };
+        flash($error !== null ? 'error' : 'success', $error ?? $done);
+        redirect(url('settings') . '#choice-' . rawurlencode($key));
     }
     if ($method === 'POST') {
         $current = load_messaging_settings();

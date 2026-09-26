@@ -57,6 +57,16 @@ try {
     check(!in_array('Added', inventory_form_movements(), true), 'Added is stored when stock comes in and is not a manual movement');
     check(stock_direction('Returned') === 1 && stock_direction('Issued') === -1, 'movement direction follows the list');
     check(stock_needs_approval('Damaged', STOCK_WRITE_OFF_LIMIT + 1) && !stock_needs_approval('Issued', 100), 'only marked movements wait for approval');
+    check(apply_selection_change('expense_categories', 'add', 0, ['name' => 'temple flowers']) !== null, 'a different capitalisation is still a duplicate');
+    check(apply_selection_change('expense_categories', 'add', 0, ['name' => 'Temple Flowers']) !== null, 'the same expense category cannot be added twice');
+    $cashIndex = 0;
+    foreach (selection_editor_rows('payment_modes') as $index => $row) {
+        if ($row['name'] === 'Cash') {
+            $cashIndex = $index;
+        }
+    }
+    check(apply_selection_change('payment_modes', 'delete', $cashIndex, []) !== null, 'Cash cannot be deleted from the table');
+    check(book_account('Cash') === 'cash', 'Cash remains after a refused delete');
 } finally {
     if ($backup === null) {
         if (is_file($path)) {

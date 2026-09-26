@@ -20,12 +20,9 @@ $groups = [
     ],
 ];
 $wide = ['payment_modes', 'movements', 'donation_types'];
-$formatHint = [
-    'payment' => 'One line each: Name | cash, Name | bank, or Name | none.',
-    'movement' => 'One line each: Name | in or out | inventory, food, or both. Add | approval when a large quantity must wait.',
-    'labeled' => 'One line each. Use Value | Label when the box should show a longer name.',
-    'lines' => 'One name per line.',
-];
+$bookLabels = ['cash' => 'Cash book', 'bank' => 'Bank book', 'none' => 'Not in the books'];
+$directionLabels = ['in' => 'In', 'out' => 'Out'];
+$storeLabels = ['inventory' => 'Inventory', 'food' => 'Food', 'both' => 'Inventory and food'];
 ?>
 <div class="settings-page">
   <nav class="settings-nav" aria-label="Settings sections">
@@ -88,13 +85,11 @@ $formatHint = [
     </div>
   </form>
 
-  <form id="choices" class="settings-block" method="POST" action="<?= e(url('settings')) ?>">
-    <?= csrf_field() ?>
-    <input type="hidden" name="form" value="selections">
+  <div id="choices" class="settings-block">
     <div class="settings-head">
       <div>
         <h3>Form choices</h3>
-        <p>A choice used for the same purpose is one list. The line under each title says which screen uses it.</p>
+        <p>Add a choice with the form. Update or remove it in the table. The same name cannot be added twice in one list.</p>
       </div>
     </div>
     <?php foreach ($groups as $group => $keys): ?>
@@ -103,30 +98,119 @@ $formatHint = [
         <?php foreach ($keys as $key): ?>
           <?php
             $meta = $selectionCatalog[$key];
-            $text = selection_text($key);
-            $rows = max(4, min(8, substr_count($text, "\n") + 2));
+            $rows = selection_editor_rows($key);
+            $limit = selection_name_limit($key);
           ?>
-          <section class="settings-choice<?= in_array($key, $wide, true) ? ' wide' : '' ?>">
-            <header>
-              <h4><?= e($meta['label']) ?></h4>
-            </header>
+          <section id="choice-<?= e($key) ?>" class="settings-choice<?= in_array($key, $wide, true) ? ' wide' : '' ?>">
+            <header><h4><?= e($meta['label']) ?></h4></header>
             <p class="where"><?= e($meta['modules']) ?></p>
-            <p class="format"><?= e($formatHint[$meta['kind']] ?? $formatHint['lines']) ?></p>
-            <?php if ($meta['required'] !== []): ?>
-              <div class="settings-keep">
-                <span class="label">Keep</span>
-                <?php foreach ($meta['required'] as $name): ?><span class="badge badge-grey"><?= e($name) ?></span><?php endforeach; ?>
-              </div>
-            <?php endif; ?>
-            <textarea name="<?= e($key) ?>" rows="<?= e((string) $rows) ?>" maxlength="4000"><?= e($text) ?></textarea>
+            <form class="choice-add" method="POST" action="<?= e(url('settings')) ?>">
+              <?= csrf_field() ?>
+              <input type="hidden" name="form" value="selections">
+              <input type="hidden" name="op" value="add">
+              <input type="hidden" name="choice_key" value="<?= e($key) ?>">
+              <?php if ($meta['kind'] === 'labeled'): ?>
+                <div class="form-group"><label>Value</label><input type="text" name="choice_value" maxlength="30" required></div>
+                <div class="form-group"><label>Label</label><input type="text" name="choice_label" maxlength="80" placeholder="Shown in the box"></div>
+              <?php else: ?>
+                <div class="form-group"><label>Name</label><input type="text" name="choice_name" maxlength="<?= e((string) $limit) ?>" required></div>
+              <?php endif; ?>
+              <?php if ($meta['kind'] === 'payment'): ?>
+                <div class="form-group"><label>Books</label>
+                  <select name="choice_book"><?php foreach ($bookLabels as $value => $label): ?><option value="<?= e($value) ?>"><?= e($label) ?></option><?php endforeach; ?></select>
+                </div>
+              <?php elseif ($meta['kind'] === 'movement'): ?>
+                <div class="form-group"><label>Direction</label>
+                  <select name="choice_direction"><?php foreach ($directionLabels as $value => $label): ?><option value="<?= e($value) ?>"><?= e($label) ?></option><?php endforeach; ?></select>
+                </div>
+                <div class="form-group"><label>Store</label>
+                  <select name="choice_store"><?php foreach ($storeLabels as $value => $label): ?><option value="<?= e($value) ?>"><?= e($label) ?></option><?php endforeach; ?></select>
+                </div>
+                <label class="settings-check"><input type="checkbox" name="choice_approval" value="1"> Wait for approval</label>
+              <?php endif; ?>
+              <button class="btn btn-primary" type="submit">Add</button>
+            </form>
+            <div class="choice-table-wrap">
+              <table class="choice-table">
+                <tr>
+                  <?php if ($meta['kind'] === 'labeled'): ?>
+                    <th>Value</th><th>Label</th>
+                  <?php else: ?>
+                    <th>Name</th>
+                  <?php endif; ?>
+                  <?php if ($meta['kind'] === 'payment'): ?><th>Books</th><?php endif; ?>
+                  <?php if ($meta['kind'] === 'movement'): ?><th>Direction</th><th>Store</th><th>Approval</th><?php endif; ?>
+                  <th></th>
+                </tr>
+                <?php foreach ($rows as $index => $row): ?>
+                  <?php
+                    $identity = $meta['kind'] === 'labeled' ? (string) $row['value'] : (string) $row['name'];
+                    $locked = in_array($identity, $meta['required'], true);
+                    $formId = 'choice-form-' . $key . '-' . $index;
+                    $bookLocked = $meta['kind'] === 'payment' && in_array($identity, ['Cash', 'In-Kind'], true);
+                  ?>
+                  <tr>
+                    <td>
+                      <form id="<?= e($formId) ?>" method="POST" action="<?= e(url('settings')) ?>">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="form" value="selections">
+                        <input type="hidden" name="choice_key" value="<?= e($key) ?>">
+                        <input type="hidden" name="choice_index" value="<?= e((string) $index) ?>">
+                      </form>
+                      <?php if ($meta['kind'] === 'labeled'): ?>
+                        <input form="<?= e($formId) ?>" type="text" name="choice_value" maxlength="30" value="<?= e((string) $row['value']) ?>"<?= $locked ? ' readonly' : '' ?> required>
+                      <?php else: ?>
+                        <input form="<?= e($formId) ?>" type="text" name="choice_name" maxlength="<?= e((string) $limit) ?>" value="<?= e((string) $row['name']) ?>"<?= $locked ? ' readonly' : '' ?> required>
+                      <?php endif; ?>
+                    </td>
+                    <?php if ($meta['kind'] === 'labeled'): ?>
+                      <td><input form="<?= e($formId) ?>" type="text" name="choice_label" maxlength="80" value="<?= e((string) $row['label']) ?>" required></td>
+                    <?php endif; ?>
+                    <?php if ($meta['kind'] === 'payment'): ?>
+                      <td>
+                        <?php if ($bookLocked): ?>
+                          <input form="<?= e($formId) ?>" type="hidden" name="choice_book" value="<?= e((string) $row['book']) ?>">
+                          <span class="choice-fixed"><?= e($bookLabels[$row['book']] ?? (string) $row['book']) ?></span>
+                        <?php else: ?>
+                          <select form="<?= e($formId) ?>" name="choice_book">
+                            <?php foreach ($bookLabels as $value => $label): ?>
+                              <option value="<?= e($value) ?>"<?= $row['book'] === $value ? ' selected' : '' ?>><?= e($label) ?></option>
+                            <?php endforeach; ?>
+                          </select>
+                        <?php endif; ?>
+                      </td>
+                    <?php endif; ?>
+                    <?php if ($meta['kind'] === 'movement'): ?>
+                      <td>
+                        <select form="<?= e($formId) ?>" name="choice_direction">
+                          <?php foreach ($directionLabels as $value => $label): ?>
+                            <option value="<?= e($value) ?>"<?= $row['direction'] === $value ? ' selected' : '' ?>><?= e($label) ?></option>
+                          <?php endforeach; ?>
+                        </select>
+                      </td>
+                      <td>
+                        <select form="<?= e($formId) ?>" name="choice_store">
+                          <?php foreach ($storeLabels as $value => $label): ?>
+                            <option value="<?= e($value) ?>"<?= $row['store'] === $value ? ' selected' : '' ?>><?= e($label) ?></option>
+                          <?php endforeach; ?>
+                        </select>
+                      </td>
+                      <td><label class="settings-check"><input form="<?= e($formId) ?>" type="checkbox" name="choice_approval" value="1"<?= !empty($row['approval']) ? ' checked' : '' ?>> Wait</label></td>
+                    <?php endif; ?>
+                    <td class="choice-actions">
+                      <button form="<?= e($formId) ?>" class="btn btn-outline btn-sm" type="submit" name="op" value="update">Update</button>
+                      <?php if (!$locked): ?>
+                        <button form="<?= e($formId) ?>" class="btn btn-danger btn-sm" type="submit" name="op" value="delete" onclick="return confirm('Remove this choice?')">Remove</button>
+                      <?php endif; ?>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              </table>
+            </div>
           </section>
         <?php endforeach; ?>
       </div>
     <?php endforeach; ?>
-    <p class="settings-note">A pledge is a record on the devotee page, and its purpose is typed there. Approval status, subscriber status, invoice status, bank match, user role, and cash-book deposit or withdraw stay fixed because the books match those words.</p>
-    <div class="settings-save">
-      <p>Names marked Keep cannot be removed. The forms rely on them.</p>
-      <button class="btn btn-primary" type="submit">Save form choices</button>
-    </div>
-  </form>
+    <p class="settings-note">A name already in a list cannot be added again. Names the forms rely on stay in the table and cannot be removed. A pledge is a record on the devotee page. Approval status, subscriber status, invoice status, bank match, user role, and cash-book deposit or withdraw stay fixed.</p>
+  </div>
 </div>
