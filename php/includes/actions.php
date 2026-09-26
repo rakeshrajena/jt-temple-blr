@@ -642,16 +642,13 @@ function action_print_coupons(int $batchId): void
         flash('error', 'This batch can be printed after it is approved.');
         redirect(url('food/coupons'));
     }
-    $path = coupon_pdf_path($batchId);
-    if (!is_file($path)) {
-        generate_coupon_batch_pdf(
-            $batchId,
-            (string) $batch['coupon_name'],
-            (float) $batch['cost'],
-            (int) $batch['start_sl_no'],
-            (int) $batch['quantity']
-        );
-    }
+    $path = generate_coupon_batch_pdf(
+        $batchId,
+        (string) $batch['coupon_name'],
+        (float) $batch['cost'],
+        (int) $batch['start_sl_no'],
+        (int) $batch['quantity']
+    );
     send_pdf($path, 'batch_' . $batchId . '.pdf');
 }
 
@@ -2627,6 +2624,13 @@ function action_settings(string $method): void
             error_log('[jt_blr] brand: ' . $e->getMessage());
             flash('error', 'The name and logo could not be saved.');
             redirect(url('settings') . '#identity');
+        }
+        if ($error === null) {
+            try {
+                refresh_branded_pdfs();
+            } catch (Throwable $e) {
+                error_log('[jt_blr] brand documents: ' . $e->getMessage());
+            }
         }
         flash($error !== null ? 'error' : 'success', $error ?? 'Temple name and logo saved.');
         redirect(url('settings') . '#identity');

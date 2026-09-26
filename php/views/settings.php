@@ -34,14 +34,16 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
   <form id="identity" class="settings-block" method="POST" action="<?= e(url('settings')) ?>" enctype="multipart/form-data">
     <?= csrf_field() ?>
     <input type="hidden" name="form" value="brand">
-    <div class="settings-head">
-      <div>
-        <h3><?= e(t('settings.identity')) ?></h3>
-        <p><?= e(t('settings.identity_intro')) ?></p>
+    <section class="settings-card identity-card">
+      <h3><?= e(t('settings.identity')) ?></h3>
+      <p class="hint"><?= e(t('settings.identity_intro')) ?></p>
+      <div class="identity-lockup">
+        <img src="<?= e(app_logo_url()) ?>" alt="" class="identity-logo">
+        <div>
+          <p class="identity-name"><?= e(app_display_name()) ?></p>
+          <p class="identity-place"><?= e(APP_PLACE) ?></p>
+        </div>
       </div>
-    </div>
-    <div class="identity-row">
-      <img src="<?= e(app_logo_url()) ?>" alt="<?= e(app_display_name()) ?>" class="identity-logo">
       <div class="form-grid">
         <div class="form-group full">
           <label for="app_name"><?= e(t('settings.temple_name')) ?></label>
@@ -53,14 +55,14 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
           <p class="hint"><?= e(t('settings.logo_hint')) ?></p>
         </div>
       </div>
-    </div>
-    <?php if (brand_has_custom_logo()): ?>
-      <label class="settings-check"><input type="checkbox" name="use_default_logo" value="1"> <?= e(t('settings.logo_default')) ?></label>
-    <?php endif; ?>
-    <div class="settings-save is-static">
-      <p><?= e(t('settings.identity_scope')) ?></p>
-      <button class="btn btn-primary" type="submit"><?= e(t('settings.save_identity')) ?></button>
-    </div>
+      <?php if (brand_has_custom_logo()): ?>
+        <label class="settings-check"><input type="checkbox" name="use_default_logo" value="1"> <?= e(t('settings.logo_default')) ?></label>
+      <?php endif; ?>
+      <div class="identity-actions">
+        <p><?= e(t('settings.identity_scope')) ?></p>
+        <button class="btn btn-primary" type="submit"><?= e(t('settings.save_identity')) ?></button>
+      </div>
+    </section>
   </form>
 
   <form id="messages" class="settings-block" method="POST" action="<?= e(url('settings')) ?>">

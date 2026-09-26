@@ -247,36 +247,105 @@ function smtp_attachment_error(?array $attachment): ?string
 /**
  * @param array{filename: string, content: string, mime: string}|null $attachment
  */
+function email_signature_text(): string
+{
+    return "--\r\n" . app_display_name() . "\r\n" . APP_PLACE;
+}
+
+function email_signature_html(bool $withLogo): string
+{
+    $name = htmlspecialchars(app_display_name(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $place = htmlspecialchars(APP_PLACE, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $logo = $withLogo
+        ? '<img src="cid:temple-logo" width="48" height="48" alt="" style="display:block;width:48px;height:48px;border:0;">'
+        : '';
+    return '<table role="presentation" style="margin-top:18px;border-top:1px solid #e6dcc8;padding-top:12px;">'
+        . '<tr><td style="padding-right:12px;vertical-align:middle;">' . $logo . '</td>'
+        . '<td style="vertical-align:middle;font-family:Georgia,serif;">'
+        . '<div style="font-weight:700;font-size:15px;color:#7A1626;">' . $name . '</div>'
+        . '<div style="font-size:13px;color:#6b625a;">' . $place . '</div>'
+        . '</td></tr></table>';
+}
+
+function email_html_document(string $message, bool $withLogo): string
+{
+    $safe = nl2br(htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), false);
+    return '<!DOCTYPE html><html><body style="margin:0;padding:16px;font-family:Georgia,serif;color:#222;">'
+        . '<div style="font-size:15px;line-height:1.5;">' . $safe . '</div>'
+        . email_signature_html($withLogo)
+        . '</body></html>';
+}
+
 function smtp_data_payload(string $fromName, string $from, string $to, string $subject, string $body, ?array $attachment = null): string
 {
     $headers = 'From: ' . smtp_quoted_name($fromName) . ' <' . $from . ">\r\n"
         . 'To: <' . $to . ">\r\n"
         . 'Subject: ' . smtp_quoted_name($subject) . "\r\n"
         . "MIME-Version: 1.0\r\n";
+    $text = str_replace(["\r\n", "\r"], "\n", $body);
+    $text = str_replace("\n", "\r\n", $text);
+    $plain = rtrim($text) . "\r\n\r\n" . email_signature_text();
+    $logo = brand_logo_email_image();
+    $html = email_html_document($body, $logo !== null);
+    $message = smtp_signed_message($plain, $html, $logo);
     if ($attachment === null) {
-        $raw = $headers
-            . "Content-Type: text/plain; charset=UTF-8\r\n"
-            . "\r\n"
-            . $body;
+        if ($logo === null) {
+            $raw = $headers . "Content-Type: text/plain; charset=UTF-8\r\n\r\n" . $plain;
+            return smtp_dot_stuff($raw) . "\r\n.\r\n";
+        }
+        $raw = $headers . $message;
         return smtp_dot_stuff($raw) . "\r\n.\r\n";
     }
-    $boundary = 'jt_' . bin2hex(random_bytes(8));
+    $mixed = 'jt_' . bin2hex(random_bytes(8));
     $encoded = rtrim(chunk_split(base64_encode($attachment['content']), 76, "\r\n"));
     $raw = $headers
-        . 'Content-Type: multipart/mixed; boundary="' . $boundary . "\"\r\n"
+        . 'Content-Type: multipart/mixed; boundary="' . $mixed . "\"\r\n"
         . "\r\n"
-        . '--' . $boundary . "\r\n"
-        . "Content-Type: text/plain; charset=UTF-8\r\n"
-        . "\r\n"
-        . $body . "\r\n"
-        . '--' . $boundary . "\r\n"
+        . '--' . $mixed . "\r\n"
+        . $message
+        . '--' . $mixed . "\r\n"
         . 'Content-Type: application/pdf; name="' . $attachment['filename'] . "\"\r\n"
         . "Content-Transfer-Encoding: base64\r\n"
         . 'Content-Disposition: attachment; filename="' . $attachment['filename'] . "\"\r\n"
         . "\r\n"
         . $encoded . "\r\n"
-        . '--' . $boundary . "--\r\n";
+        . '--' . $mixed . "--\r\n";
     return smtp_dot_stuff($raw) . "\r\n.\r\n";
+}
+
+/** @param array{mime:string,bytes:string}|null $logo */
+function smtp_signed_message(string $plain, string $html, ?array $logo): string
+{
+    $alternative = 'jt_alt_' . bin2hex(random_bytes(6));
+    $body = '--' . $alternative . "\r\n"
+        . "Content-Type: text/plain; charset=UTF-8\r\n"
+        . "\r\n"
+        . $plain . "\r\n"
+        . '--' . $alternative . "\r\n"
+        . "Content-Type: text/html; charset=UTF-8\r\n"
+        . "\r\n"
+        . $html . "\r\n"
+        . '--' . $alternative . "--\r\n";
+    if ($logo === null) {
+        return 'Content-Type: multipart/alternative; boundary="' . $alternative . "\"\r\n\r\n" . $body;
+    }
+    $related = 'jt_rel_' . bin2hex(random_bytes(6));
+    $encoded = rtrim(chunk_split(base64_encode($logo['bytes']), 76, "\r\n"));
+    $subtype = $logo['mime'] === 'image/jpeg' ? 'jpeg' : 'png';
+    return 'Content-Type: multipart/related; boundary="' . $related . "\"\r\n"
+        . "\r\n"
+        . '--' . $related . "\r\n"
+        . 'Content-Type: multipart/alternative; boundary="' . $alternative . "\"\r\n"
+        . "\r\n"
+        . $body
+        . '--' . $related . "\r\n"
+        . 'Content-Type: image/' . $subtype . "\r\n"
+        . "Content-Transfer-Encoding: base64\r\n"
+        . "Content-ID: <temple-logo>\r\n"
+        . "Content-Disposition: inline; filename=\"logo." . $subtype . "\"\r\n"
+        . "\r\n"
+        . $encoded . "\r\n"
+        . '--' . $related . "--\r\n";
 }
 
 /**

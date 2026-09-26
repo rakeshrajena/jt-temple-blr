@@ -18,33 +18,48 @@ function next_receipt_number(PDO $pdo): string
 
 function generate_receipt_pdf(array $donation, array $donor, string $receiptNumber): string
 {
-    $pdf = new PdfDocument(419.53, 595.28);
+    $pageW = 419.53;
+    $pageH = 595.28;
+    $pdf = new PdfDocument($pageW, $pageH);
     $navy = [122 / 255, 22 / 255, 38 / 255];
     $gold = [201 / 255, 138 / 255, 43 / 255];
     $dark = [0.133, 0.133, 0.133];
     $grey = [0.353, 0.384, 0.439];
+    $logo = brand_logo_raster();
+    $image = $logo !== null ? $pdf->addImage($logo) : null;
+    if ($image !== null) {
+        $mark = 168.0;
+        $pdf->drawImage($image, ($pageW - $mark) / 2, ($pageH - $mark) / 2, $mark, $mark, 0.14);
+    }
 
     $pdf->setStroke(...$gold);
     $pdf->setLineWidth(2);
-    $pdf->rect(22.7, 22.7, 419.53 - 45.4, 595.28 - 45.4);
+    $pdf->rect(22.7, 22.7, $pageW - 45.4, $pageH - 45.4);
 
-    $pdf->setFill(...$navy);
     $nameY = 530.0;
-    $pdf->text($pdf->textWidth('SHREE JAGANNATH TEMPLE', 16, true) > 0
-        ? (419.53 - $pdf->textWidth('SHREE JAGANNATH TEMPLE', 16, true)) / 2
-        : 40, $nameY, 'SHREE JAGANNATH TEMPLE', 16, 'F2');
+    if ($image !== null) {
+        $logoSize = 36.0;
+        $pdf->drawImage($image, ($pageW - $logoSize) / 2, 522, $logoSize, $logoSize, 1);
+        $nameY = 508.0;
+    }
+    $pdf->setFill(...$navy);
+    $temple = app_display_name();
+    foreach ($pdf->wrap($temple, 15, 330, true) as $line) {
+        $pdf->text(($pageW - $pdf->textWidth($line, 15, true)) / 2, $nameY, $line, 15, 'F2');
+        $nameY -= 18;
+    }
     $pdf->setFill(...$grey);
     $place = APP_PLACE;
-    $pdf->text((419.53 - $pdf->textWidth($place, 9)) / 2, $nameY - 14, $place, 9, 'F1');
+    $pdf->text(($pageW - $pdf->textWidth($place, 9)) / 2, $nameY - 2, $place, 9, 'F1');
     $pdf->setFill(...$gold);
     $title = 'DONATION RECEIPT';
-    $pdf->text((419.53 - $pdf->textWidth($title, 12, true)) / 2, $nameY - 34, $title, 12, 'F2');
+    $pdf->text(($pageW - $pdf->textWidth($title, 12, true)) / 2, $nameY - 22, $title, 12, 'F2');
 
     $pdf->setStroke(...$gold);
     $pdf->setLineWidth(0.7);
-    $pdf->line(40, $nameY - 44, 419.53 - 40, $nameY - 44);
+    $pdf->line(40, $nameY - 32, $pageW - 40, $nameY - 32);
 
-    $y = $nameY - 68;
+    $y = $nameY - 52;
     $pdf->setFill(...$dark);
     $fields = [
         ['Receipt No.', $receiptNumber],
@@ -73,7 +88,7 @@ function generate_receipt_pdf(array $donation, array $donor, string $receiptNumb
     $y -= 6;
     $pdf->setStroke(0.867, 0.867, 0.867);
     $pdf->setLineWidth(0.6);
-    $pdf->line(40, $y, 419.53 - 40, $y);
+    $pdf->line(40, $y, $pageW - 40, $y);
     $y -= 20;
 
     $pdf->setFill(...$grey);

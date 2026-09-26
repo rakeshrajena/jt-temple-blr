@@ -237,7 +237,7 @@
     "settings.from_name": "From name",
     "settings.host": "SMTP host",
     "settings.identity": "Name and logo",
-    "settings.identity_intro": "The name and logo shown on the sign-in page, the menu, receipts, and payment pages.",
+    "settings.identity_intro": "One name and logo for the menu, coupons, receipts, and the email signature. On coupons and receipts the logo is also printed as a light watermark.",
     "settings.identity_scope": "Saving here updates the temple name and logo only.",
     "settings.keep_password": "Leave blank to keep it",
     "settings.label": "Label",

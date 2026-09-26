@@ -11,6 +11,10 @@ final class PdfDocument
     /** @var list<string> */
     private array $pages = [];
     private string $ops = '';
+    /** @var list<array{width:int,height:int,jpeg:?string,rgb:string,alpha:?string,colorSpace:string}> */
+    private array $images = [];
+    /** @var array<string, float> */
+    private array $opacities = [];
 
     public function __construct(float $pageWidth, float $pageHeight)
     {
@@ -108,6 +112,49 @@ final class PdfDocument
         return $lines;
     }
 
+    /**
+     * @param array{width:int,height:int,jpeg?:?string,rgb?:string,alpha?:?string,colorSpace?:string} $image
+     */
+    public function addImage(array $image): int
+    {
+        $this->images[] = [
+            'width' => (int) $image['width'],
+            'height' => (int) $image['height'],
+            'jpeg' => isset($image['jpeg']) && is_string($image['jpeg']) && $image['jpeg'] !== '' ? $image['jpeg'] : null,
+            'rgb' => (string) ($image['rgb'] ?? ''),
+            'alpha' => isset($image['alpha']) && is_string($image['alpha']) && $image['alpha'] !== '' ? $image['alpha'] : null,
+            'colorSpace' => (string) ($image['colorSpace'] ?? 'DeviceRGB'),
+        ];
+        return count($this->images) - 1;
+    }
+
+    public function drawImage(int $index, float $x, float $y, float $w, float $h, float $opacity = 1.0): void
+    {
+        if (!isset($this->images[$index]) || $w <= 0.0 || $h <= 0.0) {
+            return;
+        }
+        $this->ops .= "q\n";
+        if ($opacity < 0.999) {
+            $key = number_format(max(0.05, min(1.0, $opacity)), 2, '.', '');
+            $this->opacities[$key] = (float) $key;
+            $this->ops .= '/GS' . str_replace('.', '', $key) . " gs\n";
+        }
+        $this->ops .= sprintf("%.2F 0 0 %.2F %.2F %.2F cm\n/Im%d Do\nQ\n", $w, $h, $x, $y, $index);
+    }
+
+    public function fitText(string $text, float $size, float $maxWidth, bool $bold = false): string
+    {
+        $text = trim($text);
+        if ($text === '' || $this->textWidth($text, $size, $bold) <= $maxWidth) {
+            return $text;
+        }
+        $suffix = '...';
+        while ($text !== '' && $this->textWidth($text . $suffix, $size, $bold) > $maxWidth) {
+            $text = mb_substr($text, 0, -1);
+        }
+        return $text . $suffix;
+    }
+
     public function save(string $path): void
     {
         $dir = dirname($path);
@@ -129,18 +176,87 @@ final class PdfDocument
         $objects[4] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>";
         $objects[5] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >>";
 
-        $pageIds = [];
         $next = 6;
+        $gsIds = [];
+        foreach ($this->opacities as $key => $value) {
+            $id = $next++;
+            $gsIds[$key] = $id;
+            $objects[$id] = sprintf('<< /Type /ExtGState /ca %.2F /CA %.2F >>', $value, $value);
+        }
+        $imageIds = [];
+        foreach ($this->images as $index => $image) {
+            $maskId = null;
+            if ($image['alpha'] !== null) {
+                $mask = zlib_encode($image['alpha'], ZLIB_ENCODING_DEFLATE);
+                if ($mask === false) {
+                    throw new RuntimeException('Could not prepare the logo.');
+                }
+                $maskId = $next++;
+                $objects[$maskId] = $this->streamObject(
+                    sprintf(
+                        '<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode /Length %d >>',
+                        $image['width'],
+                        $image['height'],
+                        strlen($mask)
+                    ),
+                    $mask
+                );
+            }
+            if ($image['jpeg'] !== null) {
+                $data = $image['jpeg'];
+                $dict = sprintf(
+                    '<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /%s /BitsPerComponent 8 /Filter /DCTDecode /Length %d >>',
+                    $image['width'],
+                    $image['height'],
+                    $image['colorSpace'],
+                    strlen($data)
+                );
+            } else {
+                $data = zlib_encode($image['rgb'], ZLIB_ENCODING_DEFLATE);
+                if ($data === false) {
+                    throw new RuntimeException('Could not prepare the logo.');
+                }
+                $maskRef = $maskId !== null ? ' /SMask ' . $maskId . ' 0 R' : '';
+                $dict = sprintf(
+                    '<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length %d%s >>',
+                    $image['width'],
+                    $image['height'],
+                    strlen($data),
+                    $maskRef
+                );
+            }
+            $id = $next++;
+            $imageIds[$index] = $id;
+            $objects[$id] = $this->streamObject($dict, $data);
+        }
+        $resources = '/Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >>';
+        if ($imageIds !== []) {
+            $parts = [];
+            foreach ($imageIds as $index => $id) {
+                $parts[] = '/Im' . $index . ' ' . $id . ' 0 R';
+            }
+            $resources .= ' /XObject << ' . implode(' ', $parts) . ' >>';
+        }
+        if ($gsIds !== []) {
+            $parts = [];
+            foreach ($gsIds as $key => $id) {
+                $parts[] = '/GS' . str_replace('.', '', $key) . ' ' . $id . ' 0 R';
+            }
+            $resources .= ' /ExtGState << ' . implode(' ', $parts) . ' >>';
+        }
+
+        $pageIds = [];
         foreach ($pages as $content) {
             $pageId = $next++;
             $contentId = $next++;
             $pageIds[] = $pageId;
             $objects[$contentId] = "<< /Length " . strlen($content) . " >>\nstream\n" . $content . "endstream";
             $objects[$pageId] = sprintf(
-                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2F %.2F] /Contents %d 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> >>",
+                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2F %.2F] /Contents %d 0 R /Resources << %s >> >>",
                 $this->pageWidth,
                 $this->pageHeight,
-                $contentId
+                $contentId,
+                $resources
             );
         }
 
@@ -165,6 +281,11 @@ final class PdfDocument
         }
         $pdf .= "trailer\n<< /Size " . ($maxId + 1) . " /Root 1 0 R >>\nstartxref\n" . $xref . "\n%%EOF";
         return $pdf;
+    }
+
+    private function streamObject(string $dict, string $data): string
+    {
+        return $dict . "\nstream\n" . $data . "\nendstream";
     }
 
     private function escape(string $text): string

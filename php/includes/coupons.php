@@ -191,6 +191,8 @@ function generate_coupon_batch_pdf(
 
     $pdf = new PdfDocument($pageW, $pageH);
     $navy = [17 / 255, 44 / 255, 97 / 255];
+    $logo = brand_logo_raster();
+    $image = $logo !== null ? $pdf->addImage($logo) : null;
 
     for ($i = 0; $i < $quantity; $i++) {
         if ($i > 0 && $i % $perPage === 0) {
@@ -203,7 +205,7 @@ function generate_coupon_batch_pdf(
         $y = $pageH - $marginY - (($row + 1) * $cellH) + 6;
         $w = $cellW - 8;
         $h = $cellH - 10;
-        draw_coupon($pdf, $x, $y, $w, $h, $couponName, $cost, $startSlNo + $i, $navy);
+        draw_coupon($pdf, $x, $y, $w, $h, $couponName, $cost, $startSlNo + $i, $navy, $image);
     }
 
     $path = APP_ROOT . '/storage/coupons/batch_' . $batchId . '.pdf';
@@ -221,8 +223,14 @@ function draw_coupon(
     string $couponName,
     float $cost,
     int $slNo,
-    array $navy
+    array $navy,
+    ?int $logo = null
 ): void {
+    if ($logo !== null) {
+        $mark = min($w, $h) * 0.42;
+        $pdf->drawImage($logo, $x + ($w - $mark) / 2, $y + ($h - $mark) / 2, $mark, $mark, 0.14);
+    }
+
     $pdf->setStroke(...$navy);
     $pdf->setFill(...$navy);
     $pdf->setLineWidth(1.4);
@@ -234,6 +242,15 @@ function draw_coupon(
     $pdf->line($perfX, $y + 8, $perfX, $y + $h - 8);
     $pdf->setDash();
 
+    $brandY = $y + $h - 18;
+    $brandX = $x + 8;
+    if ($logo !== null) {
+        $pdf->drawImage($logo, $x + 8, $brandY - 2, 14, 14, 1);
+        $brandX = $x + 26;
+    }
+    $temple = $pdf->fitText(app_display_name(), 7, $perfX - 8 - $brandX, true);
+    $pdf->text($brandX, $brandY, $temple, 7, 'F2');
+
     $title = strtoupper($couponName);
     $words = preg_split('/\s+/', $title) ?: [$title];
     $line1 = $title;
@@ -243,11 +260,11 @@ function draw_coupon(
         $line1 = implode(' ', array_slice($words, 0, $mid));
         $line2 = implode(' ', array_slice($words, $mid));
     }
-    $pdf->text($x + 8, $y + $h - 22, $line1, 11, 'F2');
-    $ruleY = $y + $h - 28;
+    $pdf->text($x + 8, $y + $h - 38, $line1, 11, 'F2');
+    $ruleY = $y + $h - 44;
     if ($line2 !== '') {
-        $pdf->text($x + 8, $y + $h - 36, $line2, 11, 'F2');
-        $ruleY = $y + $h - 42;
+        $pdf->text($x + 8, $y + $h - 52, $line2, 11, 'F2');
+        $ruleY = $y + $h - 58;
     }
     $pdf->setLineWidth(0.7);
     $pdf->line($x + 8, $ruleY, $perfX - 8, $ruleY);

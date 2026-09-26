@@ -84,8 +84,9 @@ $plain = smtp_data_payload('Temple', 'seva@temple.test', 'devotee@example.com', 
 check(
     str_contains($plain, 'Content-Type: text/plain')
     && str_contains($plain, '..secret')
+    && str_contains($plain, app_display_name())
     && !str_contains($plain, 'multipart/mixed'),
-    'a message without a file stays plain text and escapes a leading dot'
+    'a message without a file keeps the text, the signature, and escapes a leading dot'
 );
 $pdf = "%PDF-1.4\nreceipt";
 $attached = smtp_data_payload('Temple', 'seva@temple.test', 'devotee@example.com', 'Receipt RCPT-2026-0099', 'Body', [

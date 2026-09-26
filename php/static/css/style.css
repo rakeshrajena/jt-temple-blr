@@ -84,9 +84,58 @@ img { max-width: 100%; }
   margin-bottom: 12px;
 }
 .brand-logo { width: 32px; height: 32px; display: block; object-fit: contain; }
-.identity-row { display: flex; gap: 20px; align-items: flex-start; }
-.identity-logo { width: 72px; height: 72px; object-fit: contain; flex: 0 0 72px; background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 8px; }
-.identity-row .form-grid { flex: 1; min-width: 0; }
+.identity-card h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  color: var(--maroon-deep);
+}
+.identity-card > .hint { margin: 0; max-width: 68ch; }
+.identity-lockup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 16px 0 4px;
+  padding: 14px 16px;
+  background: #FBF7F1;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.identity-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  flex: 0 0 72px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 8px;
+  box-shadow: 0 1px 2px rgba(62, 12, 22, 0.06);
+}
+.identity-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--maroon-deep);
+}
+.identity-place {
+  margin: 4px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.identity-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.identity-actions p { margin: 0; max-width: 52ch; font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; }
+.identity-actions .btn { flex: 0 0 auto; }
 .sidebar .brand h1 {
   font-family: var(--serif);
   font-size: 18px;
@@ -800,7 +849,8 @@ a.badge:hover { filter: brightness(0.95); text-decoration: underline; }
 }
 @media (max-width: 767px) {
   .locale-add { grid-template-columns: minmax(0, 1fr); }
-  .identity-row { flex-direction: column; }
+  .identity-lockup, .identity-actions { flex-direction: column; align-items: stretch; }
+  .identity-actions .btn { width: 100%; }
 }
 .locale-phrases input[type="text"] { width: 100%; }
 .locale-key { margin-top: 4px; font-size: 12px; color: var(--ink-soft); }

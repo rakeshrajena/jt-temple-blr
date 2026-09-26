@@ -25,6 +25,7 @@ function write_temp(string $name, string $bytes): string
 
 $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
 $temps = [];
+$extraFiles = [];
 $brandDir = APP_ROOT . '/storage/brand';
 $beforeFiles = glob($brandDir . DIRECTORY_SEPARATOR . 'logo.*') ?: [];
 $hostBefore = load_messaging_settings()['smtp_host'];
@@ -86,8 +87,53 @@ try {
             $pdo->rollBack();
         }
     }
+
+    $raster = brand_logo_raster();
+    check(
+        is_array($raster) && $raster['width'] === 128 && $raster['height'] === 128 && strlen($raster['rgb']) === 128 * 128 * 3,
+        'the built-in logo becomes an image'
+    );
+    $center = 64 * 128 + 64;
+    check(ord($raster['alpha'][$center] ?? "\0") > 0, 'the logo mark is visible in the middle');
+
+    $png = brand_decode_png($pngPath);
+    check(is_array($png) && $png['width'] === 1 && $png['height'] === 1, 'a PNG logo is read from the image itself');
+
+    $receiptPath = APP_ROOT . '/storage/receipts/RCPT-BRAND-CHECK.pdf';
+    $couponPath = APP_ROOT . '/storage/coupons/batch_987654.pdf';
+    $sampleFree = !is_file($receiptPath) && !is_file($couponPath);
+    check($sampleFree, 'the sample documents do not replace a real file');
+    if ($sampleFree) {
+    $extraFiles[] = generate_receipt_pdf([
+        'donation_date' => '2026-09-27',
+        'donation_type' => 'Cash',
+        'amount' => 100,
+        'purpose' => 'General',
+        'payment_mode' => 'Cash',
+    ], ['name' => 'Sample Devotee', 'phone' => '', 'pan_number' => ''], 'RCPT-BRAND-CHECK');
+    $extraFiles[] = generate_coupon_batch_pdf(987654, 'Mahaprasad', 50, 1, 1);
+    $receiptPdf = (string) file_get_contents($receiptPath);
+    $couponPdf = (string) file_get_contents($couponPath);
+    $temple = app_display_name();
+    check(
+        str_contains($receiptPdf, $temple) && str_contains($receiptPdf, '/Subtype /Image') && str_contains($receiptPdf, '/GS014 gs'),
+        'a receipt prints the temple name and a light logo watermark'
+    );
+    check(
+        str_contains($couponPdf, $temple) && str_contains($couponPdf, '/Subtype /Image') && str_contains($couponPdf, '/GS014 gs'),
+        'a coupon prints the temple name and a light logo watermark'
+    );
+    $mail = smtp_data_payload('Temple', 'seva@temple.test', 'devotee@example.com', 'Hello', "Namaskar\nSample");
+    check(
+        str_contains($mail, $temple)
+        && str_contains($mail, 'cid:temple-logo')
+        && str_contains($mail, 'multipart/related')
+        && !str_contains($mail, 'multipart/mixed'),
+        'an email signature carries the temple name and logo'
+    );
+    }
 } finally {
-    foreach ($temps as $temp) {
+    foreach (array_merge($temps, $extraFiles) as $temp) {
         if (is_file($temp)) {
             unlink($temp);
         }
