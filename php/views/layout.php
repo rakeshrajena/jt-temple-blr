@@ -103,7 +103,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
           <label for="nav-toggle" class="nav-toggle-btn"><?= e(t('shell.menu')) ?></label>
           <div>
             <h2><?= e($pageTitle) ?></h2>
-            <span class="topbar-kicker"><?= e(APP_PLACE) ?></span>
+            <span class="topbar-kicker"><?= e(app_place()) ?></span>
           </div>
         </div>
         <div class="user-chip">

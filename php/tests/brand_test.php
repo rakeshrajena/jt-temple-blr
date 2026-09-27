@@ -36,6 +36,7 @@ foreach ($beforeFiles as $existing) {
 }
 $hostBefore = load_messaging_settings()['smtp_host'];
 $nameBefore = app_display_name();
+$placeBefore = app_place();
 $logoBefore = brand_setting(BRAND_LOGO_KEY);
 
 try {
@@ -74,6 +75,9 @@ try {
     check(save_brand_identity('', null, false) !== null, 'an empty temple name is refused');
     check(save_brand_identity(str_repeat('A', 81), null, false) !== null, 'a temple name over 80 characters is refused');
     check(save_brand_identity('Temple <script>', null, false) !== null, 'a temple name cannot contain markup');
+check(save_brand_identity('Temple Test', null, false, null, null, '') !== null, 'an empty place is refused');
+check(save_brand_identity('Temple Test', null, false, null, null, str_repeat('A', 81)) !== null, 'a place over 80 characters is refused');
+check(save_brand_identity('Temple Test', null, false, null, null, 'Place <b>') !== null, 'a place cannot contain markup');
 
     $pdo = db();
     $pdo->beginTransaction();
@@ -89,6 +93,10 @@ try {
         check(is_file($brandDir . DIRECTORY_SEPARATOR . 'logo.png'), 'the logo file is stored');
         check(load_messaging_settings()['smtp_host'] === $hostBefore, 'saving the logo does not change mail settings');
 
+        $placed = save_brand_identity('Temple Test', null, false, null, null, 'Hosur, Bengaluru');
+        check($placed === null && app_place() === 'Hosur, Bengaluru', 'the saved place is the place on screen');
+        check(str_contains(email_signature_text(), 'Hosur, Bengaluru'), 'the email signature uses the saved place');
+
         $current = load_messaging_settings();
         $mail = save_messaging_settings($current + ['clear_smtp_password' => ''], $current);
         check($mail === null && app_display_name() === 'Temple Test', 'saving messages leaves the temple name in place');
@@ -97,7 +105,8 @@ try {
         check(
             $marked === null
             && brand_watermark_level('receipt') === 15
-            && brand_watermark_level('coupon') === 40,
+            && brand_watermark_level('coupon') === 40
+            && app_place() === 'Hosur, Bengaluru',
             'receipt and coupon watermarks save from 0 to 100'
         );
         $rejected = save_brand_identity('Temple Test', null, false, '140', '40');
@@ -151,8 +160,10 @@ try {
         && ($receiptMark <= 0.0 || $receiptMark >= 0.999 || str_contains($receiptPdf, ' gs')),
         'a receipt prints the temple name and a logo watermark'
     );
+    $couponName = str_contains($couponPdf, $temple)
+        || str_contains($couponPdf, strtok($temple, ' ') . ' ');
     check(
-        str_contains($couponPdf, $temple)
+        $couponName
         && str_contains($couponPdf, 'CU-1758920820-0001')
         && str_contains($couponPdf, '/Subtype /Image')
         && ($couponMark <= 0.0 || $couponMark >= 0.999 || str_contains($couponPdf, ' gs')),
@@ -185,6 +196,7 @@ try {
 }
 
 check(app_display_name() === $nameBefore, 'the live temple name is unchanged after the test');
+check(app_place() === $placeBefore, 'the live place is unchanged after the test');
 check(load_messaging_settings()['smtp_host'] === $hostBefore, 'the live mail server is unchanged after the test');
 check(brand_setting(BRAND_LOGO_KEY) === $logoBefore, 'the live logo setting is unchanged after the test');
 

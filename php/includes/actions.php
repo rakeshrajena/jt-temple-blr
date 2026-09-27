@@ -580,7 +580,8 @@ function action_food_coupons(string $method): void
             (float) ($_POST['cost'] ?? 0),
             (int) ($_POST['quantity'] ?? 0),
             (int) $_SESSION['user_id'],
-            $expiry['expires_at']
+            $expiry['expires_at'],
+            coupon_gift_from_post()
         );
         if ($result['error'] !== null) {
             flash('error', $result['error']);
@@ -622,6 +623,7 @@ function action_food_coupons(string $method): void
         'active' => 'food',
         'batches' => $batches,
         'couponCounts' => coupon_batch_counts(),
+        'couponScans' => coupon_batch_scans(),
         'moneyModes' => money_payment_modes(),
         'totalCouponsValue' => $totalValue,
         'totalCouponQty' => $totalQty,
@@ -636,40 +638,47 @@ function action_coupon_scan(string $method): void
     $raw = $method === 'POST'
         ? (string) ($_POST['code'] ?? '')
         : (isset($_GET['code']) && is_string($_GET['code']) ? $_GET['code'] : '');
-    $preview = coupon_scan_preview($raw);
-    if ($preview['error'] !== null || $method === 'GET') {
+    if (trim($raw) === '') {
         render('coupon_scan', [
             'title' => 'Coupon',
             'pageTitle' => 'Coupon',
             'active' => 'food',
-            'preview' => $preview,
+            'preview' => coupon_scan_preview($raw),
             'saved' => false,
         ]);
         return;
     }
     try {
-        $result = redeem_coupon($raw, (int) $_SESSION['user_id'], '', 'Cash');
+        $result = redeem_coupon($raw, (int) $_SESSION['user_id'], '', '');
     } catch (Throwable $e) {
         error_log('[jt_blr] coupon scan: ' . $e->getMessage());
-        $preview['error'] = 'The coupon could not be recorded.';
         render('coupon_scan', [
             'title' => 'Coupon',
             'pageTitle' => 'Coupon',
             'active' => 'food',
-            'preview' => $preview,
+            'preview' => [
+                'error' => 'The coupon could not be recorded.',
+                'code' => null,
+                'amount' => null,
+                'purpose' => null,
+                'status' => null,
+            ],
             'saved' => false,
         ]);
         return;
     }
     if ($result['error'] !== null) {
-        $preview['error'] = $result['error'];
-        $preview['code'] = $result['code'] ?? $preview['code'];
-        $preview['status'] = $result['status'] ?? $preview['status'];
         render('coupon_scan', [
             'title' => 'Coupon',
             'pageTitle' => 'Coupon',
             'active' => 'food',
-            'preview' => $preview,
+            'preview' => [
+                'error' => $result['error'],
+                'code' => $result['code'],
+                'amount' => null,
+                'purpose' => null,
+                'status' => $result['status'],
+            ],
             'saved' => false,
         ]);
         return;
@@ -683,6 +692,8 @@ function action_coupon_scan(string $method): void
             'code' => $result['code'],
             'amount' => $result['amount'],
             'purpose' => $result['purpose'],
+            'donor_name' => $result['donor_name'],
+            'payment_mode' => $result['payment_mode'],
             'status' => 'Redeemed',
         ],
         'saved' => true,
@@ -836,7 +847,8 @@ function action_update_coupons(int $batchId): void
             (int) ($_POST['quantity'] ?? 0),
             (int) $_SESSION['user_id'],
             $expiry['expires_at'],
-            true
+            true,
+            coupon_gift_from_post()
         );
     } catch (Throwable $e) {
         error_log('[jt_blr] coupon edit: ' . $e->getMessage());
@@ -845,8 +857,10 @@ function action_update_coupons(int $batchId): void
     }
     if ($result['error'] !== null) {
         flash('error', $result['error']);
-    } elseif ($result['changed']) {
+    } elseif (!empty($result['reapproval'])) {
         flash('success', 'Coupon batch updated and submitted for approval again. It is not counted until someone else approves it.');
+    } elseif ($result['changed']) {
+        flash('success', 'Coupon batch updated.');
     } else {
         flash('success', 'No change to save.');
     }
@@ -2859,6 +2873,11 @@ function action_settings(string $method): void
         flash($error !== null ? 'error' : 'success', $error ?? $done);
         redirect(url('settings') . '#choice-' . rawurlencode($key));
     }
+    if ($method === 'POST' && post_string('form', 20) === 'approval') {
+        $error = save_approval_limits(post_string('treasurer_limit', 20), post_string('staff_limit', 20));
+        flash($error !== null ? 'error' : 'success', $error ?? 'Approval limits saved.');
+        redirect(url('settings') . '#approval');
+    }
     if ($method === 'POST' && post_string('form', 20) === 'brand') {
         try {
             $receiptWatermark = $_POST['watermark_receipt'] ?? '';
@@ -2868,7 +2887,8 @@ function action_settings(string $method): void
                 $_FILES['logo'] ?? null,
                 isset($_POST['use_default_logo']),
                 is_string($receiptWatermark) ? trim($receiptWatermark) : '',
-                is_string($couponWatermark) ? trim($couponWatermark) : ''
+                is_string($couponWatermark) ? trim($couponWatermark) : '',
+                post_string('app_place', 80)
             );
         } catch (Throwable $e) {
             error_log('[jt_blr] brand: ' . $e->getMessage());
@@ -2882,7 +2902,7 @@ function action_settings(string $method): void
                 error_log('[jt_blr] brand documents: ' . $e->getMessage());
             }
         }
-        flash($error !== null ? 'error' : 'success', $error ?? 'Temple name, logo, and watermark saved.');
+        flash($error !== null ? 'error' : 'success', $error ?? 'Temple name, place, logo, and watermark saved.');
         redirect(url('settings') . '#identity');
     }
     if ($method === 'POST') {

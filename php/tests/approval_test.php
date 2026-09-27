@@ -33,6 +33,22 @@ check(approval_error('Staff', 100, 2, 3, 'reject', 'Waiting', 'No') !== null, 's
 check(approval_error('Admin', 100, 2, 2, 'resubmit', 'Sent back', '') === null, 'the preparer can submit again after it is sent back');
 check(approval_error('Admin', 100, 2, 1, 'resubmit', 'Sent back', '') !== null, 'someone else cannot submit it again');
 check(approval_next_status('approve') === 'Approved' && approval_next_status('reject') === 'Rejected', 'decisions map to the next status');
+check(approval_limit_error('1000', '5000') !== null, 'the staff limit cannot be higher than the treasurer limit');
+check(approval_limit_error('10000', '0') === null, 'the starting limits are valid');
+
+$pdo = db();
+$pdo->beginTransaction();
+try {
+    $saved = save_approval_limits('2000.50', '500');
+    check($saved === null && approval_limit('Treasurer') === 2000.5 && approval_limit('Staff') === 500.0, 'saved limits replace the starting amounts');
+    check(approval_error('Staff', 500, 2, 3, 'approve', 'Waiting', '') === null, 'staff can approve up to their saved limit');
+    check(approval_error('Staff', 500.01, 2, 3, 'approve', 'Waiting', '') !== null, 'staff cannot approve above their saved limit');
+    check(approval_error('Treasurer', 2000.51, 2, 3, 'approve', 'Waiting', '') !== null, 'a treasurer cannot approve above the saved limit');
+    check(approval_error('Staff', 100, 2, 3, 'reject', 'Waiting', 'No') === null, 'staff can reject when they have a limit');
+} finally {
+    $pdo->rollBack();
+}
+check(approval_limit('Treasurer') === 10000.0 && approval_limit('Staff') === 0.0, 'rolling back restores the starting limits');
 
 $pdo = db();
 $pdo->beginTransaction();

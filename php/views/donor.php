@@ -8,7 +8,7 @@ $pledges = $statement['pledges'];
 <div class="print-header">
   <img src="<?= e(app_logo_url()) ?>" alt="" class="print-logo">
   <h1><?= e(app_display_name()) ?></h1>
-  <p><?= e(APP_PLACE) ?> · Yearly statement <?= e($statement['financial_year']) ?></p>
+  <p><?= e(app_place()) ?> · Yearly statement <?= e($statement['financial_year']) ?></p>
 </div>
 <div class="panel">
   <h3><?= e($statement['name']) ?></h3>

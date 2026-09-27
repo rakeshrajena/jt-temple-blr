@@ -27,6 +27,7 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
 <div class="settings-page">
   <nav class="settings-nav" aria-label="<?= e(t('settings.nav')) ?>">
     <a href="#identity"><?= e(t('settings.identity')) ?></a>
+    <a href="#approval"><?= e(t('settings.approval')) ?></a>
     <a href="#messages"><?= e(t('settings.messages')) ?></a>
     <a href="#choices"><?= e(t('settings.choices')) ?></a>
   </nav>
@@ -41,13 +42,17 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
         <img src="<?= e(app_logo_url()) ?>" alt="" class="identity-logo">
         <div>
           <p class="identity-name"><?= e(app_display_name()) ?></p>
-          <p class="identity-place"><?= e(APP_PLACE) ?></p>
+          <p class="identity-place"><?= e(app_place()) ?></p>
         </div>
       </div>
       <div class="form-grid">
         <div class="form-group full">
           <label for="app_name"><?= e(t('settings.temple_name')) ?></label>
           <input id="app_name" type="text" name="app_name" value="<?= e(app_display_name()) ?>" maxlength="80" required>
+        </div>
+        <div class="form-group full">
+          <label for="app_place"><?= e(t('settings.place')) ?></label>
+          <input id="app_place" type="text" name="app_place" value="<?= e(app_place()) ?>" maxlength="80" required>
         </div>
         <div class="form-group">
           <label for="watermark_receipt"><?= e(t('settings.watermark_receipt')) ?></label>
@@ -71,6 +76,29 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
       <div class="identity-actions">
         <p><?= e(t('settings.identity_scope')) ?></p>
         <button class="btn btn-primary" type="submit"><?= e(t('settings.save_identity')) ?></button>
+      </div>
+    </section>
+  </form>
+
+  <form id="approval" class="settings-block" method="POST" action="<?= e(url('settings')) ?>">
+    <?= csrf_field() ?>
+    <input type="hidden" name="form" value="approval">
+    <section class="settings-card">
+      <h3><?= e(t('settings.approval')) ?></h3>
+      <p class="hint"><?= e(t('settings.approval_intro')) ?></p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="treasurer_limit"><?= e(t('settings.treasurer_limit')) ?></label>
+          <input id="treasurer_limit" type="number" name="treasurer_limit" min="0" max="100000000" step="0.01" required value="<?= e(number_format((float) approval_limit('Treasurer'), 2, '.', '')) ?>">
+        </div>
+        <div class="form-group">
+          <label for="staff_limit"><?= e(t('settings.staff_limit')) ?></label>
+          <input id="staff_limit" type="number" name="staff_limit" min="0" max="100000000" step="0.01" required value="<?= e(number_format((float) approval_limit('Staff'), 2, '.', '')) ?>">
+        </div>
+      </div>
+      <div class="identity-actions">
+        <p><?= e(t('settings.approval_scope')) ?></p>
+        <button class="btn btn-primary" type="submit"><?= e(t('settings.save_approval')) ?></button>
       </div>
     </section>
   </form>

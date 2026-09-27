@@ -16,7 +16,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
     <section class="login-brand">
       <div>
         <img src="<?= e(app_logo_url()) ?>" alt="" width="56" height="56">
-        <p class="place"><?= e(APP_PLACE) ?></p>
+        <p class="place"><?= e(app_place()) ?></p>
         <h1><?= e(app_display_name()) ?></h1>
         <p class="lede"><?= e(t('login.lede')) ?></p>
         <ul class="login-points">

@@ -70,17 +70,21 @@ function generate_receipt_pdf(array $donation, array $donor, string $receiptNumb
         $nameY -= 18;
     }
     $pdf->setFill(...$grey);
-    $place = APP_PLACE;
-    $pdf->text(($pageW - $pdf->textWidth($place, 9)) / 2, $nameY - 2, $place, 9, 'F1');
+    $placeY = $nameY - 2;
+    foreach ($pdf->wrap(app_place(), 9, 330, false) as $line) {
+        $pdf->text(($pageW - $pdf->textWidth($line, 9)) / 2, $placeY, $line, 9, 'F1');
+        $placeY -= 12;
+    }
     $pdf->setFill(...$gold);
     $title = 'DONATION RECEIPT';
-    $pdf->text(($pageW - $pdf->textWidth($title, 12, true)) / 2, $nameY - 22, $title, 12, 'F2');
+    $titleY = $placeY - 8;
+    $pdf->text(($pageW - $pdf->textWidth($title, 12, true)) / 2, $titleY, $title, 12, 'F2');
 
     $pdf->setStroke(...$gold);
     $pdf->setLineWidth(0.7);
-    $pdf->line(40, $nameY - 32, $pageW - 40, $nameY - 32);
+    $pdf->line(40, $titleY - 10, $pageW - 40, $titleY - 10);
 
-    $y = $nameY - 52;
+    $y = $titleY - 30;
     $pdf->setFill(...$dark);
     $fields = [
         ['Receipt No.', $receiptNumber],

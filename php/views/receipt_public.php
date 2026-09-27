@@ -34,7 +34,7 @@ if (is_array($gift)) {
     <div class="gift-card">
       <img src="<?= e(app_logo_url()) ?>" alt="" class="gift-logo">
       <h1 style="text-align:center; color:var(--maroon-deep); font-size:18px; margin:0;"><?= e(app_display_name()) ?></h1>
-      <p style="text-align:center; color:var(--ink-soft); font-size:12px; margin:2px 0 8px;"><?= e(APP_PLACE) ?></p>
+      <p style="text-align:center; color:var(--ink-soft); font-size:12px; margin:2px 0 8px;"><?= e(app_place()) ?></p>
       <?php if (!is_array($gift)): ?>
         <h2 style="text-align:center; font-size:18px;">This gift could not be found</h2>
         <p class="sub" style="text-align:center;">The link does not match a receipt. Ask the temple office if you need a copy.</p>

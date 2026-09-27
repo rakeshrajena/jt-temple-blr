@@ -4,10 +4,51 @@ declare(strict_types=1);
 function approval_limit(string $role): ?float
 {
     return match ($role) {
-        'Treasurer' => TREASURER_APPROVAL_LIMIT,
+        'Treasurer' => stored_approval_limit('approval_limit_treasurer', TREASURER_APPROVAL_LIMIT),
+        'Staff' => stored_approval_limit('approval_limit_staff', 0.0),
         'Admin' => null,
         default => 0.0,
     };
+}
+
+function stored_approval_limit(string $key, float $fallback): float
+{
+    $row = db_one('SELECT setting_value FROM app_settings WHERE setting_key = ?', [$key]);
+    if ($row === null) {
+        return $fallback;
+    }
+    $value = trim((string) ($row['setting_value'] ?? ''));
+    if ($value === '' || !is_numeric($value) || (float) $value < 0) {
+        return $fallback;
+    }
+    return round((float) $value, 2);
+}
+
+function approval_limit_error(string $treasurerRaw, string $staffRaw): ?string
+{
+    if (preg_match('/^\d+(\.\d{1,2})?$/', $treasurerRaw) !== 1 || preg_match('/^\d+(\.\d{1,2})?$/', $staffRaw) !== 1) {
+        return 'Enter each approval limit as an amount in rupees.';
+    }
+    $treasurer = round((float) $treasurerRaw, 2);
+    $staff = round((float) $staffRaw, 2);
+    if ($treasurer > 100000000 || $staff > 100000000) {
+        return 'An approval limit cannot be more than ₹10,00,00,000.';
+    }
+    if ($staff > $treasurer) {
+        return 'The Staff limit cannot be higher than the Treasurer limit.';
+    }
+    return null;
+}
+
+function save_approval_limits(string $treasurerRaw, string $staffRaw): ?string
+{
+    $error = approval_limit_error($treasurerRaw, $staffRaw);
+    if ($error !== null) {
+        return $error;
+    }
+    brand_upsert('approval_limit_treasurer', number_format((float) $treasurerRaw, 2, '.', ''));
+    brand_upsert('approval_limit_staff', number_format((float) $staffRaw, 2, '.', ''));
+    return null;
 }
 
 function counts_in_books(string $status): bool
@@ -52,13 +93,16 @@ function approval_error(
     if ($actorId === $preparerId) {
         return 'You cannot decide an item you prepared.';
     }
-    if ($role !== 'Treasurer' && $role !== 'Admin') {
+    if ($role !== 'Treasurer' && $role !== 'Admin' && $role !== 'Staff') {
+        return 'Staff cannot decide an approval.';
+    }
+    if ($role === 'Staff' && approval_limit('Staff') <= 0.0) {
         return 'Staff cannot decide an approval.';
     }
     if ($decision === 'approve') {
         $limit = approval_limit($role);
         if ($limit !== null && $amount > $limit) {
-            return 'This amount needs an Admin.';
+            return 'This amount is above your approval limit.';
         }
         return null;
     }

@@ -174,8 +174,87 @@ try {
         && is_array($ledger)
         && (string) $ledger['head'] === 'Prasad sale'
         && (float) $ledger['received'] === 40.0
-        && $again['error'] !== null,
+        && $again['error'] !== null
+        && str_contains((string) $again['error'], 'already scanned and redeemed'),
         'a sold coupon is donation income in the cash book and the ledger, and cannot be sold twice'
+    );
+    $adminName = (string) db_value('SELECT full_name FROM users WHERE id = ?', [$adminId]);
+    $sawScan = false;
+    foreach (coupon_batch_scans()[$saleId] ?? [] as $scan) {
+        if ($scan['code'] === $firstCode && $scan['scanned_by'] === $adminName && $scan['scanned_at'] !== '') {
+            $sawScan = true;
+        }
+    }
+    check($sawScan, 'a scanned coupon is listed on its batch with the time and the person');
+
+    $blankGift = coupon_gift_storage([]);
+    $badPan = coupon_gift_storage(['donor_name' => 'A', 'donor_pan' => 'not-a-pan']);
+    $phoneOnly = coupon_gift_storage(['donor_phone' => '9000007711']);
+    check(
+        $blankGift['error'] === null && $blankGift['values']['donor_name'] === null,
+        'coupon devotee details can be left blank'
+    );
+    check($badPan['error'] !== null, 'a coupon PAN must look like a PAN');
+    check($phoneOnly['error'] !== null, 'a coupon phone needs a devotee name');
+
+    $named = create_coupon_batch('Named coupon', 30, 1, $adminId, null, [
+        'donor_name' => 'Coupon Devotee Test',
+        'donor_phone' => '9000007711',
+        'donor_email' => 'coupon.dev@example.com',
+        'donor_address' => 'Lane 1',
+        'donor_pan' => 'ABCDE1234F',
+        'donation_type' => 'Other',
+        'payment_mode' => 'UPI',
+        'purpose' => 'Annadaan',
+        'upi_reference' => 'UPI123456',
+    ]);
+    $namedId = (int) $named['id'];
+    db_exec("UPDATE approvals SET status = 'Approved' WHERE subject_type = 'coupon' AND subject_id = ?", [$namedId]);
+    $namedIssued = (int) db_value('SELECT issued_unix FROM food_coupon_batches WHERE id = ?', [$namedId]);
+    $namedCode = coupon_code($namedIssued, (int) $named['start']);
+    $namedSale = redeem_coupon($namedCode, $adminId, '', '');
+    $namedGift = db_one(
+        'SELECT d.donation_type, d.payment_mode, d.purpose, d.upi_reference, don.name AS donor_name, don.phone, don.email, don.address, don.pan_number
+         FROM donations d JOIN donors don ON don.id = d.donor_id WHERE d.id = ?',
+        [(int) $namedSale['donation_id']]
+    );
+    $giftEdit = update_coupon_batch($namedId, 'Named coupon', 30, 1, $adminId, null, false, ['purpose' => 'Seva']);
+    check(
+        $named['error'] === null
+        && $namedSale['error'] === null
+        && is_array($namedGift)
+        && (string) $namedGift['donor_name'] === 'Coupon Devotee Test'
+        && (string) $namedGift['phone'] === '9000007711'
+        && (string) $namedGift['email'] === 'coupon.dev@example.com'
+        && (string) $namedGift['pan_number'] === 'ABCDE1234F'
+        && (string) $namedGift['donation_type'] === 'Other'
+        && (string) $namedGift['payment_mode'] === 'UPI'
+        && (string) $namedGift['purpose'] === 'Annadaan'
+        && (string) $namedGift['upi_reference'] === 'UPI123456'
+        && $giftEdit['changed'] === true
+        && $giftEdit['reapproval'] === false,
+        'optional batch details become the donation, and editing them does not restart approval'
+    );
+
+    $plain = create_coupon_batch('Counter sale', 25, 1, $adminId, null);
+    $plainId = (int) $plain['id'];
+    db_exec("UPDATE approvals SET status = 'Approved' WHERE subject_type = 'coupon' AND subject_id = ?", [$plainId]);
+    $plainIssued = (int) db_value('SELECT issued_unix FROM food_coupon_batches WHERE id = ?', [$plainId]);
+    $plainCode = coupon_code($plainIssued, (int) $plain['start']);
+    $plainSale = redeem_coupon($plainCode, $adminId, '', 'Cash');
+    $plainGift = db_one(
+        'SELECT d.donation_type, d.payment_mode, d.purpose, don.name AS donor_name
+         FROM donations d JOIN donors don ON don.id = d.donor_id WHERE d.id = ?',
+        [(int) $plainSale['donation_id']]
+    );
+    check(
+        $plainSale['error'] === null
+        && is_array($plainGift)
+        && (string) $plainGift['donation_type'] === 'Cash'
+        && (string) $plainGift['payment_mode'] === 'Cash'
+        && (string) $plainGift['donor_name'] === 'Coupon counter'
+        && (string) $plainGift['purpose'] === 'Counter sale',
+        'a scan with no extra choices is a cash donation under Coupon counter'
     );
 
     db_exec('UPDATE food_coupons SET expires_at = ? WHERE code = ?', [date('Y-m-d H:i:s', time() - 120), $secondCode]);

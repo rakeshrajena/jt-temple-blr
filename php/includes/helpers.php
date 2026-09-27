@@ -254,7 +254,7 @@ function random_token(int $bytes = 24): string
 
 function ensure_storage(): void
 {
-    foreach (['uploads', 'receipts', 'coupons', 'logs', 'vouchers', 'brand', 'invitations'] as $dir) {
+    foreach (['uploads', 'receipts', 'coupons', 'logs', 'vouchers', 'brand', 'invitations', 'install'] as $dir) {
         $path = APP_ROOT . '/storage/' . $dir;
         if (!is_dir($path) && !mkdir($path, 0755, true) && !is_dir($path)) {
             throw new RuntimeException('Could not create storage directory: ' . $dir);

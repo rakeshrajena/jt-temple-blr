@@ -249,13 +249,13 @@ function smtp_attachment_error(?array $attachment): ?string
  */
 function email_signature_text(): string
 {
-    return "--\r\n" . app_display_name() . "\r\n" . APP_PLACE;
+    return "--\r\n" . app_display_name() . "\r\n" . app_place();
 }
 
 function email_signature_html(bool $withLogo): string
 {
     $name = htmlspecialchars(app_display_name(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-    $place = htmlspecialchars(APP_PLACE, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $place = htmlspecialchars(app_place(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     $logo = $withLogo
         ? '<img src="cid:temple-logo" width="48" height="48" alt="" style="display:block;width:48px;height:48px;border:0;">'
         : '';
@@ -544,6 +544,7 @@ function messaging_for_page(): array
 }
 
 const BRAND_NAME_KEY = 'brand_name';
+const BRAND_PLACE_KEY = 'brand_place';
 const BRAND_LOGO_KEY = 'brand_logo';
 const BRAND_RECEIPT_WATERMARK_KEY = 'watermark_receipt';
 const BRAND_COUPON_WATERMARK_KEY = 'watermark_coupon';
@@ -585,6 +586,28 @@ function app_display_name(): string
 {
     $name = brand_setting(BRAND_NAME_KEY);
     return $name !== '' ? $name : APP_NAME;
+}
+
+function app_place(): string
+{
+    $place = brand_setting(BRAND_PLACE_KEY);
+    return $place !== '' ? $place : APP_PLACE;
+}
+
+function brand_place_error(string $place): ?string
+{
+    $place = trim($place);
+    if ($place === '') {
+        return 'Enter the place.';
+    }
+    $length = function_exists('mb_strlen') ? mb_strlen($place) : strlen($place);
+    if ($length > 80) {
+        return 'The place can be at most 80 characters.';
+    }
+    if (preg_match('/[\x00-\x1F\x7F<>]/u', $place) === 1) {
+        return 'The place cannot contain those characters.';
+    }
+    return null;
 }
 
 function app_logo_url(): string
@@ -684,7 +707,8 @@ function save_brand_identity(
     mixed $file,
     bool $useDefaultLogo,
     ?string $receiptWatermark = null,
-    ?string $couponWatermark = null
+    ?string $couponWatermark = null,
+    ?string $place = null
 ): ?string
 {
     $name = trim($name);
@@ -697,6 +721,13 @@ function save_brand_identity(
     }
     if (preg_match('/[\x00-\x1F\x7F<>]/u', $name) === 1) {
         return 'The temple name cannot contain those characters.';
+    }
+    if ($place !== null) {
+        $placeError = brand_place_error($place);
+        if ($placeError !== null) {
+            return $placeError;
+        }
+        $place = trim($place);
     }
     if ($receiptWatermark !== null || $couponWatermark !== null) {
         if (brand_watermark_error((string) $receiptWatermark) !== null) {
@@ -728,6 +759,9 @@ function save_brand_identity(
     $written = null;
     try {
         brand_upsert(BRAND_NAME_KEY, $name);
+        if ($place !== null) {
+            brand_upsert(BRAND_PLACE_KEY, $place);
+        }
         if ($receiptWatermark !== null && $couponWatermark !== null) {
             brand_upsert(BRAND_RECEIPT_WATERMARK_KEY, (string) (int) $receiptWatermark);
             brand_upsert(BRAND_COUPON_WATERMARK_KEY, (string) (int) $couponWatermark);

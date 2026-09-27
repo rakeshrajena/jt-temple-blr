@@ -16,6 +16,10 @@ php/storage/vouchers/*
 php/storage/logs/*
 !php/storage/logs/.gitkeep
 
+# Books copied onto the server by install.php. Kept off git because it holds the live records.
+php/storage/install/*
+!php/storage/install/.gitkeep
+
 # Python bytecode, virtualenv, and the local SQLite database
 python/**/__pycache__/
 python/**/*.py[cod]

@@ -64,13 +64,162 @@ function demo_data_is_pending(PDO $pdo): bool
     return (int) $pdo->query('SELECT COUNT(*) FROM donors')->fetchColumn() === 0;
 }
 
+function books_snapshot_path(): string
+{
+    return APP_ROOT . '/storage/install/books.jsonl';
+}
+
+/** @return list<string> */
+function books_table_names(PDO $pdo): array
+{
+    $names = [];
+    foreach ($pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN) as $name) {
+        if (is_string($name) && preg_match('/^[A-Za-z0-9_]+$/', $name) === 1) {
+            $names[] = $name;
+        }
+    }
+    return $names;
+}
+
+/** @return list<string> */
+function books_column_names(PDO $pdo, string $table): array
+{
+    if (preg_match('/^[A-Za-z0-9_]+$/', $table) !== 1) {
+        return [];
+    }
+    $names = [];
+    foreach ($pdo->query('SHOW COLUMNS FROM `' . $table . '`')->fetchAll(PDO::FETCH_ASSOC) as $column) {
+        $name = (string) ($column['Field'] ?? '');
+        if (preg_match('/^[A-Za-z0-9_]+$/', $name) === 1) {
+            $names[] = $name;
+        }
+    }
+    return $names;
+}
+
+function write_books_snapshot(PDO $pdo, ?string $path = null): int
+{
+    $path ??= books_snapshot_path();
+    $dir = dirname($path);
+    if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+        throw new RuntimeException('Could not store the books copy.');
+    }
+    $tmp = $path . '.tmp';
+    $handle = fopen($tmp, 'wb');
+    if ($handle === false) {
+        throw new RuntimeException('Could not store the books copy.');
+    }
+    $count = 0;
+    try {
+        foreach (books_table_names($pdo) as $table) {
+            $rows = $pdo->query('SELECT * FROM `' . $table . '`')->fetchAll(PDO::FETCH_ASSOC);
+            foreach (array_chunk($rows, 40) as $chunk) {
+                $line = json_encode(['table' => $table, 'rows' => $chunk], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
+                if (fwrite($handle, $line . "\n") === false) {
+                    throw new RuntimeException('Could not store the books copy.');
+                }
+                $count += count($chunk);
+            }
+        }
+    } catch (Throwable $e) {
+        fclose($handle);
+        if (is_file($tmp)) {
+            unlink($tmp);
+        }
+        throw $e;
+    }
+    fclose($handle);
+    if (!rename($tmp, $path)) {
+        if (is_file($tmp)) {
+            unlink($tmp);
+        }
+        throw new RuntimeException('Could not store the books copy.');
+    }
+    return $count;
+}
+
+function import_books_snapshot(PDO $pdo, ?string $path = null): int
+{
+    $path ??= books_snapshot_path();
+    if (!is_file($path)) {
+        throw new RuntimeException('The saved books were not found.');
+    }
+    $allowed = books_table_names($pdo);
+    $handle = fopen($path, 'rb');
+    if ($handle === false) {
+        throw new RuntimeException('The saved books could not be read.');
+    }
+    $own = !$pdo->inTransaction();
+    if ($own) {
+        $pdo->beginTransaction();
+    }
+    $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
+    $loaded = 0;
+    try {
+        foreach ($allowed as $table) {
+            $pdo->exec('DELETE FROM `' . $table . '`');
+        }
+        while (($line = fgets($handle)) !== false) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            $payload = json_decode($line, true);
+            if (!is_array($payload)) {
+                throw new RuntimeException('The saved books could not be read.');
+            }
+            $table = (string) ($payload['table'] ?? '');
+            $rows = $payload['rows'] ?? null;
+            if (!in_array($table, $allowed, true) || !is_array($rows)) {
+                throw new RuntimeException('The saved books could not be read.');
+            }
+            $columns = books_column_names($pdo, $table);
+            foreach ($rows as $row) {
+                if (!is_array($row)) {
+                    throw new RuntimeException('The saved books could not be read.');
+                }
+                $fields = [];
+                $values = [];
+                foreach ($row as $field => $value) {
+                    if (!is_string($field) || !in_array($field, $columns, true)) {
+                        continue;
+                    }
+                    $fields[] = '`' . $field . '`';
+                    $values[] = $value;
+                }
+                if ($fields === []) {
+                    continue;
+                }
+                $sql = 'INSERT INTO `' . $table . '` (' . implode(',', $fields) . ') VALUES (' . implode(',', array_fill(0, count($fields), '?')) . ')';
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute(array_values($values));
+                $loaded++;
+            }
+        }
+        $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+        if ($own) {
+            $pdo->commit();
+        }
+    } catch (Throwable $e) {
+        $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+        if ($own && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    } finally {
+        fclose($handle);
+    }
+    return $loaded;
+}
+
 /**
- * Creates any missing tables and, when the sample devotees are not there yet, loads every demo table.
- * A database that already has devotees is left in place. One existing login does not block the demo data.
+ * Creates any missing tables and brings an older database up to the latest columns.
+ * When devotees are not there yet, loads the saved books from this copy, or the demo data if that copy is missing.
+ * A database that already has devotees is left in place unless $replaceBooks is set.
  *
- * @return array{tables:int,users:int,seeded:bool}
+ * @return array{tables:int,users:int,donors:int,seeded:bool,imported:bool}
  */
-function install_database(): array
+function install_database(bool $replaceBooks = false): array
 {
     $pdo = db_connect();
     $exists = $pdo->query("SHOW TABLES LIKE 'users'")->fetchColumn();
@@ -79,16 +228,24 @@ function install_database(): array
     }
     migrate_schema($pdo);
     $seeded = false;
-    if (demo_data_is_pending($pdo)) {
+    $imported = false;
+    $snapshot = is_file(books_snapshot_path());
+    if ($snapshot && ($replaceBooks || demo_data_is_pending($pdo))) {
+        import_books_snapshot($pdo);
+        $imported = true;
+    } elseif (demo_data_is_pending($pdo)) {
         Seed::run($pdo);
         $seeded = true;
     }
     $users = (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+    $donors = (int) $pdo->query('SELECT COUNT(*) FROM donors')->fetchColumn();
     $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
     return [
         'tables' => count($tables),
         'users' => $users,
+        'donors' => $donors,
         'seeded' => $seeded,
+        'imported' => $imported,
     ];
 }
 

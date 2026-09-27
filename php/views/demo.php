@@ -9,7 +9,7 @@
 /** @var list<array<string,mixed>> $bankSample */
 /** @var string $generatedOn */
 ?>
-<p class="overview-meta"><?= e(t('overview.meta', ['name' => app_display_name(), 'place' => APP_PLACE, 'when' => $generatedOn])) ?></p>
+<p class="overview-meta"><?= e(t('overview.meta', ['name' => app_display_name(), 'place' => app_place(), 'when' => $generatedOn])) ?></p>
 
 <h3 class="overview-title"><?= e(t('overview.glance')) ?></h3>
 <div class="kpi-grid">

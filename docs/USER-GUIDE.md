@@ -19,18 +19,18 @@ Everyone who is signed in can open the temple registers and the books. The diffe
 | Record devotees, gifts, stock, vastra, expenses, coupons, and subscriptions | Yes | Yes | Yes |
 | Design an invitation and email it to selected devotees | Yes | Yes | Yes |
 | Print a receipt or a coupon sheet | Yes | Yes | Yes |
-| Approve a waiting item up to ₹10,000 | No | Yes, if they did not prepare it | Yes, if they did not prepare it |
-| Approve a waiting item above ₹10,000 | No | No | Yes, if they did not prepare it |
+| Approve a waiting item up to the limit in Settings | Up to the Staff limit, if an Admin has set one above zero | Up to the Treasurer limit | Yes, if they did not prepare it |
+| Approve a waiting item above those limits | No | No | Yes, if they did not prepare it |
 | Set or carry the opening balance | No | Yes, then someone else approves | Yes, then someone else approves |
 | Download many receipts at once | No | No | Yes |
 | Remove a coupon batch after it is approved | No | No | Yes |
 | Add or deactivate sign-in accounts | No | No | Yes |
-| Temple name, logo, watermark, mail, WhatsApp text, and form choices | No | No | Yes |
+| Temple name, logo, watermark, mail, WhatsApp text, approval limits, and form choices | No | No | Yes |
 | Change on-screen language labels | No | No | Yes |
 
 A Treasurer signed in as Lakshmi sees the same registers, without Users, Settings, or Localization.
 
-![Approvals as the Treasurer. The queue explains the ₹10,000 limit. Users, Settings, and Localization are not in the menu.](images/24-treasurer-approvals.png)
+![Approvals as the Treasurer. The queue shows the limits saved in Settings. Users, Settings, and Localization are not in the menu.](images/24-treasurer-approvals.png)
 
 A Staff account sees the same registers. Staff can prepare work. Staff cannot approve it.
 
@@ -98,11 +98,11 @@ Food stock is rice, dal, ghee, and the rest of the kitchen, with a minimum level
 
 A coupon batch is a print run for prasad, puja, or another temple service. Each coupon in the batch is stored on its own. The face value, cost times quantity, waits for approval. That face value does not enter the books.
 
-Income is recorded when a coupon is sold. Scan the QR code, type the code, or send it to the coupon API. The amount is added as a donation under the coupon name, and it posts to the cash book or the bank book on that date. Leave the devotee name blank to record the sale under Coupon counter.
+Income is recorded when a coupon is sold. Opening the coupon link while signed in records it at once. Nothing else has to be filled in. On the batch, devotee name, phone, email, address, PAN, donation type, payment, purpose, UPI, and cheque number are optional. Leave them blank and the scan is a Cash donation under Coupon counter, with the coupon name as the purpose. Fill them in and every coupon in that batch uses those details. Type the code on the coupon page only when that one sale should use a different devotee or payment. The amount posts to the cash book or the bank book on that date. Scanning the same coupon again does not add a second donation. The page says the coupon is already scanned and redeemed.
 
 A batch can expire at a date and time, or it can have no expiry. Once the expiry time has passed, the coupon is invalidated on its own and cannot be recorded as income. Invalidating a coupon by hand also adds no income.
 
-A Treasurer can approve up to ₹10,000. Above that, an Admin decides. The person who prepared the batch cannot approve it. Print the PDF only after approval. Each coupon carries the serial `CU-` plus the time and a 4-digit number. The QR code is a link to that same coupon. Scanning it on a phone opens the register. If you are already signed in, the coupon is checked and, only when it is still valid, recorded as income. If you are not signed in, the sign-in page opens first, and the same check and recording happen after you sign in. A coupon that is waiting, already sold, invalidated, or past its expiry is not added. Print the batch again after this change so the sheet uses the link. If the QR should open the live site rather than this computer, set `APP_URL` in the server `.env` file to that site address, with no path, and print again. If the batch expires, the sheet also prints that time.
+A Treasurer can approve up to the Treasurer limit saved in Settings. Until an Admin changes it, that limit is ₹10,000. Above that, an Admin decides. The person who prepared the batch cannot approve it. Print the PDF only after approval. Each coupon carries the serial `CU-` plus the time and a 4-digit number. The QR code is a link to that same coupon. Scanning it on a phone opens the register. If you are already signed in, a valid coupon is added to the books immediately. If you are not signed in, the sign-in page opens first, and the same recording happens after you sign in. A coupon that is waiting, already scanned, invalidated, or past its expiry is not added. Each batch lists how many coupons were scanned, with the date, the time, and who scanned them. Print the batch again after this change so the sheet uses the link. If the QR should open the live site rather than this computer, set `APP_URL` in the server `.env` file to that site address, with no path, and print again. If the batch expires, the sheet also prints that time.
 
 The name, cost, quantity, and expiry can be edited. A cost or quantity change sends the batch back for approval. An unapproved batch can be removed by anyone who can open the page. Only an Admin can remove a batch after it is approved. Removing a batch deletes its unused coupons. A batch that already has a sold coupon stays, because that donation is already in the books.
 
@@ -192,7 +192,7 @@ A new expense waits for approval before it enters the books. A UPI expense store
 
 ![Expense form and the expense list with voucher numbers](images/11-expenses.png)
 
-**Example.** Staff records ₹3,200 paid in cash to the electrician for sanctum lighting. It waits. A Treasurer who did not enter it can approve it, because it is under ₹10,000. The salary payment of ₹42,000 is above ₹10,000, so only an Admin can approve it. Until then it is not in the cash book.
+**Example.** Staff records ₹3,200 paid in cash to the electrician for sanctum lighting. It waits. A Treasurer who did not enter it can approve it when it is within the Treasurer limit in Settings (₹10,000 until an Admin changes it). The salary payment of ₹42,000 is above that starting limit, so only an Admin can approve it. Until then it is not in the cash book.
 
 ## Approvals
 
@@ -200,7 +200,7 @@ Approvals is the queue for expenses, cash deposited or withdrawn, opening-balanc
 
 ![The approval queue. An empty queue still states the rule.](images/12-approvals-admin.png)
 
-**Example.** Staff prepared the ₹3,200 electrician bill. Lakshmi opens Approvals, checks the amount is within ₹10,000, and approves it. She cannot approve a bill she entered herself. The ₹42,000 salary stays Waiting until an Admin approves it. After approval, the line appears in the cash book, day book, and ledger.
+**Example.** Staff prepared the ₹3,200 electrician bill. Lakshmi opens Approvals, checks the amount is within the Treasurer limit, and approves it. She cannot approve a bill she entered herself. The ₹42,000 salary stays Waiting until an Admin approves it, while the starting Treasurer limit is ₹10,000. After approval, the line appears in the cash book, day book, and ledger.
 
 ## Corrections
 
@@ -268,15 +268,15 @@ Users is Admin only. An Admin adds an account and chooses Admin, Treasurer, or S
 
 ## Settings
 
-Settings is Admin only. One card holds the temple name shown on screen, on receipts, on coupons, and in the email signature, plus the logo. The logo is also the faint watermark on receipts and coupons. Each watermark is a number from 0 to 100. 0 is invisible and 100 is solid.
+Settings is Admin only. One card holds the temple name and the place (for example Sarjapura, Bengaluru) shown on screen, on receipts, on the sign-in page, and in the email signature, plus the logo. The logo is also the faint watermark on receipts and coupons. Each watermark is a number from 0 to 100. 0 is invisible and 100 is solid.
 
 The same page holds the outgoing mail server, the WhatsApp message, and the choice lists used on the forms. The mail password is kept and is not shown again. A name already in a list cannot be added twice. Names the forms rely on stay and cannot be removed.
 
-The temple name, logo, and watermark levels are stored in that server's database. Saving them on one computer does not change the other server. After a new server is set up, open Settings there and save them once, then print the receipt and the coupon again.
+The temple name, place, logo, and watermark levels are stored in that server's database. Saving them on one computer does not change the other server until the books are loaded there. After a new server is set up, open Settings there and save them once if they are not already in the loaded books, then print the receipt and the coupon again.
 
 ![Settings, from the temple name and logo through mail and the choice lists](images/21-settings.png)
 
-**Example.** The printed name should be the long temple name, and the logo should sit at 22 on receipts and 22 on coupons. Enter the name, upload the logo, set both watermark fields to 22, and save. Open an existing receipt again, or print the coupon batch again. The PDF is rebuilt with that name, logo, and watermark.
+**Example.** The printed name should be the long temple name, the place should read Sarjapura, Bengaluru, and the logo should sit at 22 on receipts and 22 on coupons. Enter the name and the place, upload the logo, set both watermark fields to 22, and save. Open an existing receipt again, or print the coupon batch again. The PDF is rebuilt with that name, place, logo, and watermark.
 
 ## Localization
 
@@ -290,6 +290,6 @@ Localization is Admin only. It changes labels, headings, and buttons for English
 
 **Staff.** Sign in. Check low stock on the dashboard. Record the morning's gifts on Donations and generate any missing receipts. Log kitchen use of 5 kg or less directly. Send anything larger to Approvals. Enter the electrician's bill. Leave the queue for the Treasurer.
 
-**Treasurer.** Open Approvals. Approve the kitchen use and the electrician's bill, because both are within ₹10,000 and someone else prepared them. Leave the salary line for an Admin. If the year is opening, submit the opening cash and bank, and ask an Admin to approve it.
+**Treasurer.** Open Approvals. Approve the kitchen use and the electrician's bill when both are within the Treasurer limit and someone else prepared them. Leave the salary line for an Admin while it is above that limit. If the year is opening, submit the opening cash and bank, and ask an Admin to approve it.
 
-**Admin.** Approve anything above ₹10,000, including a large coupon batch. Save the temple name, logo, and watermarks if they are not yet on this server. Add or deactivate accounts when people join or leave. Download a zip of receipts when the office needs a bundle.
+**Admin.** Approve anything above the Treasurer and Staff limits, including a large coupon batch. Set those limits on Settings. Save the temple name, logo, and watermarks if they are not yet on this server. Add or deactivate accounts when people join or leave. Download a zip of receipts when the office needs a bundle.

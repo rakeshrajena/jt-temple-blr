@@ -1,6 +1,7 @@
 <?php
 /** @var list<array<string,mixed>> $batches */
 /** @var array<int, array{Valid:int,Redeemed:int,Expired:int,Invalid:int}> $couponCounts */
+/** @var array<int, list<array{code:string,scanned_at:string,scanned_by:string}>> $couponScans */
 /** @var list<string> $moneyModes */
 /** @var float $totalCouponsValue */
 /** @var float $couponIncome */
@@ -25,7 +26,7 @@ $expiryInput = static function (mixed $value): string {
 </div>
 <div class="panel">
   <h3><?= e(t('ui.record_coupon')) ?></h3>
-  <p class="sub">Scan the QR code or type the code. Recording a sold coupon adds its amount as a donation and posts it to the cash book or the bank book. Leave the devotee name blank to record it under Coupon counter. A coupon past its expiry is invalidated and cannot be recorded.</p>
+  <p class="sub">Opening a coupon link while signed in records it at once. No extra choice is asked. It is a Cash donation under Coupon counter, and the purpose is the batch name. Type a code here only when the devotee name or the payment mode should be different. A coupon past its expiry is invalidated and cannot be recorded. Scanning a coupon that is already in the books does not add it again.</p>
   <form method="POST" action="<?= e(url('food/coupons/validate')) ?>">
     <?= csrf_field() ?>
     <div class="form-grid cols-3">
@@ -40,8 +41,9 @@ $expiryInput = static function (mixed $value): string {
       <div class="form-group">
         <label><?= e(t('ui.payment_mode')) ?></label>
         <select name="payment_mode">
+          <option value=""><?= e(t('ui.batch_payment')) ?></option>
           <?php foreach ($moneyModes as $mode): ?>
-            <option value="<?= e($mode) ?>"<?= $mode === 'Cash' ? ' selected' : '' ?>><?= e($mode) ?></option>
+            <option value="<?= e($mode) ?>"><?= e($mode) ?></option>
           <?php endforeach; ?>
         </select>
       </div>
@@ -77,13 +79,40 @@ $expiryInput = static function (mixed $value): string {
 </div>
 <div class="panel">
   <h3><?= e(t('ui.generate_batch')) ?></h3>
-  <p class="sub">A batch is a print run. Each coupon is stored on its own. The face value waits for approval and does not enter the books until a coupon is sold. Choose an expiry, or leave no expiry. A Treasurer can approve up to ₹<?= e(number_format(TREASURER_APPROVAL_LIMIT, 0)) ?>. Above that, an Admin decides. The person who prepared the batch cannot approve it. It can be printed only after approval.</p>
+  <p class="sub">A batch is a print run. Each coupon is stored on its own. The face value waits for approval and does not enter the books until a coupon is sold. Devotee, donation type, payment, purpose, UPI, and cheque are optional. Leave them blank and a scan is Cash under Coupon counter, with the coupon name as the purpose. Fill them in and every coupon in the batch uses those details. Choose an expiry, or leave no expiry. A Treasurer can approve up to <?= e(money(approval_limit('Treasurer'))) ?>. Above that, an Admin decides. The person who prepared the batch cannot approve it. It can be printed only after approval.</p>
   <form method="POST" action="<?= e(url('food/coupons')) ?>" data-coupon-expiry>
     <?= csrf_field() ?>
     <div class="form-grid cols-3">
       <div class="form-group"><label><?= e(t('ui.coupon_name')) ?></label><input type="text" name="coupon_name" placeholder="e.g. Lunch Mahaprasad" required></div>
       <div class="form-group"><label><?= e(t('ui.cost_per')) ?></label><input type="number" step="0.01" min="0.01" name="cost" required></div>
       <div class="form-group"><label><?= e(t('common.quantity')) ?></label><input type="number" name="quantity" min="1" max="400" required></div>
+      <div class="form-group"><label><?= e(t('ui.devotee_optional')) ?></label><input type="text" name="donor_name" maxlength="150"></div>
+      <div class="form-group"><label><?= e(t('ui.phone')) ?></label><input type="text" name="donor_phone" maxlength="20"></div>
+      <div class="form-group"><label><?= e(t('ui.email')) ?></label><input type="email" name="donor_email" maxlength="120"></div>
+      <div class="form-group"><label><?= e(t('ui.address')) ?></label><input type="text" name="donor_address" maxlength="500"></div>
+      <div class="form-group"><label><?= e(t('ui.pan')) ?></label><input type="text" name="donor_pan" maxlength="10" autocapitalize="characters"></div>
+      <div class="form-group">
+        <label><?= e(t('ui.donation_type')) ?></label>
+        <select name="donation_type">
+          <option value=""><?= e(t('ui.leave_blank')) ?></option>
+          <?php foreach (coupon_amount_types() as $type): ?>
+            <option value="<?= e($type) ?>"><?= e($type) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="form-group">
+        <label><?= e(t('ui.payment_mode')) ?></label>
+        <select name="payment_mode">
+          <option value=""><?= e(t('ui.leave_blank')) ?></option>
+          <?php foreach ($moneyModes as $mode): ?>
+            <option value="<?= e($mode) ?>"><?= e($mode) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="form-group"><label><?= e(t('ui.purpose')) ?></label><input type="text" name="purpose" maxlength="200"></div>
+      <div class="form-group"><label><?= e(t('ui.upi_reference')) ?></label><input type="text" name="upi_reference" maxlength="64"></div>
+      <div class="form-group"><label><?= e(t('ui.cheque_no')) ?></label><input type="text" name="cheque_number" maxlength="30"></div>
+      <div class="form-group"><label><?= e(t('ui.cheque_date')) ?></label><input type="date" name="cheque_date"></div>
       <div class="form-group">
         <label class="check-line"><input type="checkbox" name="no_expiry" value="1" data-no-expiry checked> <?= e(t('ui.no_expiry')) ?></label>
       </div>
@@ -105,15 +134,34 @@ $expiryInput = static function (mixed $value): string {
     <?php
       $status = (string) ($b['approval_status'] ?? 'Waiting');
       $counts = $couponCounts[(int) $b['id']] ?? ['Valid' => 0, 'Redeemed' => 0, 'Expired' => 0, 'Invalid' => 0];
+      $scans = $couponScans[(int) $b['id']] ?? [];
       $expiresLabel = coupon_expiry_label(isset($b['expires_at']) ? (string) $b['expires_at'] : null);
       $hasExpiry = $expiresLabel !== '';
     ?>
     <tr>
       <td>
-        <?= e($b['coupon_name']) ?><br>
+        <?= e($b['coupon_name']) ?><?php if (trim((string) ($b['donor_name'] ?? '')) !== ''): ?> · <?= e((string) $b['donor_name']) ?><?php endif; ?><br>
         <span style="color:var(--ink-soft);font-size:12px;"><?= e($b['created_date']) ?> · <?= e(dash($b['created_by_name'])) ?><?= $hasExpiry ? ' · till ' . e($expiresLabel) : ' · ' . e(t('ui.no_expiry')) ?></span>
       </td>
-      <td><?= e(coupon_code((int) ($b['issued_unix'] ?? 0), (int) $b['start_sl_no'])) ?> – <?= e(coupon_code((int) ($b['issued_unix'] ?? 0), (int) $b['end_sl_no'])) ?><br><span style="color:var(--ink-soft);font-size:12px;"><?= e((string) $b['quantity']) ?> coupons · <?= e((string) $counts['Valid']) ?> valid · <?= e((string) $counts['Redeemed']) ?> sold · <?= e((string) $counts['Expired']) ?> expired · <?= e((string) $counts['Invalid']) ?> invalidated</span></td>
+      <td><?= e(coupon_code((int) ($b['issued_unix'] ?? 0), (int) $b['start_sl_no'])) ?> – <?= e(coupon_code((int) ($b['issued_unix'] ?? 0), (int) $b['end_sl_no'])) ?><br><span style="color:var(--ink-soft);font-size:12px;"><?= e((string) $b['quantity']) ?> coupons · <?= e((string) $counts['Valid']) ?> valid · <?= e((string) $counts['Redeemed']) ?> scanned · <?= e((string) $counts['Expired']) ?> expired · <?= e((string) $counts['Invalid']) ?> invalidated</span>
+        <?php if ($scans === []): ?>
+          <br><span style="color:var(--ink-soft);font-size:12px;">None scanned yet.</span>
+        <?php else: ?>
+          <details>
+            <summary><?= e((string) count($scans)) ?> scanned</summary>
+            <table class="data-table">
+              <tr><th>Coupon</th><th>When</th><th>By</th></tr>
+              <?php foreach ($scans as $scan): ?>
+                <tr>
+                  <td><?= e($scan['code']) ?></td>
+                  <td><?= e($scan['scanned_at'] !== '' ? $scan['scanned_at'] : '—') ?></td>
+                  <td><?= e($scan['scanned_by']) ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </table>
+          </details>
+        <?php endif; ?>
+      </td>
       <td><?= e(money($b['cost'])) ?> each<br><?= e(money($b['total_value'], 2)) ?> total</td>
       <td>
         <?php
@@ -135,6 +183,30 @@ $expiryInput = static function (mixed $value): string {
           <input type="number" name="quantity" min="1" max="400" value="<?= e((string) $b['quantity']) ?>" required>
           <label class="check-line"><input type="checkbox" name="no_expiry" value="1" data-no-expiry<?= $hasExpiry ? '' : ' checked' ?>> <?= e(t('ui.no_expiry')) ?></label>
           <input type="datetime-local" name="expires_at" data-expires value="<?= e($expiryInput($b['expires_at'] ?? '')) ?>">
+          <details>
+            <summary><?= e(t('ui.coupon_gift')) ?></summary>
+            <input type="text" name="donor_name" maxlength="150" placeholder="<?= e(t('ui.devotee_optional')) ?>" value="<?= e((string) ($b['donor_name'] ?? '')) ?>">
+            <input type="text" name="donor_phone" maxlength="20" placeholder="<?= e(t('ui.phone')) ?>" value="<?= e((string) ($b['donor_phone'] ?? '')) ?>">
+            <input type="email" name="donor_email" maxlength="120" placeholder="<?= e(t('ui.email')) ?>" value="<?= e((string) ($b['donor_email'] ?? '')) ?>">
+            <input type="text" name="donor_address" maxlength="500" placeholder="<?= e(t('ui.address')) ?>" value="<?= e((string) ($b['donor_address'] ?? '')) ?>">
+            <input type="text" name="donor_pan" maxlength="10" placeholder="<?= e(t('ui.pan')) ?>" value="<?= e((string) ($b['donor_pan'] ?? '')) ?>">
+            <select name="donation_type">
+              <option value=""><?= e(t('ui.donation_type')) ?></option>
+              <?php foreach (coupon_amount_types() as $type): ?>
+                <option value="<?= e($type) ?>"<?= (string) ($b['donation_type'] ?? '') === $type ? ' selected' : '' ?>><?= e($type) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <select name="payment_mode">
+              <option value=""><?= e(t('ui.payment_mode')) ?></option>
+              <?php foreach ($moneyModes as $mode): ?>
+                <option value="<?= e($mode) ?>"<?= (string) ($b['payment_mode'] ?? '') === $mode ? ' selected' : '' ?>><?= e($mode) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <input type="text" name="purpose" maxlength="200" placeholder="<?= e(t('ui.purpose')) ?>" value="<?= e((string) ($b['purpose'] ?? '')) ?>">
+            <input type="text" name="upi_reference" maxlength="64" placeholder="<?= e(t('ui.upi_reference')) ?>" value="<?= e((string) ($b['upi_reference'] ?? '')) ?>">
+            <input type="text" name="cheque_number" maxlength="30" placeholder="<?= e(t('ui.cheque_no')) ?>" value="<?= e((string) ($b['cheque_number'] ?? '')) ?>">
+            <input type="date" name="cheque_date" value="<?= e(substr((string) ($b['cheque_date'] ?? ''), 0, 10)) ?>">
+          </details>
           <button class="btn btn-sm btn-outline" type="submit"><?= e(t('common.save')) ?></button>
         </form>
       </td>

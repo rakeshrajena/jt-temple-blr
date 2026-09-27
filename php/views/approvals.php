@@ -2,7 +2,9 @@
 /** @var list<array<string, mixed>> $rows */
 $me = (int) ($currentUser['id'] ?? 0);
 $role = (string) ($currentUser['role'] ?? '');
-$canDecide = $role === 'Admin' || $role === 'Treasurer';
+$staffLimit = approval_limit('Staff');
+$treasurerLimit = approval_limit('Treasurer');
+$canDecide = $role === 'Admin' || $role === 'Treasurer' || ($role === 'Staff' && $staffLimit !== null && $staffLimit > 0);
 $badge = static function (string $status): string {
     return match ($status) {
         'Approved' => 'badge-green',
@@ -62,7 +64,7 @@ $label = static function (array $row): string {
 ?>
 <div class="panel">
   <h3><?= e(t('ui.approval_queue')) ?></h3>
-  <p class="sub">Staff prepare an item. A Treasurer can approve up to ₹10,000. Above that, an Admin decides. The person who prepared it cannot approve it. Only an approved line changes the cash book, day book, ledger, bank match, or stock. A write-off above <?= e((string) STOCK_WRITE_OFF_LIMIT) ?> units waits here even when the money amount is zero.</p>
+  <p class="sub"><?php if ($staffLimit !== null && $staffLimit > 0): ?>Staff can approve up to <?= e(money($staffLimit)) ?>.<?php else: ?>Staff prepare an item and cannot decide it.<?php endif; ?> A Treasurer can approve up to <?= e(money($treasurerLimit)) ?>. Above that, an Admin decides. The person who prepared it cannot approve it. Only an approved line changes the cash book, day book, ledger, bank match, or stock. A write-off above <?= e((string) STOCK_WRITE_OFF_LIMIT) ?> units waits here even when the money amount is zero.</p>
   <?php if (!$rows): ?>
     <p>Nothing is waiting.</p>
   <?php else: ?>

@@ -26,7 +26,7 @@
     <div class="pay-card">
       <img src="<?= e(app_logo_url()) ?>" alt="<?= e(app_display_name()) ?>" class="pay-logo">
       <h1 style="text-align:center; color:var(--maroon-deep); font-size:18px; margin:0;"><?= e(app_display_name()) ?></h1>
-      <p style="text-align:center; color:var(--ink-soft); font-size:12px; margin:2px 0 16px;"><?= e(APP_PLACE) ?></p>
+      <p style="text-align:center; color:var(--ink-soft); font-size:12px; margin:2px 0 16px;"><?= e(app_place()) ?></p>
       <div class="pay-amount"><?= e(money($inv['amount'])) ?></div>
       <div class="pay-label"><?= e($inv['plan_name']) ?> — <?= e($inv['period_label']) ?></div>
       <div class="pay-detail-row"><span><?= e(t('pay.invoice')) ?></span><span><?= e($inv['invoice_number']) ?></span></div>

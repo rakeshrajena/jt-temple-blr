@@ -303,6 +303,17 @@ CREATE TABLE food_coupon_batches (
     created_by      INT,
     issued_unix     INT UNSIGNED NULL,
     expires_at      DATETIME NULL,
+    donor_name      VARCHAR(150) NULL,
+    donor_phone     VARCHAR(20) NULL,
+    donor_email     VARCHAR(120) NULL,
+    donor_address   VARCHAR(500) NULL,
+    donor_pan       VARCHAR(10) NULL,
+    donation_type   VARCHAR(30) NULL,
+    payment_mode    VARCHAR(30) NULL,
+    purpose         VARCHAR(200) NULL,
+    upi_reference   VARCHAR(64) NULL,
+    cheque_number   VARCHAR(30) NULL,
+    cheque_date     DATE NULL,
     FOREIGN KEY (created_by) REFERENCES users(id)
 ) ENGINE=InnoDB;
 

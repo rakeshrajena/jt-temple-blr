@@ -1,6 +1,194 @@
 <?php
 declare(strict_types=1);
 
+/** @return list<string> */
+function coupon_amount_types(): array
+{
+    $types = [];
+    foreach (selection_pairs('donation_types') as $type) {
+        $value = (string) ($type['value'] ?? '');
+        if ($value !== '' && !in_array($value, ['Food', 'Vastra', 'Inventory'], true)) {
+            $types[] = $value;
+        }
+    }
+    return $types === [] ? ['Cash'] : $types;
+}
+
+/**
+ * @param array<string, mixed> $input
+ * @return array{error: ?string, values: array<string, ?string>}
+ */
+function coupon_gift_storage(array $input): array
+{
+    $empty = [
+        'donor_name' => null,
+        'donor_phone' => null,
+        'donor_email' => null,
+        'donor_address' => null,
+        'donor_pan' => null,
+        'donation_type' => null,
+        'payment_mode' => null,
+        'purpose' => null,
+        'upi_reference' => null,
+        'cheque_number' => null,
+        'cheque_date' => null,
+    ];
+    $name = trim((string) ($input['donor_name'] ?? ''));
+    $phone = trim((string) ($input['donor_phone'] ?? ''));
+    $email = trim((string) ($input['donor_email'] ?? ''));
+    $address = trim((string) ($input['donor_address'] ?? ''));
+    $pan = strtoupper(trim((string) ($input['donor_pan'] ?? '')));
+    $type = trim((string) ($input['donation_type'] ?? ''));
+    $payment = trim((string) ($input['payment_mode'] ?? ''));
+    $purpose = trim((string) ($input['purpose'] ?? ''));
+    $upi = strtoupper((string) preg_replace('/\s+/', '', (string) ($input['upi_reference'] ?? '')));
+    $cheque = strtoupper((string) preg_replace('/\s+/', '', (string) ($input['cheque_number'] ?? '')));
+    $chequeDate = trim((string) ($input['cheque_date'] ?? ''));
+    if ($name === '' && ($phone !== '' || $email !== '' || $address !== '' || $pan !== '')) {
+        return ['error' => 'Enter the devotee name, or leave the devotee fields blank.', 'values' => $empty];
+    }
+    if (mb_strlen($name) > 150) {
+        return ['error' => 'The devotee name is too long.', 'values' => $empty];
+    }
+    $digits = devotee_phone_digits($phone);
+    if ($phone !== '' && (strlen($digits) < 8 || strlen($digits) > 15)) {
+        return ['error' => 'Enter a phone number of 8 to 15 digits.', 'values' => $empty];
+    }
+    if (mb_strlen($email) > 120 || ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) === false)) {
+        return ['error' => 'The email address is not valid.', 'values' => $empty];
+    }
+    if (mb_strlen($address) > 500) {
+        return ['error' => 'The address is too long.', 'values' => $empty];
+    }
+    if ($pan !== '' && preg_match('/^[A-Z]{5}[0-9]{4}[A-Z]$/', $pan) !== 1) {
+        return ['error' => 'PAN should look like ABCDE1234F.', 'values' => $empty];
+    }
+    if ($type !== '' && !in_array($type, coupon_amount_types(), true)) {
+        return ['error' => 'Choose a donation type from the list, or leave it blank.', 'values' => $empty];
+    }
+    if ($payment !== '' && !in_array($payment, money_payment_modes(), true)) {
+        return ['error' => 'Choose a cash or bank payment, or leave it blank.', 'values' => $empty];
+    }
+    if (mb_strlen($purpose) > 200) {
+        return ['error' => 'The purpose is too long.', 'values' => $empty];
+    }
+    if ($upi !== '' && $cheque !== '') {
+        return ['error' => 'Enter either a UPI id or a cheque number.', 'values' => $empty];
+    }
+    if ($payment === '' && $upi !== '') {
+        $payment = 'UPI';
+    }
+    if ($payment === '' && $cheque !== '') {
+        $payment = 'Cheque';
+    }
+    if ($payment === 'UPI') {
+        if (preg_match('/^[A-Z0-9][A-Z0-9._-]{5,63}$/', $upi) !== 1) {
+            return ['error' => 'Enter the UPI transaction id, or leave payment blank.', 'values' => $empty];
+        }
+        $cheque = '';
+        $chequeDate = '';
+    } elseif ($payment === 'Cheque') {
+        if (preg_match('/^[A-Z0-9]{4,30}$/', $cheque) !== 1) {
+            return ['error' => 'Enter the cheque number, or leave payment blank.', 'values' => $empty];
+        }
+        $dated = valid_book_date($chequeDate);
+        if ($dated === null) {
+            return ['error' => 'Enter the cheque date, or leave the cheque number blank.', 'values' => $empty];
+        }
+        $chequeDate = $dated;
+        $upi = '';
+    } else {
+        $upi = '';
+        $cheque = '';
+        $chequeDate = '';
+    }
+    return ['error' => null, 'values' => [
+        'donor_name' => $name !== '' ? $name : null,
+        'donor_phone' => $phone !== '' ? $phone : null,
+        'donor_email' => $email !== '' ? $email : null,
+        'donor_address' => $address !== '' ? $address : null,
+        'donor_pan' => $pan !== '' ? $pan : null,
+        'donation_type' => $type !== '' ? $type : null,
+        'payment_mode' => $payment !== '' ? $payment : null,
+        'purpose' => $purpose !== '' ? $purpose : null,
+        'upi_reference' => $upi !== '' ? $upi : null,
+        'cheque_number' => $cheque !== '' ? $cheque : null,
+        'cheque_date' => $chequeDate !== '' ? $chequeDate : null,
+    ]];
+}
+
+/** @param array<string, mixed> $row @param array<string, ?string> $values */
+function coupon_gift_differs(array $row, array $values): bool
+{
+    foreach ($values as $key => $value) {
+        $current = $row[$key] ?? null;
+        $current = $current !== null && (string) $current !== '' ? (string) $current : null;
+        if ($key === 'cheque_date' && $current !== null) {
+            $current = substr($current, 0, 10);
+        }
+        if ($current !== $value) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * @return array{error: ?string, id: int, name: string}
+ */
+function coupon_resolve_donor(string $name, string $phone, string $email, string $address, string $pan): array
+{
+    $name = trim($name);
+    if ($name === '') {
+        $name = 'Coupon counter';
+        $phone = '';
+        $email = '';
+        $address = '';
+        $pan = '';
+    }
+    $digits = devotee_phone_digits($phone);
+    if ($digits !== '') {
+        foreach (db_all('SELECT id, name, phone FROM donors') as $row) {
+            if (devotee_phone_digits((string) ($row['phone'] ?? '')) === $digits) {
+                return ['error' => null, 'id' => (int) $row['id'], 'name' => (string) $row['name']];
+            }
+        }
+    }
+    $existing = db_one('SELECT id, name FROM donors WHERE name = ? ORDER BY id LIMIT 1', [$name]);
+    if ($existing !== null) {
+        return ['error' => null, 'id' => (int) $existing['id'], 'name' => (string) $existing['name']];
+    }
+    $saved = save_devotee(null, [
+        'name' => $name,
+        'phone' => $phone,
+        'email' => $email,
+        'address' => $address,
+        'pan' => $pan,
+    ]);
+    if ($saved['error'] !== null) {
+        return ['error' => $saved['error'], 'id' => 0, 'name' => $name];
+    }
+    return ['error' => null, 'id' => $saved['id'], 'name' => $name];
+}
+
+/** @return array<string, string> */
+function coupon_gift_from_post(): array
+{
+    return [
+        'donor_name' => post_string('donor_name', 150),
+        'donor_phone' => post_string('donor_phone', 20),
+        'donor_email' => post_string('donor_email', 120),
+        'donor_address' => post_string('donor_address', 500),
+        'donor_pan' => post_string('donor_pan', 20),
+        'donation_type' => post_string('donation_type', 30),
+        'payment_mode' => post_string('payment_mode', 30),
+        'purpose' => post_string('purpose', 200),
+        'upi_reference' => post_string('upi_reference', 64),
+        'cheque_number' => post_string('cheque_number', 30),
+        'cheque_date' => post_string('cheque_date', 10),
+    ];
+}
+
 function coupon_request_error(string $name, float $cost, int $quantity): ?string
 {
     if (trim($name) === '') {
@@ -34,9 +222,10 @@ function forget_coupon_pdf(int $batchId): void
 }
 
 /**
+ * @param array<string, mixed> $gift
  * @return array{error: ?string, id: ?int, start: ?int, end: ?int, total: ?float}
  */
-function create_coupon_batch(string $name, float $cost, int $quantity, int $userId, ?string $expiresAt = null): array
+function create_coupon_batch(string $name, float $cost, int $quantity, int $userId, ?string $expiresAt = null, array $gift = []): array
 {
     $failed = ['error' => null, 'id' => null, 'start' => null, 'end' => null, 'total' => null];
     $error = coupon_request_error($name, $cost, $quantity);
@@ -44,6 +233,12 @@ function create_coupon_batch(string $name, float $cost, int $quantity, int $user
         $failed['error'] = $error;
         return $failed;
     }
+    $storedGift = coupon_gift_storage($gift);
+    if ($storedGift['error'] !== null) {
+        $failed['error'] = $storedGift['error'];
+        return $failed;
+    }
+    $giftValues = $storedGift['values'];
     $name = trim($name);
     $cost = round($cost, 2);
     $pdo = db();
@@ -58,9 +253,16 @@ function create_coupon_batch(string $name, float $cost, int $quantity, int $user
         $total = round($cost * $quantity, 2);
         $issued = time();
         $id = db_exec(
-            'INSERT INTO food_coupon_batches (coupon_name, cost, start_sl_no, end_sl_no, quantity, total_value, created_date, created_by, issued_unix, expires_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?)',
-            [$name, $cost, $start, $end, $quantity, $total, date('Y-m-d'), $userId, $issued, $expiresAt]
+            'INSERT INTO food_coupon_batches (
+                coupon_name, cost, start_sl_no, end_sl_no, quantity, total_value, created_date, created_by, issued_unix, expires_at,
+                donor_name, donor_phone, donor_email, donor_address, donor_pan, donation_type, payment_mode, purpose, upi_reference, cheque_number, cheque_date
+             ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+            [
+                $name, $cost, $start, $end, $quantity, $total, date('Y-m-d'), $userId, $issued, $expiresAt,
+                $giftValues['donor_name'], $giftValues['donor_phone'], $giftValues['donor_email'], $giftValues['donor_address'],
+                $giftValues['donor_pan'], $giftValues['donation_type'], $giftValues['payment_mode'], $giftValues['purpose'],
+                $giftValues['upi_reference'], $giftValues['cheque_number'], $giftValues['cheque_date'],
+            ]
         );
         insert_coupon_rows($id, $issued, $start, $end, $expiresAt);
         record_approval('coupon', $id, 'Waiting', $total, $userId);
@@ -89,7 +291,8 @@ function coupon_serial_clash(int $start, int $end, int $exceptId): ?string
 }
 
 /**
- * @return array{error: ?string, changed: bool}
+ * @param array<string, mixed>|null $gift
+ * @return array{error: ?string, changed: bool, reapproval: bool}
  */
 function update_coupon_batch(
     int $batchId,
@@ -98,18 +301,22 @@ function update_coupon_batch(
     int $quantity,
     int $userId,
     ?string $expiresAt = null,
-    bool $updateExpiry = false
+    bool $updateExpiry = false,
+    ?array $gift = null
 ): array {
+    $unchanged = ['error' => null, 'changed' => false, 'reapproval' => false];
     $error = coupon_request_error($name, $cost, $quantity);
     if ($error !== null) {
-        return ['error' => $error, 'changed' => false];
+        return ['error' => $error, 'changed' => false, 'reapproval' => false];
     }
     $batch = db_one(
-        'SELECT id, coupon_name, cost, quantity, start_sl_no, issued_unix, expires_at FROM food_coupon_batches WHERE id = ?',
+        'SELECT id, coupon_name, cost, quantity, start_sl_no, issued_unix, expires_at,
+                donor_name, donor_phone, donor_email, donor_address, donor_pan, donation_type, payment_mode, purpose, upi_reference, cheque_number, cheque_date
+         FROM food_coupon_batches WHERE id = ?',
         [$batchId]
     );
     if ($batch === null) {
-        return ['error' => 'That coupon batch was not found.', 'changed' => false];
+        return ['error' => 'That coupon batch was not found.', 'changed' => false, 'reapproval' => false];
     }
     $currentExpiry = $batch['expires_at'] !== null && (string) $batch['expires_at'] !== ''
         ? (string) $batch['expires_at']
@@ -118,17 +325,27 @@ function update_coupon_batch(
     $costChanged = abs(round($cost, 2) - round((float) $batch['cost'], 2)) >= 0.001;
     $quantityChanged = $quantity !== (int) $batch['quantity'];
     $nameChanged = trim($name) !== (string) $batch['coupon_name'];
-    if (!$expiryChanged && !$costChanged && !$quantityChanged && !$nameChanged) {
-        return ['error' => null, 'changed' => false];
+    $giftValues = null;
+    $giftChanged = false;
+    if ($gift !== null) {
+        $storedGift = coupon_gift_storage($gift);
+        if ($storedGift['error'] !== null) {
+            return ['error' => $storedGift['error'], 'changed' => false, 'reapproval' => false];
+        }
+        $giftValues = $storedGift['values'];
+        $giftChanged = coupon_gift_differs($batch, $giftValues);
+    }
+    if (!$expiryChanged && !$costChanged && !$quantityChanged && !$nameChanged && !$giftChanged) {
+        return $unchanged;
     }
     if (($costChanged || $quantityChanged) && coupon_redeemed_count($batchId) > 0) {
-        return ['error' => 'Sold coupons are already in the books. Cost and quantity stay as they are.', 'changed' => false];
+        return ['error' => 'Sold coupons are already in the books. Cost and quantity stay as they are.', 'changed' => false, 'reapproval' => false];
     }
     $start = (int) $batch['start_sl_no'];
     $end = $start + $quantity - 1;
     $clash = coupon_serial_clash($start, $end, $batchId);
     if ($clash !== null) {
-        return ['error' => $clash, 'changed' => false];
+        return ['error' => $clash, 'changed' => false, 'reapproval' => false];
     }
     $total = round($cost * $quantity, 2);
     $expiresForRows = $updateExpiry ? $expiresAt : $currentExpiry;
@@ -138,18 +355,35 @@ function update_coupon_batch(
         $pdo->beginTransaction();
     }
     try {
-        db_exec(
-            'UPDATE food_coupon_batches
-             SET coupon_name = ?, cost = ?, end_sl_no = ?, quantity = ?, total_value = ?, expires_at = ?
-             WHERE id = ?',
-            [trim($name), round($cost, 2), $end, $quantity, $total, $expiresForRows, $batchId]
-        );
+        if ($giftValues === null) {
+            db_exec(
+                'UPDATE food_coupon_batches
+                 SET coupon_name = ?, cost = ?, end_sl_no = ?, quantity = ?, total_value = ?, expires_at = ?
+                 WHERE id = ?',
+                [trim($name), round($cost, 2), $end, $quantity, $total, $expiresForRows, $batchId]
+            );
+        } else {
+            db_exec(
+                'UPDATE food_coupon_batches
+                 SET coupon_name = ?, cost = ?, end_sl_no = ?, quantity = ?, total_value = ?, expires_at = ?,
+                     donor_name = ?, donor_phone = ?, donor_email = ?, donor_address = ?, donor_pan = ?,
+                     donation_type = ?, payment_mode = ?, purpose = ?, upi_reference = ?, cheque_number = ?, cheque_date = ?
+                 WHERE id = ?',
+                [
+                    trim($name), round($cost, 2), $end, $quantity, $total, $expiresForRows,
+                    $giftValues['donor_name'], $giftValues['donor_phone'], $giftValues['donor_email'], $giftValues['donor_address'],
+                    $giftValues['donor_pan'], $giftValues['donation_type'], $giftValues['payment_mode'], $giftValues['purpose'],
+                    $giftValues['upi_reference'], $giftValues['cheque_number'], $giftValues['cheque_date'],
+                    $batchId,
+                ]
+            );
+        }
         $spanError = sync_coupon_rows($batchId, (int) ($batch['issued_unix'] ?? 0), $start, $end, $expiresForRows, true);
         if ($spanError !== null) {
             if ($own && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
-            return ['error' => $spanError, 'changed' => false];
+            return ['error' => $spanError, 'changed' => false, 'reapproval' => false];
         }
         if ($costChanged || $quantityChanged) {
             record_approval('coupon', $batchId, 'Waiting', $total, $userId);
@@ -158,7 +392,7 @@ function update_coupon_batch(
         if ($own) {
             $pdo->commit();
         }
-        return ['error' => null, 'changed' => true];
+        return ['error' => null, 'changed' => true, 'reapproval' => $costChanged || $quantityChanged];
     } catch (Throwable $e) {
         if ($own && $pdo->inTransaction()) {
             $pdo->rollBack();
@@ -279,6 +513,17 @@ function ensure_coupon_schema(PDO $pdo): void
 {
     ensure_column($pdo, 'food_coupon_batches', 'issued_unix', 'INT UNSIGNED NULL');
     ensure_column($pdo, 'food_coupon_batches', 'expires_at', 'DATETIME NULL');
+    ensure_column($pdo, 'food_coupon_batches', 'donor_name', 'VARCHAR(150) NULL');
+    ensure_column($pdo, 'food_coupon_batches', 'donor_phone', 'VARCHAR(20) NULL');
+    ensure_column($pdo, 'food_coupon_batches', 'donor_email', 'VARCHAR(120) NULL');
+    ensure_column($pdo, 'food_coupon_batches', 'donor_address', 'VARCHAR(500) NULL');
+    ensure_column($pdo, 'food_coupon_batches', 'donor_pan', 'VARCHAR(10) NULL');
+    ensure_column($pdo, 'food_coupon_batches', 'donation_type', 'VARCHAR(30) NULL');
+    ensure_column($pdo, 'food_coupon_batches', 'payment_mode', 'VARCHAR(30) NULL');
+    ensure_column($pdo, 'food_coupon_batches', 'purpose', 'VARCHAR(200) NULL');
+    ensure_column($pdo, 'food_coupon_batches', 'upi_reference', 'VARCHAR(64) NULL');
+    ensure_column($pdo, 'food_coupon_batches', 'cheque_number', 'VARCHAR(30) NULL');
+    ensure_column($pdo, 'food_coupon_batches', 'cheque_date', 'DATE NULL');
     $pdo->exec(
         'UPDATE food_coupon_batches
          SET issued_unix = UNIX_TIMESTAMP(created_date)
@@ -473,6 +718,38 @@ function expire_due_coupons(): int
     return $statement->rowCount();
 }
 
+function coupon_already_redeemed_message(): string
+{
+    return 'This coupon is already scanned and redeemed. Please use a valid coupon and contact an Admin.';
+}
+
+/**
+ * @return array<int, list<array{code:string,scanned_at:string,scanned_by:string}>>
+ */
+function coupon_batch_scans(): array
+{
+    $scans = [];
+    $rows = db_all(
+        "SELECT c.batch_id, c.code, c.redeemed_at, u.full_name AS scanned_by
+         FROM food_coupons c
+         LEFT JOIN donations d ON d.id = c.donation_id
+         LEFT JOIN users u ON u.id = d.created_by
+         WHERE c.status = 'Redeemed'
+         ORDER BY c.redeemed_at DESC, c.id DESC"
+    );
+    foreach ($rows as $row) {
+        $id = (int) $row['batch_id'];
+        $when = trim((string) ($row['redeemed_at'] ?? ''));
+        $stamp = $when !== '' ? strtotime($when) : false;
+        $scans[$id][] = [
+            'code' => (string) $row['code'],
+            'scanned_at' => $stamp !== false ? date('d M Y, g:i A', $stamp) : '',
+            'scanned_by' => trim((string) ($row['scanned_by'] ?? '')) !== '' ? trim((string) $row['scanned_by']) : 'Unknown',
+        ];
+    }
+    return $scans;
+}
+
 /**
  * @return array<int, array{Valid:int,Redeemed:int,Expired:int,Invalid:int}>
  */
@@ -585,16 +862,6 @@ function redeem_coupon(
         $failed['error'] = 'Enter the coupon code from the QR code.';
         return $failed;
     }
-    $mode = $paymentMode !== '' ? $paymentMode : 'Cash';
-    if (!in_array($mode, money_payment_modes(), true)) {
-        $failed['error'] = 'Choose a cash or bank payment.';
-        return $failed;
-    }
-    $instrument = normalize_payment_instrument($mode, $upiReference, $chequeNumber, $chequeDate, $chequeCleared);
-    if ($instrument['error'] !== null) {
-        $failed['error'] = $instrument['error'];
-        return $failed;
-    }
     $pdo = db();
     $own = !$pdo->inTransaction();
     if ($own) {
@@ -605,7 +872,9 @@ function redeem_coupon(
     }
     try {
         $row = db_one(
-            "SELECT c.id, c.code, c.status, c.expires_at, b.coupon_name, b.cost, a.status AS approval_status
+            "SELECT c.id, c.code, c.status, c.expires_at, b.coupon_name, b.cost, a.status AS approval_status,
+                    b.donor_name, b.donor_phone, b.donor_email, b.donor_address, b.donor_pan,
+                    b.donation_type, b.payment_mode, b.purpose, b.upi_reference, b.cheque_number, b.cheque_date
              FROM food_coupons c
              JOIN food_coupon_batches b ON b.id = c.batch_id
              LEFT JOIN approvals a ON a.subject_type = 'coupon' AND a.subject_id = b.id
@@ -630,25 +899,63 @@ function redeem_coupon(
             $failed['status'] = (string) $row['status'];
             return $failed;
         }
-        $donor = trim($donorName);
-        if ($donor === '') {
-            $donor = 'Coupon counter';
+        $mode = $paymentMode !== '' ? $paymentMode : trim((string) ($row['payment_mode'] ?? ''));
+        if ($mode === '') {
+            $mode = 'Cash';
         }
-        if (mb_strlen($donor) > 150) {
-            $donor = mb_substr($donor, 0, 150);
+        if (!in_array($mode, money_payment_modes(), true)) {
+            if ($own && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $failed['error'] = 'Choose a cash or bank payment.';
+            $failed['code'] = $code;
+            return $failed;
         }
-        $existingDonor = db_one('SELECT id FROM donors WHERE name = ? ORDER BY id LIMIT 1', [$donor]);
-        $donorId = $existingDonor !== null
-            ? (int) $existingDonor['id']
-            : db_exec('INSERT INTO donors (name) VALUES (?)', [$donor]);
+        $upi = $paymentMode === '' ? trim((string) ($row['upi_reference'] ?? '')) : $upiReference;
+        $chequeNo = $paymentMode === '' ? trim((string) ($row['cheque_number'] ?? '')) : $chequeNumber;
+        $chequeOn = $paymentMode === '' ? trim((string) ($row['cheque_date'] ?? '')) : $chequeDate;
+        $instrument = normalize_payment_instrument($mode, $upi, $chequeNo, substr($chequeOn, 0, 10), $chequeCleared);
+        if ($instrument['error'] !== null) {
+            if ($own && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $failed['error'] = $instrument['error'];
+            $failed['code'] = $code;
+            return $failed;
+        }
+        $useBatchDonor = trim($donorName) === '';
+        $resolved = coupon_resolve_donor(
+            $useBatchDonor ? trim((string) ($row['donor_name'] ?? '')) : trim($donorName),
+            $useBatchDonor ? trim((string) ($row['donor_phone'] ?? '')) : '',
+            $useBatchDonor ? trim((string) ($row['donor_email'] ?? '')) : '',
+            $useBatchDonor ? trim((string) ($row['donor_address'] ?? '')) : '',
+            $useBatchDonor ? trim((string) ($row['donor_pan'] ?? '')) : ''
+        );
+        if ($resolved['error'] !== null) {
+            if ($own && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $failed['error'] = $resolved['error'];
+            $failed['code'] = $code;
+            return $failed;
+        }
+        $donor = $resolved['name'];
+        $donorId = $resolved['id'];
         $amount = round((float) $row['cost'], 2);
-        $purpose = trim((string) $row['coupon_name']);
+        $purpose = trim((string) ($row['purpose'] ?? ''));
+        if ($purpose === '') {
+            $purpose = trim((string) $row['coupon_name']);
+        }
+        $type = trim((string) ($row['donation_type'] ?? ''));
+        if (!in_array($type, coupon_amount_types(), true)) {
+            $type = 'Cash';
+        }
         $donationId = db_exec(
             'INSERT INTO donations (donor_id, donation_type, amount, purpose, donation_date, payment_mode, cheque_number, cheque_date, cheque_cleared, upi_reference, notes, created_by)
              VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
             [
                 $donorId,
-                'Cash',
+                $type,
                 $amount,
                 $purpose,
                 date('Y-m-d'),
@@ -661,10 +968,19 @@ function redeem_coupon(
                 $userId,
             ]
         );
-        db_exec(
-            "UPDATE food_coupons SET status = 'Redeemed', redeemed_at = NOW(), donation_id = ? WHERE id = ?",
-            [$donationId, (int) $row['id']]
+        $marked = db()->prepare(
+            "UPDATE food_coupons SET status = 'Redeemed', redeemed_at = NOW(), donation_id = ? WHERE id = ? AND status = 'Valid'"
         );
+        $marked->execute([$donationId, (int) $row['id']]);
+        if ($marked->rowCount() !== 1) {
+            if ($own && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $failed['error'] = coupon_already_redeemed_message();
+            $failed['code'] = $code;
+            $failed['status'] = 'Redeemed';
+            return $failed;
+        }
         if ($own) {
             $pdo->commit();
         }
@@ -719,7 +1035,7 @@ function invalidate_coupon(string $code): array
             if ($own && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
-            return ['error' => 'This coupon was already recorded as a donation.', 'code' => $code, 'status' => $status];
+            return ['error' => coupon_already_redeemed_message(), 'code' => $code, 'status' => $status];
         }
         if ($status === 'Expired') {
             if ($own && $pdo->inTransaction()) {
@@ -828,7 +1144,7 @@ function coupon_use_error(array $row): ?string
     }
     $status = (string) ($row['status'] ?? '');
     if ($status === 'Redeemed') {
-        return 'This coupon was already recorded as a donation.';
+        return coupon_already_redeemed_message();
     }
     if ($status === 'Invalid') {
         return 'This coupon was invalidated.';
