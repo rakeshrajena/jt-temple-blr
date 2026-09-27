@@ -117,6 +117,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
               <?php endforeach; ?>
             </select>
           </form>
+          <a class="logout-link" href="<?= e(url('account/password')) ?>"><?= e(t('nav.password')) ?></a>
           <a class="logout-link" href="<?= e(url('logout')) ?>"><?= e(t('shell.sign_out')) ?></a>
         </div>
       </div>

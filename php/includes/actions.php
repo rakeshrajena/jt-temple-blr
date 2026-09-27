@@ -231,6 +231,14 @@ function dispatch_request(): void
         action_demo();
         return;
     }
+    if ($path === 'account/password') {
+        action_account_password($method);
+        return;
+    }
+    if (preg_match('#^users/(\d+)/password$#', $path, $m) === 1 && $method === 'POST') {
+        action_set_user_password((int) $m[1]);
+        return;
+    }
     if ($path === 'users') {
         action_users($method);
         return;
@@ -2742,26 +2750,67 @@ function action_users(string $method): void
     ]);
 }
 
+function action_account_password(string $method): void
+{
+    login_required();
+    if ($method === 'POST') {
+        $error = change_own_password(
+            (int) ($_SESSION['user_id'] ?? 0),
+            (string) ($_POST['current_password'] ?? ''),
+            (string) ($_POST['new_password'] ?? ''),
+            (string) ($_POST['confirm_password'] ?? '')
+        );
+        flash($error !== null ? 'error' : 'success', $error ?? 'Your password was updated.');
+        redirect(url('account/password'));
+    }
+    render('password', [
+        'title' => t('page.password'),
+        'pageTitle' => t('page.password'),
+        'active' => 'password',
+    ]);
+}
+
+function action_set_user_password(int $userId): void
+{
+    admin_required();
+    $error = admin_set_user_password(
+        (string) ($_SESSION['role'] ?? ''),
+        (int) ($_SESSION['user_id'] ?? 0),
+        $userId,
+        (string) ($_POST['new_password'] ?? ''),
+        (string) ($_POST['confirm_password'] ?? '')
+    );
+    if ($error === null) {
+        $name = db_value('SELECT username FROM users WHERE id = ?', [$userId]);
+        flash('success', 'Password updated for ' . (is_string($name) ? $name : 'that account') . '.');
+    } else {
+        flash('error', $error);
+    }
+    redirect(url('users'));
+}
+
 function action_toggle_user(int $userId): void
 {
     admin_required();
-    if ($userId === (int) ($_SESSION['user_id'] ?? 0)) {
-        flash('error', 'You cannot change your own account from this screen.');
-        redirect(url('users'));
-    }
     $user = db_one('SELECT * FROM users WHERE id = ?', [$userId]);
     if ($user === null) {
         redirect(url('users'));
     }
     $currentlyActive = (int) $user['is_active'] === 1;
-    if ($currentlyActive && $user['role'] === 'Admin') {
-        $admins = (int) db_value("SELECT COUNT(*) FROM users WHERE role = 'Admin' AND is_active = 1");
-        if ($admins <= 1) {
-            flash('error', 'Cannot deactivate the last active Admin.');
-            redirect(url('users'));
-        }
+    $activeAdmins = (int) db_value("SELECT COUNT(*) FROM users WHERE role = 'Admin' AND is_active = 1");
+    $error = account_access_error(
+        (int) ($_SESSION['user_id'] ?? 0),
+        $userId,
+        (string) $user['role'],
+        $currentlyActive,
+        $activeAdmins
+    );
+    if ($error !== null) {
+        flash('error', $error);
+        redirect(url('users'));
     }
     db_exec('UPDATE users SET is_active = ? WHERE id = ?', [$currentlyActive ? 0 : 1, $userId]);
+    flash('success', $currentlyActive ? 'Account access turned off.' : 'Account access turned on.');
     redirect(url('users'));
 }
 

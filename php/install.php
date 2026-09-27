@@ -65,7 +65,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $ready) {
     <div class="ok">
       <p><strong><?= e(DB_NAME) ?></strong> on <?= e(DB_HOST) ?> has <?= e((string) $result['tables']) ?> tables and <?= e((string) $result['users']) ?> users.</p>
       <p><?= $result['seeded']
-            ? 'Demo data was loaded for devotees, donations, stock, expenses, books, coupons, and the other tables. Sign in as admin / temple@123, ramesh / ramesh@123, staff1 / staff@123, or treasurer / treasurer@123.'
+            ? 'Demo data was loaded for devotees, donations, stock, expenses, books, coupons, and the other tables.'
             : 'Demo data was left unchanged because devotees are already in the database.' ?></p>
       <p>Sign in at <a href="index.php">index.php</a>. Then delete <code>INSTALL_TOKEN</code> from the .env file so this page cannot be used again.</p>
     </div>

@@ -10,17 +10,6 @@ Open the app and sign in with the username and password an Admin gave you. The l
 
 ![Sign-in screen, with the temple name on the left and the sign-in card on the right](images/01-sign-in.png)
 
-Sample accounts, for a demonstration register only:
-
-| Username | Password | Role |
-| --- | --- | --- |
-| admin | temple@123 | Admin |
-| ramesh | ramesh@123 | Admin |
-| treasurer | treasurer@123 | Treasurer |
-| staff1 | staff@123 | Staff |
-
-On a live temple, replace these passwords and do not leave the sample list on the sign-in page.
-
 ## The three roles
 
 Everyone who is signed in can open the temple registers and the books. The difference is who may decide, and who may change the temple itself.

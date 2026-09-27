@@ -32,9 +32,11 @@
 </div>
 <div class="panel">
   <h3><?= e(t('ui.all_users')) ?></h3>
+  <p class="sub"><?= e(t('password.own_hint')) ?></p>
   <table class="data-table">
-    <tr><th><?= e(t('common.name')) ?></th><th><?= e(t('login.username')) ?></th><th><?= e(t('common.role')) ?></th><th><?= e(t('common.status')) ?></th><th><?= e(t('ui.created')) ?></th><th></th></tr>
+    <tr><th><?= e(t('common.name')) ?></th><th><?= e(t('login.username')) ?></th><th><?= e(t('common.role')) ?></th><th><?= e(t('common.status')) ?></th><th><?= e(t('ui.created')) ?></th><th><?= e(t('password.set')) ?></th><th><?= e(t('ui.access')) ?></th></tr>
     <?php foreach ($users as $u): ?>
+    <?php $isSelf = (int) $u['id'] === (int) ($currentUser['id'] ?? 0); ?>
     <tr>
       <td><?= e($u['full_name']) ?></td>
       <td><?= e($u['username']) ?></td>
@@ -42,7 +44,19 @@
       <td><?php if ((int) $u['is_active'] === 1): ?><span class="badge badge-green"><?= e(t('status.active')) ?></span><?php else: ?><span class="badge badge-grey"><?= e(t('status.inactive')) ?></span><?php endif; ?></td>
       <td><?= e($u['created_at']) ?></td>
       <td>
-        <?php if ((int) $u['id'] !== (int) ($currentUser['id'] ?? 0)): ?>
+        <?php if ($isSelf): ?>
+        <a class="btn btn-sm btn-outline" href="<?= e(url('account/password')) ?>"><?= e(t('page.password')) ?></a>
+        <?php else: ?>
+        <form class="row-actions" method="POST" action="<?= e(url('users/' . $u['id'] . '/password')) ?>">
+          <?= csrf_field() ?>
+          <input type="password" name="new_password" required minlength="6" maxlength="200" autocomplete="new-password" placeholder="<?= e(t('password.new')) ?>" aria-label="<?= e(t('password.new')) ?>">
+          <input type="password" name="confirm_password" required minlength="6" maxlength="200" autocomplete="new-password" placeholder="<?= e(t('password.confirm')) ?>" aria-label="<?= e(t('password.confirm')) ?>">
+          <button class="btn btn-sm btn-primary" type="submit"><?= e(t('password.set')) ?></button>
+        </form>
+        <?php endif; ?>
+      </td>
+      <td>
+        <?php if (!$isSelf): ?>
         <form method="POST" action="<?= e(url('users/' . $u['id'] . '/toggle')) ?>">
           <?= csrf_field() ?>
           <button class="btn btn-sm <?= (int) $u['is_active'] === 1 ? 'btn-danger' : 'btn-outline' ?>" type="submit">

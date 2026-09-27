@@ -56,13 +56,6 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
           </div>
           <button class="btn btn-primary" type="submit"><?= e(t('login.submit')) ?></button>
         </form>
-        <div class="demo-creds">
-          <strong><?= e(t('login.demo')) ?></strong><br>
-          admin / temple@123 — <?= e(t_fixed('role', 'Admin')) ?><br>
-          ramesh / ramesh@123 — <?= e(t_fixed('role', 'Admin')) ?><br>
-          treasurer / treasurer@123 — <?= e(t_fixed('role', 'Treasurer')) ?><br>
-          staff1 / staff@123 — <?= e(t_fixed('role', 'Staff')) ?>
-        </div>
       </div>
     </section>
   </div>
