@@ -44,6 +44,42 @@ function compare_database_shapes(array $expected, array $actual): array
     return $differences;
 }
 
+/**
+ * Counts what a books copy holds without loading it.
+ *
+ * @return array{rows: int, tables: int, saved_at: int}|null Null when the copy is missing or unreadable.
+ */
+function books_snapshot_summary(string $path): ?array
+{
+    if (!is_file($path)) {
+        return null;
+    }
+    $handle = fopen($path, 'rb');
+    if ($handle === false) {
+        return null;
+    }
+    $rows = 0;
+    $tables = [];
+    try {
+        while (($line = fgets($handle)) !== false) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            $payload = json_decode($line, true);
+            if (!is_array($payload) || !is_string($payload['table'] ?? null) || !is_array($payload['rows'] ?? null)) {
+                return null;
+            }
+            $tables[$payload['table']] = true;
+            $rows += count($payload['rows']);
+        }
+    } finally {
+        fclose($handle);
+    }
+    clearstatcache(true, $path);
+    return ['rows' => $rows, 'tables' => count($tables), 'saved_at' => (int) filemtime($path)];
+}
+
 function install_check_database_name(string $live): ?string
 {
     if (preg_match('/^[A-Za-z0-9_]{1,40}$/', $live) !== 1) {

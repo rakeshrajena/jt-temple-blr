@@ -14,6 +14,12 @@ Nothing in the “To add” section is built yet.
 - An Admin opens Settings to save the outgoing mail server and the WhatsApp Web message. The mail password is kept and is not shown again.
 - App contributors is a card list in Administration: name, photo, contact, email, location, designation, and a public profile link. Everyone who is signed in can read the cards. Only an Admin can add, update, or remove a person.
 - Every screen shows ©, the temple name, and the current year. On the registers that line is centered.
+- Form instructions sit behind a **?** icon beside the heading or field they explain. Pointing at it, focusing it with the keyboard, or tapping it shows the text one sentence per line. A click keeps it open until you click elsewhere or press Escape. Live status lines, such as counts and errors, stay visible.
+
+### Server install
+
+- `install.php` needs the setup key from the server `.env`. It adds every missing table and column, then loads the saved books when the database has no devotees or when replace is ticked. The page shows how many rows the saved copy holds and when it was saved.
+- `bin/export-books.php` saves every table to `storage/install/books.jsonl`. `bin/verify-install.php` builds a temporary database from `schema.sql` and that file, compares every table, column, and row count with the live books, and always removes the temporary database. Tests are in `php/tests/install_check_test.php`.
 
 ### Dashboard and overview
 

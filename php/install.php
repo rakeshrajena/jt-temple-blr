@@ -9,7 +9,8 @@ header('X-Robots-Tag: noindex');
 $ready = db_config_error() === null && strlen(env_value('INSTALL_TOKEN')) >= 16;
 $result = null;
 $error = db_config_error();
-$booksReady = is_file(books_snapshot_path());
+$booksSummary = books_snapshot_summary(books_snapshot_path());
+$booksReady = $booksSummary !== null;
 $existingDonors = null;
 if ($error === null && strlen(env_value('INSTALL_TOKEN')) < 16) {
     $error = 'Add INSTALL_TOKEN to the .env file. Use at least 16 random characters, then reload this page.';
@@ -84,6 +85,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $ready) {
     <li>Coupons are under Temple. One form generates them. Quantity 1 prints at once and does not wait for approval. A larger quantity still does. The amount follows the coupon name. Choosing a purpose does not change it.</li>
     <li>App contributors is a new list. Everyone signed in can read the cards. Only an Admin can add, update, or remove a person. The list starts empty.</li>
     <li>Puja purposes and their amounts travel in <code>storage/selections.json</code> with this folder. They are form choices, not rows in the database. Uploading this folder replaces that file on the server.</li>
+    <li>Subscribers have an Update button. Their status is Active, Paused, Inactive, or Cancelled. Only an Active subscriber gets a new invoice. Each status change records who made it and when.</li>
+    <li>Form instructions sit behind a <strong>?</strong> icon beside each heading or field. Point at it, or tap it on a phone, to read the steps line by line.</li>
   </ol>
   <?php if ($error !== null): ?>
     <p class="error"><?= e($error) ?></p>
@@ -92,7 +95,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $ready) {
     <div class="ok">
       <p><strong><?= e(DB_NAME) ?></strong> on <?= e(DB_HOST) ?> has <?= e((string) $result['tables']) ?> tables, <?= e((string) $result['users']) ?> users, and <?= e((string) $result['donors']) ?> devotees.</p>
       <p><?php if ($result['imported']): ?>
-        The saved books from this copy were loaded, including devotees, gifts, stock, expenses, coupons, invitations, and settings. Open Donations and use Generate receipt for any gift that should have one. Coupons are under Temple. Puja purposes and their amounts are already in this folder’s form choices.
+        The saved books from this copy were loaded, including devotees, gifts, stock, expenses, coupons, invitations, subscribers with their status history, and settings. Open Donations and use Generate receipt for any gift that should have one. Coupons are under Temple. Puja purposes and their amounts are already in this folder’s form choices.
       <?php elseif ($result['seeded']): ?>
         Demo data was loaded because this copy had no saved books and the database had no devotees yet.
       <?php else: ?>
@@ -103,9 +106,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $ready) {
   <?php elseif ($ready): ?>
     <p>Target database: <strong><?= e(DB_NAME) ?></strong> on <?= e(DB_HOST) ?>.</p>
     <?php if ($booksReady): ?>
-      <p>A saved copy of the books is included. The gifts in that copy have no receipt generated yet. <?php if ($existingDonors === 0): ?>It will be loaded because this database has no devotees yet.<?php else: ?>This database already has devotees. Tick the box below to replace them with this copy. Leave it unticked and only the new tables and columns are added.<?php endif; ?> Form choices, including each puja purpose and its amount, are already in <code>storage/selections.json</code> and do not depend on that tick.</p>
+      <p>A saved copy of the books is included: <?= e(number_format($booksSummary['rows'])) ?> rows across <?= e((string) $booksSummary['tables']) ?> tables, saved <?= e(date('j M Y, g:i a', $booksSummary['saved_at'])) ?>. The gifts in that copy have no receipt generated yet. <?php if ($existingDonors === 0): ?>It will be loaded because this database has no devotees yet.<?php else: ?>This database already has devotees. Tick the box below to replace them with this copy. Leave it unticked and only the new tables and columns are added.<?php endif; ?> Form choices, including each puja purpose and its amount, are already in <code>storage/selections.json</code> and do not depend on that tick.</p>
     <?php else: ?>
-      <p>No saved books were found with this copy. An empty database will get the demo devotees instead.</p>
+      <p>No readable saved books were found with this copy. An empty database will get the demo devotees instead.</p>
     <?php endif; ?>
     <form method="post" action="install.php">
       <?= csrf_field() ?>

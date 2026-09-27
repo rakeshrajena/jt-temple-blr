@@ -13,6 +13,8 @@ On this computer the first request creates the `sjt_temple_blr` database, the ta
 
 `storage/install/books.jsonl` is the saved books. It is not in git. This copy has the gifts and no receipt generated yet. If devotees are already on the server, tick replace so that file is loaded. `storage/selections.json` is the form choices, including each puja purpose and its amount. Uploading the folder replaces that file. It is not loaded by the replace tick. Then remove `INSTALL_TOKEN` from the server `.env`. The full steps are in `docs/USER-GUIDE.md`.
 
+Before uploading, run `php bin/export-books.php` to refresh the saved books, then `php bin/verify-install.php`. The check builds a temporary `<DB_NAME>_install_check` database from `schema.sql` and the saved books, compares every table, column, and row count with the live database, and always drops the temporary database. It exits with 1 and lists each difference when the install would not match. `tests/install_check_test.php` runs the same check.
+
 | Username | Password | Role |
 |---|---|---|
 | admin | temple@123 | Admin |

@@ -10,6 +10,8 @@ Open the app and sign in with the username and password an Admin gave you. The l
 
 Every screen ends with a copyright line: ©, the temple name, and the current year. On the registers that line is centered. The year moves forward on its own.
 
+Instructions for a form are behind the small **?** icon beside its heading or field. Point at the icon, or tap it on a phone, and the steps appear one per line. Click it to keep them open. Click anywhere else or press Escape to close them.
+
 ![Sign-in screen, with the temple name on the left and the sign-in card on the right](images/01-sign-in.png)
 
 ## The three roles
@@ -351,9 +353,18 @@ Localization is Admin only. It changes labels, headings, and buttons for English
 
 ## Putting this copy on the hosting server
 
+Before uploading, refresh and check the saved books on this computer. Open a terminal in the `php` folder:
+
+```
+php bin/export-books.php
+php bin/verify-install.php
+```
+
+The first command saves every table to `storage/install/books.jsonl`. The second builds a temporary database from `schema.sql` and that file, compares every table, column, and row count with the live books, and then removes the temporary database. It must say the fresh install matches the live books. If it lists a difference, run the export again and check again. The setup page shows how many rows the saved copy holds and when it was saved, so you can confirm the upload is the latest one.
+
 1. Upload the `php` folder, including `storage`. Leave the `.env` file that is already on the server in place. That file holds the database name, the database user, and the setup key. Do not replace it with the `.env` from this computer, and do not upload the `.env` that sits next to the `php` folder.
 2. The saved books are `php/storage/install/books.jsonl`. That file is not in git, so uploading the folder is what carries the gifts. This copy has the gifts and no receipt generated. Coupon sheets and the logo travel in the same `storage` folder.
 3. Form choices travel in `php/storage/selections.json`. That includes every puja purpose and its amount. Uploading this folder replaces the choice file already on the server. Those choices are not inside the database, so the replace tick on `install.php` does not load them.
-4. On the server, open `install.php`. It adds the latest tables and columns, including donation edits. Enter the setup key from that server’s `.env`. If devotees are already there, tick **Replace the devotees and books already in this database with the saved copy**. Leave the box unticked only when the server’s own devotees must stay; the new tables are still added.
+4. On the server, open `install.php`. It adds the latest tables and columns, including donation edits and the subscriber status history. Enter the setup key from that server’s `.env`. If devotees are already there, tick **Replace the devotees and books already in this database with the saved copy**. Leave the box unticked only when the server’s own devotees must stay; the new tables are still added.
 5. Sign in, then delete `INSTALL_TOKEN` from the server `.env` so the setup page cannot be used again.
 6. Open Donations and use Generate receipt for each gift that should have one. Open Coupons under Temple. Quantity 1 prints at once. A larger quantity waits for approval. The amount follows the coupon name. An edit of a gift older than 24 hours waits until both a Treasurer and an Admin approve it. App contributors is empty until an Admin adds the first person.

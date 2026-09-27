@@ -46,6 +46,21 @@ check(compare_database_shapes($live, $extraTable) === [], 'an extra empty table 
 check(install_check_database_name('sjt_temple_blr') === 'sjt_temple_blr_install_check', 'the scratch database is named after the live one');
 check(install_check_database_name('bad-name') === null, 'an unsafe database name gets no scratch database');
 
+$sample = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'jt_install_summary.jsonl';
+file_put_contents($sample, implode("\n", [
+    json_encode(['table' => 'donors', 'rows' => [['id' => 1], ['id' => 2]]]),
+    json_encode(['table' => 'donors', 'rows' => [['id' => 3]]]),
+    json_encode(['table' => 'users', 'rows' => [['id' => 1]]]),
+    '',
+]));
+touch($sample, 1790000000);
+$summary = books_snapshot_summary($sample);
+check($summary === ['rows' => 4, 'tables' => 2, 'saved_at' => 1790000000], 'the books copy summary counts rows and tables');
+file_put_contents($sample, "not json\n");
+check(books_snapshot_summary($sample) === null, 'an unreadable books copy has no summary');
+unlink($sample);
+check(books_snapshot_summary($sample) === null, 'a missing books copy has no summary');
+
 $snapshot = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'jt_install_check.jsonl';
 try {
     write_books_snapshot(db(), $snapshot);
