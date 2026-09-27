@@ -96,6 +96,10 @@ Food stock is rice, dal, ghee, and the rest of the kitchen, with a minimum level
 
 ## Food coupons
 
+Open Coupons under Temple. The same page is also linked from Food stock.
+
+One coupon is generated at once and can be printed immediately. It does not wait for approval. Type the purpose and pick a suggestion. The amount fills from the puja list in Settings and can be changed before you generate. A batch of more than one still waits for approval.
+
 A coupon batch is a print run for prasad, puja, or another temple service. Each coupon in the batch is stored on its own. The face value, cost times quantity, waits for approval. That face value does not enter the books.
 
 Income is recorded when a coupon is sold. Opening the coupon link while signed in records it at once. Nothing else has to be filled in. On the batch, devotee name, phone, email, address, PAN, donation type, payment, purpose, UPI, and cheque number are optional. Leave them blank and the scan is a Cash donation under Coupon counter, with Donation as the purpose. Fill them in and every coupon in that batch uses those details. Type the code on the coupon page only when that one sale should use a different devotee or payment. The amount posts to the cash book or the bank book on that date. Scanning the same coupon again does not add a second donation. The page says the coupon is already scanned and redeemed.
@@ -200,11 +204,23 @@ A new expense waits for approval before it enters the books. A UPI expense store
 
 ## Approvals
 
-Approvals is the queue for expenses, cash deposited or withdrawn, opening-balance changes, purchases, stock write-offs, corrections, receipt cancellations, donation edits, and coupon batches.
+Approvals is the queue for expenses, cash deposited or withdrawn, opening-balance changes, purchases, stock write-offs, corrections, receipt cancellations, donation edits, and coupon batches of more than one. One coupon does not enter this queue.
+
+The page lists the rules as numbered points:
+
+1. Staff prepare an item and cannot decide it.
+2. A Treasurer can approve up to the Treasurer limit in Settings. Until an Admin changes it, that limit is ₹10,000.
+3. Above that, an Admin decides.
+4. The person who prepared it cannot approve it.
+5. A donation edit from the last 24 hours follows that limit.
+6. An older donation edit changes nothing until both a Treasurer and an Admin approve it, whatever the amount or the field.
+7. Only an approved line changes the cash book, day book, ledger, bank match, stock, or a donation.
+8. Approving a donation edit rewrites its receipt when one already exists.
+9. A write-off above 5 units waits here even when the money amount is zero.
 
 ![The approval queue. An empty queue still states the rule.](images/12-approvals-admin.png)
 
-**Example.** Staff prepared the ₹3,200 electrician bill. Lakshmi opens Approvals, checks the amount is within the Treasurer limit, and approves it. She cannot approve a bill she entered herself. The ₹42,000 salary stays Waiting until an Admin approves it, while the starting Treasurer limit is ₹10,000. After approval, the line appears in the cash book, day book, and ledger.
+**Example.** Staff prepared the ₹3,200 electrician bill. Lakshmi opens Approvals, checks the amount is within the Treasurer limit, and approves it. She cannot approve a bill she entered herself. The ₹42,000 salary stays Waiting until an Admin approves it, while the starting Treasurer limit is ₹10,000. After approval, the line appears in the cash book, day book, and ledger. A gift edited more than 24 hours after it was added stays as it is until both Lakshmi and an Admin have approved that edit.
 
 ## Corrections
 
@@ -276,6 +292,8 @@ Settings is Admin only. One card holds the temple name and the place (for exampl
 
 The same page holds the outgoing mail server, the WhatsApp message, and the choice lists used on the forms. The mail password is kept and is not shown again. A name already in a list cannot be added twice. Names the forms rely on stay and cannot be removed.
 
+Puja purpose is the choice list for coupons. Each row is a purpose and the amount that fills in when that purpose is chosen. An Admin can change an amount, add a purpose, or remove any purpose this temple does not offer. At least one purpose must remain. Those choices are stored in `storage/selections.json` on the server, not in the devotee records.
+
 The temple name, place, logo, and watermark levels are stored in that server's database. Saving them on one computer does not change the other server until the books are loaded there. After a new server is set up, open Settings there and save them once if they are not already in the loaded books, then print the receipt and the coupon again.
 
 ![Settings, from the temple name and logo through mail and the choice lists](images/21-settings.png)
@@ -300,8 +318,9 @@ Localization is Admin only. It changes labels, headings, and buttons for English
 
 ## Putting this copy on the hosting server
 
-Upload the `php` folder, including `storage`. Leave the `.env` file that is already on the server in place. That file holds the database name, the database user, and the setup key. Do not replace it with the `.env` from this computer, and do not upload the `.env` that sits next to the `php` folder.
-
-The saved books travel in `php/storage/install/books.jsonl`. This copy was saved with the gifts still in the books and with no receipt generated. Coupon sheets, the logo, and settings travel with the same folder. Receipt PDFs are created on the server when someone uses Generate receipt.
-
-On the server, open `install.php`. Enter the setup key from that server’s `.env`. If devotees are already there, tick **Replace the devotees and books already in this database with the saved copy**. That loads this copy, including the new donation-edit columns. Leave the box unticked only when the server’s own devotees must stay; the new tables are still added. Sign in, then delete `INSTALL_TOKEN` from the server `.env` so the setup page cannot be used again. Open Donations and use Generate receipt for each gift that should have one.
+1. Upload the `php` folder, including `storage`. Leave the `.env` file that is already on the server in place. That file holds the database name, the database user, and the setup key. Do not replace it with the `.env` from this computer, and do not upload the `.env` that sits next to the `php` folder.
+2. The saved books are `php/storage/install/books.jsonl`. That file is not in git, so uploading the folder is what carries the gifts. This copy has the gifts and no receipt generated. Coupon sheets and the logo travel in the same `storage` folder.
+3. Form choices travel in `php/storage/selections.json`. That includes every puja purpose and its amount. Uploading this folder replaces the choice file already on the server. Those choices are not inside the database, so the replace tick on `install.php` does not load them.
+4. On the server, open `install.php`. It adds the latest tables and columns, including donation edits. Enter the setup key from that server’s `.env`. If devotees are already there, tick **Replace the devotees and books already in this database with the saved copy**. Leave the box unticked only when the server’s own devotees must stay; the new tables are still added.
+5. Sign in, then delete `INSTALL_TOKEN` from the server `.env` so the setup page cannot be used again.
+6. Open Donations and use Generate receipt for each gift that should have one. Open Coupons under Temple for a single coupon, which prints at once, or for a batch, which still waits for approval. An edit of a gift older than 24 hours waits until both a Treasurer and an Admin approve it.

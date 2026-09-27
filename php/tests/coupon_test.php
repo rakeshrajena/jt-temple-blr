@@ -55,6 +55,20 @@ try {
         && abs($during - $before) < 0.001,
         'a new batch waits and is left out of the approved total'
     );
+    $one = create_coupon_batch('Satyanarayan Puja', 501, 1, $adminId, null, ['purpose' => 'Satyanarayan Puja'], true);
+    $oneStatus = (string) db_value(
+        "SELECT a.status FROM approvals a WHERE a.subject_type = 'coupon' AND a.subject_id = ?",
+        [(int) $one['id']]
+    );
+    $afterOne = (float) db_value(
+        "SELECT COALESCE(SUM(b.total_value),0) FROM food_coupon_batches b
+         JOIN approvals a ON a.subject_type = 'coupon' AND a.subject_id = b.id AND a.status = 'Approved'"
+    );
+    check($one['error'] === null && $oneStatus === 'Approved' && abs($afterOne - $before - 501) < 0.001, 'one coupon is issued without waiting for approval');
+    check(create_coupon_batch('Two at once', 10, 2, $adminId, null, [], true)['error'] !== null, 'more than one coupon still waits for approval');
+    db_exec('DELETE FROM food_coupons WHERE batch_id = ?', [(int) $one['id']]);
+    db_exec("DELETE FROM approvals WHERE subject_type = 'coupon' AND subject_id = ?", [(int) $one['id']]);
+    db_exec('DELETE FROM food_coupon_batches WHERE id = ?', [(int) $one['id']]);
     $issued = (int) db_value('SELECT issued_unix FROM food_coupon_batches WHERE id = ?', [(int) $first['id']]);
     $now = time();
     check(

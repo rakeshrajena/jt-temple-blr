@@ -145,6 +145,108 @@
         "Construction",
         "Vastra Seva"
     ],
+    "puja_purposes": [
+        {
+            "name": "Daily \/ Regular Puja",
+            "amount": 51
+        },
+        {
+            "name": "Satyanarayan Puja",
+            "amount": 501
+        },
+        {
+            "name": "House Warming \/ Griha Pravesh",
+            "amount": 1101
+        },
+        {
+            "name": "Vehicle Puja",
+            "amount": 251
+        },
+        {
+            "name": "Annaprashana",
+            "amount": 501
+        },
+        {
+            "name": "Naming Ceremony",
+            "amount": 501
+        },
+        {
+            "name": "Marriage \/ Vivaha",
+            "amount": 2101
+        },
+        {
+            "name": "Upanayana \/ Thread Ceremony",
+            "amount": 1101
+        },
+        {
+            "name": "Mundan Ceremony",
+            "amount": 351
+        },
+        {
+            "name": "Shraddha \/ Pitru Puja",
+            "amount": 501
+        },
+        {
+            "name": "Birthday \/ Ayushya Puja",
+            "amount": 251
+        },
+        {
+            "name": "Ganesh Puja",
+            "amount": 251
+        },
+        {
+            "name": "Shiva Puja \/ Rudrabhishek",
+            "amount": 501
+        },
+        {
+            "name": "Lakshmi Puja",
+            "amount": 251
+        },
+        {
+            "name": "Durga Puja",
+            "amount": 501
+        },
+        {
+            "name": "Hanuman Puja",
+            "amount": 151
+        },
+        {
+            "name": "Navagraha Puja",
+            "amount": 1101
+        },
+        {
+            "name": "Health & Well-being",
+            "amount": 251
+        },
+        {
+            "name": "Career \/ Success",
+            "amount": 251
+        },
+        {
+            "name": "Business \/ Prosperity",
+            "amount": 501
+        },
+        {
+            "name": "Family Welfare",
+            "amount": 251
+        },
+        {
+            "name": "Festival \/ Special Puja",
+            "amount": 501
+        },
+        {
+            "name": "Manasika Jagna",
+            "amount": 1101
+        },
+        {
+            "name": "Full Day Ritual Puja",
+            "amount": 2101
+        },
+        {
+            "name": "Other",
+            "amount": 101
+        }
+    ],
     "plans": [
         "Monthly Annadaan Seva",
         "Monthly Mahaprasad Seva",

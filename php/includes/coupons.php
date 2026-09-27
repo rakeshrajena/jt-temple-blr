@@ -225,10 +225,13 @@ function forget_coupon_pdf(int $batchId): void
  * @param array<string, mixed> $gift
  * @return array{error: ?string, id: ?int, start: ?int, end: ?int, total: ?float}
  */
-function create_coupon_batch(string $name, float $cost, int $quantity, int $userId, ?string $expiresAt = null, array $gift = []): array
+function create_coupon_batch(string $name, float $cost, int $quantity, int $userId, ?string $expiresAt = null, array $gift = [], bool $issueNow = false): array
 {
     $failed = ['error' => null, 'id' => null, 'start' => null, 'end' => null, 'total' => null];
     $error = coupon_request_error($name, $cost, $quantity);
+    if ($error === null && $issueNow && $quantity !== 1) {
+        $error = 'One coupon is issued at a time. A larger quantity waits for approval.';
+    }
     if ($error !== null) {
         $failed['error'] = $error;
         return $failed;
@@ -265,7 +268,7 @@ function create_coupon_batch(string $name, float $cost, int $quantity, int $user
             ]
         );
         insert_coupon_rows($id, $issued, $start, $end, $expiresAt);
-        record_approval('coupon', $id, 'Waiting', $total, $userId);
+        record_approval('coupon', $id, $issueNow ? 'Approved' : 'Waiting', $total, $userId);
         if ($own) {
             $pdo->commit();
         }

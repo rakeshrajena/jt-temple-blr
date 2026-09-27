@@ -28,6 +28,10 @@ function selection_form(): array
 
 $posted = selection_form();
 check(parse_selections($posted)['error'] === null, 'the current lists can be saved again');
+$priced = parse_selection_block('puja_purposes', "Vehicle Puja | 251.50\nOther | 101");
+check(is_array($priced) && $priced[0]['name'] === 'Vehicle Puja' && $priced[0]['amount'] === 251.5, 'a puja purpose stores its amount');
+check(is_string(parse_selection_block('puja_purposes', 'Vehicle Puja | 0')), 'a puja amount must be above zero');
+check(puja_purpose_amount('Satyanarayan Puja') === 501.0, 'choosing Satyanarayan Puja fills ₹501 until Settings changes it');
 
 $withoutCash = $posted;
 $withoutCash['payment_modes'] = str_replace("Cash | cash\n", '', $withoutCash['payment_modes']);

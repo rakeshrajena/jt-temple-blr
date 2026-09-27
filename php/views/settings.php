@@ -15,11 +15,12 @@ $groups = [
         'vastra_statuses',
         'donation_types',
         'purposes',
+        'puja_purposes',
         'plans',
         'billing_cycles',
     ],
 ];
-$wide = ['payment_modes', 'movements', 'donation_types'];
+$wide = ['payment_modes', 'movements', 'donation_types', 'puja_purposes'];
 $bookLabels = ['cash' => t('settings.book_cash'), 'bank' => t('settings.book_bank'), 'none' => t('settings.book_none')];
 $directionLabels = ['in' => t('settings.dir_in'), 'out' => t('settings.dir_out')];
 $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('settings.store_food'), 'both' => t('settings.store_both')];
@@ -200,6 +201,8 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
                   <select name="choice_store"><?php foreach ($storeLabels as $value => $label): ?><option value="<?= e($value) ?>"><?= e($label) ?></option><?php endforeach; ?></select>
                 </div>
                 <label class="settings-check"><input type="checkbox" name="choice_approval" value="1"> <?= e(t('settings.approval_wait')) ?></label>
+              <?php elseif ($meta['kind'] === 'priced'): ?>
+                <div class="form-group"><label><?= e(t('common.amount')) ?></label><input type="number" name="choice_amount" min="0.01" step="0.01" required></div>
               <?php endif; ?>
               <button class="btn btn-primary" type="submit"><?= e(t('common.add')) ?></button>
             </form>
@@ -211,6 +214,7 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
                   <?php else: ?>
                     <th><?= e(t('common.name')) ?></th>
                   <?php endif; ?>
+                  <?php if ($meta['kind'] === 'priced'): ?><th><?= e(t('common.amount')) ?></th><?php endif; ?>
                   <?php if ($meta['kind'] === 'payment'): ?><th><?= e(t('settings.books')) ?></th><?php endif; ?>
                   <?php if ($meta['kind'] === 'movement'): ?><th><?= e(t('settings.direction')) ?></th><th><?= e(t('settings.store')) ?></th><th><?= e(t('common.approval')) ?></th><?php endif; ?>
                   <th></th>
@@ -238,6 +242,9 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
                     </td>
                     <?php if ($meta['kind'] === 'labeled'): ?>
                       <td><input form="<?= e($formId) ?>" type="text" name="choice_label" maxlength="80" value="<?= e((string) $row['label']) ?>" required></td>
+                    <?php endif; ?>
+                    <?php if ($meta['kind'] === 'priced'): ?>
+                      <td><input form="<?= e($formId) ?>" type="number" name="choice_amount" min="0.01" step="0.01" value="<?= e((string) $row['amount']) ?>" required></td>
                     <?php endif; ?>
                     <?php if ($meta['kind'] === 'payment'): ?>
                       <td>

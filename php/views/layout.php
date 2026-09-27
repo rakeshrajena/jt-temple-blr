@@ -19,6 +19,7 @@ $icon = static function (string $name): string {
         'box' => '<path d="M4 8.2 12 4l8 4.2v7.6L12 20 4 15.8V8.2z"/><path d="M12 12.2 20 8.2M12 12.2V20M12 12.2 4 8.2"/>',
         'leaf' => '<path d="M5 19s1.2-7.2 8.2-11.2C16.8 5.6 20 5 20 5s-.2 3.4-2.2 6.6C14.6 16.6 8 18.2 5 19z"/><path d="M9 14c1.4-1.2 3.2-2.6 5.4-3.8"/>',
         'cloth' => '<path d="M6 5h12l-1.2 14.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 5z"/><path d="M9 5c0 1.6.8 2.5 3 2.5S15 6.6 15 5"/>',
+        'ticket' => '<path d="M4 8.2A1.8 1.8 0 0 1 5.8 6.4h12.4A1.8 1.8 0 0 1 20 8.2v1.6a1.7 1.7 0 0 0 0 3.4v1.6a1.8 1.8 0 0 1-1.8 1.8H5.8A1.8 1.8 0 0 1 4 14.8v-1.6a1.7 1.7 0 0 0 0-3.4V8.2z"/><path d="M12 7.2v9.6"/>',
         'hands' => '<path d="M8 11V6.8a1.3 1.3 0 0 1 2.6 0V11"/><path d="M10.6 10.2V5.8a1.3 1.3 0 0 1 2.6 0v5"/><path d="M13.2 10.6V7.2a1.3 1.3 0 0 1 2.6 0V13c0 3.2-1.8 6-5.2 6-2.8 0-4.6-1.6-4.6-4.2V9.2a1.3 1.3 0 0 1 2.6 0V11"/>',
         'bell' => '<path d="M6 16h12l-1.2-2.1V10a4.8 4.8 0 0 0-9.6 0v3.9L6 16z"/><path d="M10 16a2 2 0 0 0 4 0"/>',
         'card' => '<rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="M3.5 10h17"/>',
@@ -44,6 +45,7 @@ $sections = [
     t('nav.section.temple') => [
         ['inventory', 'box', t('nav.inventory'), 'inventory'],
         ['food', 'leaf', t('nav.food'), 'food'],
+        ['coupons', 'ticket', t('nav.coupons'), 'food/coupons'],
         ['vastra', 'cloth', t('nav.vastra'), 'vastra'],
     ],
     t('nav.section.finance') => [
@@ -139,7 +141,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
       });
     });
   </script>
-  <script src="<?= e(asset('js/suggest.js')) ?>?v=1"></script>
+  <script src="<?= e(asset('js/suggest.js')) ?>?v=2"></script>
   <?php app_busy_overlay(); ?>
 </body>
 </html>

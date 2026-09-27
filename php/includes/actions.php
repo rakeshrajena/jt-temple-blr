@@ -579,24 +579,30 @@ function action_food_coupons(string $method): void
             flash('error', $expiry['error']);
             redirect(url('food/coupons'));
         }
+        $single = isset($_POST['single']);
+        $name = $single ? post_string('purpose', 200) : post_string('coupon_name', 100);
+        $quantity = $single ? 1 : (int) ($_POST['quantity'] ?? 0);
         $result = create_coupon_batch(
-            post_string('coupon_name', 100),
+            $name,
             (float) ($_POST['cost'] ?? 0),
-            (int) ($_POST['quantity'] ?? 0),
+            $quantity,
             (int) $_SESSION['user_id'],
             $expiry['expires_at'],
-            coupon_gift_from_post()
+            coupon_gift_from_post(),
+            $single
         );
         if ($result['error'] !== null) {
             flash('error', $result['error']);
             redirect(url('food/coupons'));
         }
-        flash('success', sprintf(
-            'Batch submitted for approval — Sl No %d to %d, total %s. It is not counted, and it cannot be printed, until someone else approves it.',
-            (int) $result['start'],
-            (int) $result['end'],
-            money($result['total'], 2)
-        ));
+        flash('success', $single
+            ? sprintf('One coupon is ready to print — %s, %s. It did not wait for approval.', $name, money($result['total'], 2))
+            : sprintf(
+                'Batch submitted for approval — Sl No %d to %d, total %s. It is not counted, and it cannot be printed, until someone else approves it.',
+                (int) $result['start'],
+                (int) $result['end'],
+                money($result['total'], 2)
+            ));
         redirect(url('food/coupons'));
     }
     expire_due_coupons();
@@ -624,7 +630,7 @@ function action_food_coupons(string $method): void
     render('food_coupons', [
         'title' => t('page.coupons'),
         'pageTitle' => t('page.coupons'),
-        'active' => 'food',
+        'active' => 'coupons',
         'batches' => $batches,
         'couponCounts' => coupon_batch_counts(),
         'couponScans' => coupon_batch_scans(),
@@ -646,7 +652,7 @@ function action_coupon_scan(string $method): void
         render('coupon_scan', [
             'title' => 'Coupon',
             'pageTitle' => 'Coupon',
-            'active' => 'food',
+            'active' => 'coupons',
             'preview' => coupon_scan_preview($raw),
             'saved' => false,
         ]);
@@ -659,7 +665,7 @@ function action_coupon_scan(string $method): void
         render('coupon_scan', [
             'title' => 'Coupon',
             'pageTitle' => 'Coupon',
-            'active' => 'food',
+            'active' => 'coupons',
             'preview' => [
                 'error' => 'The coupon could not be recorded.',
                 'code' => null,
@@ -675,7 +681,7 @@ function action_coupon_scan(string $method): void
         render('coupon_scan', [
             'title' => 'Coupon',
             'pageTitle' => 'Coupon',
-            'active' => 'food',
+            'active' => 'coupons',
             'preview' => [
                 'error' => $result['error'],
                 'code' => $result['code'],
@@ -690,7 +696,7 @@ function action_coupon_scan(string $method): void
     render('coupon_scan', [
         'title' => 'Coupon',
         'pageTitle' => 'Coupon',
-        'active' => 'food',
+        'active' => 'coupons',
         'preview' => [
             'error' => null,
             'code' => $result['code'],
@@ -3002,6 +3008,7 @@ function action_settings(string $method): void
             'approval' => isset($_POST['choice_approval']) ? '1' : '',
             'value' => post_string('choice_value', 30),
             'label' => post_string('choice_label', 80),
+            'amount' => post_string('choice_amount', 12),
         ]);
         $done = match ($op) {
             'add' => 'Added to ' . $label . '.',

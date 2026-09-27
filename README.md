@@ -14,7 +14,7 @@ Two copies of the same admin app live in this repo:
 1. Start Apache and MySQL in AMPPS.
 2. Open [http://localhost/jt_blr/jt-temple-blr/php/](http://localhost/jt_blr/jt-temple-blr/php/).
 
-The first request on this computer creates the `sjt_temple_blr` database, the tables, and the demo records. Database settings are in `php/config.php` (localhost, user `root`, password `mysql`). On the hosting server, upload the `php` folder including `storage`, keep that server’s `.env`, and open `install.php`. Tick replace when devotees are already there so the saved books are loaded. The steps are in [docs/USER-GUIDE.md](docs/USER-GUIDE.md).
+The first request on this computer creates the `sjt_temple_blr` database, the tables, and the demo records. Database settings are in `php/config.php` (localhost, user `root`, password `mysql`). On the hosting server, upload the `php` folder including `storage`, keep that server’s `.env`, and open `install.php`. Tick replace when devotees are already there so `storage/install/books.jsonl` is loaded. Form choices, including puja purposes and amounts, are in `storage/selections.json` and come with the folder. The steps are in [docs/USER-GUIDE.md](docs/USER-GUIDE.md).
 
 | Username | Password | Role |
 |---|---|---|

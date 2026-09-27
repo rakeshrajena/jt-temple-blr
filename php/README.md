@@ -9,7 +9,9 @@ This is the PHP 8 port of the Flask app in `../python/`. It uses MySQL on the lo
 1. Start Apache and MySQL in AMPPS.
 2. Open [http://localhost/jt_blr/jt-temple-blr/php/](http://localhost/jt_blr/jt-temple-blr/php/).
 
-On this computer the first request creates the `sjt_temple_blr` database, the tables in `schema.sql`, and the demo records. On the hosting server, upload this `php` folder (including `storage`) and open `install.php`. Keep the server’s own `.env`. If devotees are already there, tick replace so the saved books in `storage/install/books.jsonl` are loaded. Then remove `INSTALL_TOKEN` from that `.env`. The saved books have the gifts and no receipt generated yet.
+On this computer the first request creates the `sjt_temple_blr` database, the tables in `schema.sql`, and the demo records. On the hosting server, upload this `php` folder, including `storage`, and open `install.php`. Keep the server’s own `.env`. Do not upload the `.env` that sits next to this folder.
+
+`storage/install/books.jsonl` is the saved books. It is not in git. This copy has the gifts and no receipt generated yet. If devotees are already on the server, tick replace so that file is loaded. `storage/selections.json` is the form choices, including each puja purpose and its amount. Uploading the folder replaces that file. It is not loaded by the replace tick. Then remove `INSTALL_TOKEN` from the server `.env`. The full steps are in `docs/USER-GUIDE.md`.
 
 | Username | Password | Role |
 |---|---|---|
@@ -41,9 +43,9 @@ Change these in `config.php` if the server credentials differ.
 | Dashboard | Totals for donations, expenses, stock alerts, and subscriptions |
 | Inventory | Quantity, rate, value, condition, and location. Issue, return, damage, loss, and retired. A purchase posts stock and the payment together after approval |
 | Food stock | Add items, log stock in and out, low-stock flags. Kitchen use above 5 units waits for approval |
-| Food coupons | Sequential batches and a printable PDF. The face value waits for approval and does not enter the cash book. Name, cost, and quantity can be edited or the batch removed |
+| Coupons | Under Temple, and also linked from Food stock. One coupon prints at once and does not wait for approval. A larger batch waits. The purpose list and each amount are the Puja purpose choices in Settings |
 | Deity vastra | Cloths by deity, marked In Store, In Use, or Retired |
-| Donations | Cash and in-kind gifts. In-kind food, vastra, and inventory update those registers. Receipts are PDF. A gift can be applied to a pledge |
+| Donations | Cash and in-kind gifts. In-kind food, vastra, and inventory update those registers. Receipts are PDF. Generate receipt stays available and overwrites the same number. An edit waits for approval: one person within 24 hours, both a Treasurer and an Admin after that |
 | Donors | One page per devotee: gifts, receipt numbers, PAN, and pledge versus amount received. The page prints as the yearly statement |
 | Receipts | List of generated receipt PDFs. Anyone signed in can open one. An Admin can download a zip. Cancelling a receipt keeps the number and waits for approval |
 | Subscriptions | Recurring seva plans, invoices, and a public pay link |
@@ -55,7 +57,7 @@ Change these in `config.php` if the server credentials differ.
 | Bank reconciliation | Upload a CSV or Excel statement. Credits match donations and debits match expenses when the amount is the same and the date is within 3 days. Anything left over can be linked by hand |
 | Reports | Donations, expenses, inventory, food, vastra, and reconciliation. Each report prints from the browser |
 | Users | Admin-only accounts |
-| Settings | Admin-only outgoing mail (SMTP) and the WhatsApp Web message. WhatsApp opens in the browser; there is no WhatsApp API |
+| Settings | Admin-only temple name, place, logo, approval limits, form choices, outgoing mail, and the WhatsApp Web message. Puja purpose stores a name and an amount for coupons. WhatsApp opens in the browser; there is no WhatsApp API |
 
 ### Subscriptions and payment links
 

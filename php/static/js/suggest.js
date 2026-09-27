@@ -25,6 +25,9 @@
     if (kind === 'color') {
       return row.item || '';
     }
+    if (kind === 'puja') {
+      return row.amount ? '₹' + row.amount : '';
+    }
     return '';
   }
 
@@ -118,7 +121,11 @@
         seen[key] = true;
         rows.push(row);
       });
-      rows = rows.slice(0, 12);
+      var limit = parseInt(input.getAttribute('data-limit') || '12', 10);
+      if (!isFinite(limit) || limit < 1) {
+        limit = 12;
+      }
+      rows = rows.slice(0, limit);
       if (rows.length === 0) {
         close();
         return;
@@ -207,6 +214,10 @@
       show(input.value);
     });
     input.addEventListener('focus', function () {
+      if (input.getAttribute('data-open') === 'focus' && !remote) {
+        paint(localRows(input.value.trim()));
+        return;
+      }
       if (input.value.trim() !== '') {
         show(input.value);
       }

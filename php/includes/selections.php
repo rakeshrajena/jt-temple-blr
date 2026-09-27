@@ -70,6 +70,12 @@ function selection_catalog(): array
             'kind' => 'lines',
             'required' => ['General'],
         ],
+        'puja_purposes' => [
+            'label' => 'Puja purpose',
+            'modules' => 'Coupons. Typing a purpose offers these names, and choosing one fills the coupon amount. One coupon does not wait for approval.',
+            'kind' => 'priced',
+            'required' => [],
+        ],
         'plans' => [
             'label' => 'Subscription plan',
             'modules' => 'Subscriptions, the plan box.',
@@ -127,6 +133,33 @@ function selection_defaults(): array
             ['value' => 'Other', 'label' => 'Other'],
         ],
         'purposes' => ['General', 'Annadaan', 'Ratha Yatra', 'Construction', 'Vastra Seva'],
+        'puja_purposes' => [
+            ['name' => 'Daily / Regular Puja', 'amount' => 51],
+            ['name' => 'Satyanarayan Puja', 'amount' => 501],
+            ['name' => 'House Warming / Griha Pravesh', 'amount' => 1101],
+            ['name' => 'Vehicle Puja', 'amount' => 251],
+            ['name' => 'Annaprashana', 'amount' => 501],
+            ['name' => 'Naming Ceremony', 'amount' => 501],
+            ['name' => 'Marriage / Vivaha', 'amount' => 2101],
+            ['name' => 'Upanayana / Thread Ceremony', 'amount' => 1101],
+            ['name' => 'Mundan Ceremony', 'amount' => 351],
+            ['name' => 'Shraddha / Pitru Puja', 'amount' => 501],
+            ['name' => 'Birthday / Ayushya Puja', 'amount' => 251],
+            ['name' => 'Ganesh Puja', 'amount' => 251],
+            ['name' => 'Shiva Puja / Rudrabhishek', 'amount' => 501],
+            ['name' => 'Lakshmi Puja', 'amount' => 251],
+            ['name' => 'Durga Puja', 'amount' => 501],
+            ['name' => 'Hanuman Puja', 'amount' => 151],
+            ['name' => 'Navagraha Puja', 'amount' => 1101],
+            ['name' => 'Health & Well-being', 'amount' => 251],
+            ['name' => 'Career / Success', 'amount' => 251],
+            ['name' => 'Business / Prosperity', 'amount' => 501],
+            ['name' => 'Family Welfare', 'amount' => 251],
+            ['name' => 'Festival / Special Puja', 'amount' => 501],
+            ['name' => 'Manasika Jagna', 'amount' => 1101],
+            ['name' => 'Full Day Ritual Puja', 'amount' => 2101],
+            ['name' => 'Other', 'amount' => 101],
+        ],
         'plans' => ['Monthly Annadaan Seva', 'Monthly Mahaprasad Seva', 'Monthly Deepa Seva', 'Quarterly Vastra Seva', 'Yearly Nitya Seva'],
         'billing_cycles' => ['Monthly', 'Quarterly', 'Yearly'],
         'deities' => ['Jagannath', 'Balabhadra', 'Subhadra', 'Sudarshan'],
@@ -315,6 +348,8 @@ function selection_text(string $key): string
             $value = (string) $row['value'];
             $label = (string) ($row['label'] ?? $value);
             $lines[] = $label === $value ? $value : $value . ' | ' . $label;
+        } elseif ($kind === 'priced' && is_array($row)) {
+            $lines[] = (string) $row['name'] . ' | ' . number_format((float) $row['amount'], 2, '.', '');
         }
     }
     return implode("\n", $lines);
@@ -323,10 +358,22 @@ function selection_text(string $key): string
 function selection_name_limit(string $key): int
 {
     return match ($key) {
-        'plans', 'expense_categories' => 80,
+        'plans', 'expense_categories', 'puja_purposes' => 80,
         'payment_modes', 'movements', 'donation_types' => 30,
         default => 50,
     };
+}
+
+function selection_amount_error(string $raw): ?string
+{
+    if ($raw === '' || !is_numeric($raw)) {
+        return 'Enter an amount above zero.';
+    }
+    $amount = round((float) $raw, 2);
+    if ($amount < 0.01 || $amount > 9999999.99) {
+        return 'Enter an amount from 0.01 to 99,99,999.99.';
+    }
+    return null;
 }
 
 function selection_name_error(string $name, int $max): ?string
@@ -372,6 +419,11 @@ function selection_editor_rows(string $key): array
         } elseif ($kind === 'labeled' && is_array($row)) {
             $value = (string) ($row['value'] ?? '');
             $rows[] = ['value' => $value, 'label' => (string) ($row['label'] ?? $value)];
+        } elseif ($kind === 'priced' && is_array($row)) {
+            $rows[] = [
+                'name' => (string) ($row['name'] ?? ''),
+                'amount' => number_format((float) ($row['amount'] ?? 0), 2, '.', ''),
+            ];
         }
     }
     return $rows;
@@ -447,6 +499,19 @@ function parse_selection_block(string $key, string $raw): array|string
                 return $name . ' needs inventory, food, or both after the second |.';
             }
             $items[] = ['name' => $name, 'direction' => $direction, 'approval' => $approval, 'store' => $store];
+        } elseif ($meta['kind'] === 'priced') {
+            $parts = array_map('trim', explode('|', $line, 2));
+            $name = $parts[0] ?? '';
+            $amountRaw = str_replace(',', '', $parts[1] ?? '');
+            $error = selection_name_error($name, selection_name_limit($key));
+            if ($error !== null) {
+                return $error;
+            }
+            $amountError = selection_amount_error($amountRaw);
+            if ($amountError !== null) {
+                return $name . ': ' . $amountError;
+            }
+            $items[] = ['name' => $name, 'amount' => round((float) $amountRaw, 2)];
         } else {
             $parts = array_map('trim', explode('|', $line, 2));
             $value = $parts[0] ?? '';
@@ -557,6 +622,12 @@ function selection_item_from_input(string $key, array $input): array
             'approval' => ($input['approval'] ?? '') === '1',
         ]];
     }
+    if ($kind === 'priced') {
+        $name = trim($input['name'] ?? '');
+        $amountRaw = str_replace(',', '', trim($input['amount'] ?? ''));
+        $error = selection_name_error($name, selection_name_limit($key)) ?? selection_amount_error($amountRaw);
+        return ['error' => $error, 'item' => ['name' => $name, 'amount' => $error === null ? round((float) $amountRaw, 2) : 0]];
+    }
     $value = trim($input['value'] ?? '');
     $label = trim($input['label'] ?? '');
     if ($label === '') {
@@ -626,6 +697,38 @@ function save_selections(array $posted): ?string
         return $parsed['error'];
     }
     return write_selection_file($parsed['data']);
+}
+
+/** @return list<array{name: string, amount: string}> */
+function puja_purposes(): array
+{
+    $rows = [];
+    foreach (load_selections()['puja_purposes'] ?? [] as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $name = trim((string) ($row['name'] ?? ''));
+        $amount = round((float) ($row['amount'] ?? 0), 2);
+        if ($name === '' || $amount < 0.01) {
+            continue;
+        }
+        $rows[] = ['name' => $name, 'amount' => number_format($amount, 2, '.', '')];
+    }
+    return $rows;
+}
+
+function puja_purpose_amount(string $name): ?float
+{
+    $needle = mb_strtolower(trim($name));
+    if ($needle === '') {
+        return null;
+    }
+    foreach (puja_purposes() as $row) {
+        if (mb_strtolower($row['name']) === $needle) {
+            return (float) $row['amount'];
+        }
+    }
+    return null;
 }
 
 function write_default_selections(): void

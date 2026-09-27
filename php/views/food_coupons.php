@@ -78,6 +78,29 @@ $expiryInput = static function (mixed $value): string {
   </form>
 </div>
 <div class="panel">
+  <h3>One coupon</h3>
+  <p class="sub">One coupon is ready to print at once. It does not wait for approval. Type a purpose and pick a suggestion. The amount fills from Settings and can be changed before you generate. A larger batch still waits for approval.</p>
+  <form method="POST" action="<?= e(url('food/coupons')) ?>">
+    <?= csrf_field() ?>
+    <input type="hidden" name="single" value="1">
+    <input type="hidden" name="no_expiry" value="1">
+    <div class="form-grid cols-3">
+      <div class="form-group">
+        <label for="single-purpose"><?= e(t('ui.purpose')) ?></label>
+        <div class="suggest">
+          <input id="single-purpose" type="text" name="purpose" maxlength="200" required data-suggest data-kind="puja" data-source="puja-purposes" data-fill="cost:amount" data-open="focus" data-limit="30" autocomplete="off">
+          <div class="suggest-menu" hidden></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="single-cost"><?= e(t('common.amount')) ?></label>
+        <input id="single-cost" type="number" name="cost" step="0.01" min="0.01" required>
+      </div>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit">Generate coupon</button></div>
+  </form>
+</div>
+<div class="panel">
   <h3><?= e(t('ui.generate_batch')) ?></h3>
   <p class="sub">A batch is a print run. Each coupon is stored on its own. The face value waits for approval and does not enter the books until a coupon is sold. Devotee, donation type, payment, purpose, UPI, and cheque are optional. Leave them blank and a scan is Cash under Coupon counter, with Donation as the purpose. Fill them in and every coupon in the batch uses those details. Choose an expiry, or leave no expiry. A Treasurer can approve up to <?= e(money(approval_limit('Treasurer'))) ?>. Above that, an Admin decides. The person who prepared the batch cannot approve it. It can be printed only after approval.</p>
   <form method="POST" action="<?= e(url('food/coupons')) ?>" data-coupon-expiry>
@@ -109,7 +132,13 @@ $expiryInput = static function (mixed $value): string {
           <?php endforeach; ?>
         </select>
       </div>
-      <div class="form-group"><label><?= e(t('ui.purpose')) ?></label><input type="text" name="purpose" maxlength="200" placeholder="Donation"></div>
+      <div class="form-group">
+        <label for="batch-purpose"><?= e(t('ui.purpose')) ?></label>
+        <div class="suggest">
+          <input id="batch-purpose" type="text" name="purpose" maxlength="200" placeholder="Donation" data-suggest data-kind="puja" data-source="puja-purposes" data-fill="cost:amount" data-open="focus" data-limit="30" autocomplete="off">
+          <div class="suggest-menu" hidden></div>
+        </div>
+      </div>
       <div class="form-group"><label><?= e(t('ui.upi_reference')) ?></label><input type="text" name="upi_reference" maxlength="64"></div>
       <div class="form-group"><label><?= e(t('ui.cheque_no')) ?></label><input type="text" name="cheque_number" maxlength="30"></div>
       <div class="form-group"><label><?= e(t('ui.cheque_date')) ?></label><input type="date" name="cheque_date"></div>
@@ -228,6 +257,7 @@ $expiryInput = static function (mixed $value): string {
   <div class="empty-state">No coupon batches yet — generate the first one above.</div>
   <?php endif; ?>
 </div>
+<script type="application/json" id="puja-purposes"><?= json_encode(puja_purposes(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 <script>
 document.querySelectorAll('form[data-coupon-expiry]').forEach(function (form) {
   var box = form.querySelector('[data-no-expiry]');
