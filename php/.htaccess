@@ -1,4 +1,21 @@
+# Configuration and schema are never downloaded, even when rewrite rules are off.
+<FilesMatch "(?i)^(\.env.*|config\.php|schema\.sql)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
 RewriteEngine On
+
+RewriteRule ^\.env - [F,L]
+RewriteRule ^config\.php$ - [F,L]
+RewriteRule ^schema\.sql$ - [F,L]
+RewriteRule ^(includes|tests|bin|storage)/ - [F,L]
+
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]

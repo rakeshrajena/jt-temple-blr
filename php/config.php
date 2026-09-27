@@ -1,17 +1,14 @@
 <?php
-/**
- * Local AMPPS configuration.
- * Credentials match the platform defaults in prayerApp/gp/includes/config.php:
- * host localhost, user root, password mysql.
- * This app uses its own database so it does not share tables with gp_data.
- */
 declare(strict_types=1);
 
-const DB_HOST = 'localhost';
-const DB_USER = 'root';
-const DB_PASS = 'mysql';
-const DB_NAME = 'sjt_temple_blr';
-const DB_CHARSET = 'utf8mb4';
+require_once __DIR__ . '/includes/env.php';
+
+define('DB_HOST', env_value('DB_HOST', 'localhost'));
+define('DB_PORT', env_value('DB_PORT', '3306'));
+define('DB_NAME', env_first(['DB_NAME', 'MYSQL_DATABASE']));
+define('DB_USER', env_first(['DB_USER', 'MYSQL_USER']));
+define('DB_PASS', env_first(['DB_PASSWORD', 'DB_PASS', 'MYSQL_PASSWORD']));
+define('DB_CHARSET', 'utf8mb4');
 
 const APP_NAME = 'Shree Jagannath Temple';
 const APP_PLACE = 'Sarjapura, Bengaluru';

@@ -1,5 +1,5 @@
 -- Shree Jagannath Temple admin schema (MySQL 8 / PHP 8).
--- Database sjt_temple_blr is created by the installer before this file runs.
+-- The database itself must already exist. install.php creates these tables inside it.
 
 CREATE TABLE users (
     id              INT AUTO_INCREMENT PRIMARY KEY,
