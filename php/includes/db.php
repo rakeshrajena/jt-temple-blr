@@ -242,6 +242,7 @@ function install_into(PDO $pdo, bool $replaceBooks = false, ?string $snapshotPat
     $snapshot = is_file($snapshotPath);
     if ($snapshot && ($replaceBooks || demo_data_is_pending($pdo))) {
         import_books_snapshot($pdo, $snapshotPath);
+        backfill_receipt_pdfs($pdo);
         $imported = true;
     } elseif (demo_data_is_pending($pdo)) {
         Seed::run($pdo);

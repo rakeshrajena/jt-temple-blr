@@ -44,10 +44,54 @@ function compare_database_shapes(array $expected, array $actual): array
     return $differences;
 }
 
+const INSTALL_MIN_PHP = '8.1.0';
+const INSTALL_REQUIRED_EXTENSIONS = ['pdo_mysql', 'mbstring', 'zlib', 'json', 'openssl', 'simplexml', 'dom'];
+const INSTALL_WRITABLE_DIRS = ['storage/receipts', 'storage/logs', 'storage/uploads', 'storage/coupons', 'storage/vouchers', 'storage/brand', 'storage/invitations', 'storage/contributors', 'storage/install'];
+
+/** @return array{php: string, extensions: list<string>, writable: array<string, bool>} */
+function install_server_facts(): array
+{
+    $writable = [];
+    foreach (INSTALL_WRITABLE_DIRS as $dir) {
+        $path = APP_ROOT . '/' . $dir;
+        $writable[$dir] = is_dir($path) && is_writable($path);
+    }
+    return [
+        'php' => PHP_VERSION,
+        'extensions' => array_map('strtolower', get_loaded_extensions()),
+        'writable' => $writable,
+    ];
+}
+
+/**
+ * Lists what the hosting server lacks, each with what to change.
+ *
+ * @param array{php: string, extensions: list<string>, writable: array<string, bool>} $facts
+ * @return list<string>
+ */
+function install_requirement_problems(array $facts): array
+{
+    $problems = [];
+    if (version_compare($facts['php'], INSTALL_MIN_PHP, '<')) {
+        $problems[] = 'PHP 8.1 or newer is needed; this server runs ' . $facts['php'] . '. Choose a newer PHP version in the hosting control panel.';
+    }
+    foreach (INSTALL_REQUIRED_EXTENSIONS as $extension) {
+        if (!in_array($extension, $facts['extensions'], true)) {
+            $problems[] = 'The PHP extension ' . $extension . ' is missing. Turn it on in the hosting control panel under PHP extensions.';
+        }
+    }
+    foreach ($facts['writable'] as $dir => $ok) {
+        if (!$ok) {
+            $problems[] = 'The folder ' . $dir . ' cannot be written. Set its permission to 755 in the hosting file manager.';
+        }
+    }
+    return $problems;
+}
+
 /**
  * Counts what a books copy holds without loading it.
  *
- * @return array{rows: int, tables: int, saved_at: int}|null Null when the copy is missing or unreadable.
+ * @return array{rows: int, tables: int, receipts: int, saved_at: int}|null Null when the copy is missing or unreadable.
  */
 function books_snapshot_summary(string $path): ?array
 {
@@ -59,6 +103,7 @@ function books_snapshot_summary(string $path): ?array
         return null;
     }
     $rows = 0;
+    $receipts = 0;
     $tables = [];
     try {
         while (($line = fgets($handle)) !== false) {
@@ -72,12 +117,17 @@ function books_snapshot_summary(string $path): ?array
             }
             $tables[$payload['table']] = true;
             $rows += count($payload['rows']);
+            if ($payload['table'] === 'donations') {
+                foreach ($payload['rows'] as $row) {
+                    $receipts += is_array($row) && (int) ($row['receipt_generated'] ?? 0) === 1 ? 1 : 0;
+                }
+            }
         }
     } finally {
         fclose($handle);
     }
     clearstatcache(true, $path);
-    return ['rows' => $rows, 'tables' => count($tables), 'saved_at' => (int) filemtime($path)];
+    return ['rows' => $rows, 'tables' => count($tables), 'receipts' => $receipts, 'saved_at' => (int) filemtime($path)];
 }
 
 function install_check_database_name(string $live): ?string

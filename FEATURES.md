@@ -19,6 +19,7 @@ Nothing in the “To add” section is built yet.
 
 ### Server install
 
+- `install.php` first checks the server: PHP 8.1 or newer, the extensions `pdo_mysql`, `mbstring`, `zlib`, `json`, `openssl`, `simplexml`, and `dom`, and writable `storage` folders. It lists each problem with what to change in cPanel and will not run setup until they are fixed. After loading the saved books, it makes any receipt PDF that did not upload.
 - `install.php` needs the setup key from the server `.env`. It adds every missing table and column, then loads the saved books when the database has no devotees or when replace is ticked. The page shows how many rows the saved copy holds and when it was saved.
 - `bin/export-books.php` saves every table to `storage/install/books.jsonl`. `bin/verify-install.php` builds a temporary database from `schema.sql` and that file, compares every table, column, and row count with the live books, and always removes the temporary database. Tests are in `php/tests/install_check_test.php`.
 

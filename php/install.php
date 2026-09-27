@@ -1,12 +1,19 @@
 <?php
 declare(strict_types=1);
 
+if (PHP_VERSION_ID < 80100) {
+    header('Content-Type: text/plain; charset=utf-8', true, 500);
+    echo 'PHP 8.1 or newer is needed; this server runs ' . PHP_VERSION . ". Choose PHP 8.2 in the hosting control panel (cPanel, Select PHP Version), then reload this page.\n";
+    exit;
+}
+
 require __DIR__ . '/includes/bootstrap.php';
 
 header('Cache-Control: private, no-store');
 header('X-Robots-Tag: noindex');
 
-$ready = db_config_error() === null && strlen(env_value('INSTALL_TOKEN')) >= 16;
+$serverProblems = install_requirement_problems(install_server_facts());
+$ready = $serverProblems === [] && db_config_error() === null && strlen(env_value('INSTALL_TOKEN')) >= 16;
 $result = null;
 $error = db_config_error();
 $booksSummary = books_snapshot_summary(books_snapshot_path());
@@ -81,13 +88,27 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $ready) {
   <p>This updates the database that already exists. It does not create a new database.</p>
   <ol>
     <li>Missing tables and columns are added, including donation edits. An edit from the last 24 hours follows the Treasurer limit. An older edit needs both a Treasurer and an Admin.</li>
-    <li>The saved books are loaded only when this database has no devotees, or when you tick replace. Those gifts have no receipt yet. After sign-in, use Generate receipt on each one that should have a PDF.</li>
+    <li>The saved books are loaded only when this database has no devotees, or when you tick replace. Receipts already generated keep their numbers. Their PDFs travel in <code>storage/receipts</code>; any PDF that did not upload is made again during setup. Use Generate receipt after sign-in for any other gift that should have one.</li>
     <li>Coupons are under Temple. One form generates them. Quantity 1 prints at once and does not wait for approval. A larger quantity still does. The amount follows the coupon name. Choosing a purpose does not change it.</li>
     <li>App contributors is a new list. Everyone signed in can read the cards. Only an Admin can add, update, or remove a person. The list starts empty.</li>
     <li>Puja purposes and their amounts travel in <code>storage/selections.json</code> with this folder. They are form choices, not rows in the database. Uploading this folder replaces that file on the server.</li>
     <li>Subscribers have an Update button. Their status is Active, Paused, Inactive, or Cancelled. Only an Active subscriber gets a new invoice. Each status change records who made it and when.</li>
     <li>Form instructions sit behind a <strong>?</strong> icon beside each heading or field. Point at it, or tap it on a phone, to read the steps line by line.</li>
+    <li><strong>+ Invoice</strong> emails the subscriber a payment request with the plan, period, amount, due date, and a pay or donate link, once outgoing mail is saved under Settings.</li>
+    <li>When a subscriber pays, the receipt is made at once in the same format as a donation receipt. <strong>Send receipt</strong> on the invoice emails the PDF to that subscriber.</li>
+    <li>Invoices can be filtered by name, phone, status, period, due date, and receipt. Long tables have a Filter this table box. Receipt PDF text now wraps inside the border.</li>
   </ol>
+  <?php if ($serverProblems !== []): ?>
+    <div class="error">
+      <p><strong>This server needs a change before setup can run:</strong></p>
+      <ul>
+        <?php foreach ($serverProblems as $problem): ?>
+        <li><?= e($problem) ?></li>
+        <?php endforeach; ?>
+      </ul>
+      <p>Reload this page after the change.</p>
+    </div>
+  <?php endif; ?>
   <?php if ($error !== null): ?>
     <p class="error"><?= e($error) ?></p>
   <?php endif; ?>
@@ -95,7 +116,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $ready) {
     <div class="ok">
       <p><strong><?= e(DB_NAME) ?></strong> on <?= e(DB_HOST) ?> has <?= e((string) $result['tables']) ?> tables, <?= e((string) $result['users']) ?> users, and <?= e((string) $result['donors']) ?> devotees.</p>
       <p><?php if ($result['imported']): ?>
-        The saved books from this copy were loaded, including devotees, gifts, stock, expenses, coupons, invitations, subscribers with their status history, and settings. Open Donations and use Generate receipt for any gift that should have one. Coupons are under Temple. Puja purposes and their amounts are already in this folder’s form choices.
+        The saved books from this copy were loaded, including devotees, gifts, stock, expenses, coupons, invitations, subscribers with their status history and invoices, receipts, and settings. Missing receipt PDFs were made again. Open Donations and use Generate receipt for any other gift that should have one. Coupons are under Temple. Puja purposes and their amounts are already in this folder’s form choices.
       <?php elseif ($result['seeded']): ?>
         Demo data was loaded because this copy had no saved books and the database had no devotees yet.
       <?php else: ?>
@@ -106,7 +127,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $ready) {
   <?php elseif ($ready): ?>
     <p>Target database: <strong><?= e(DB_NAME) ?></strong> on <?= e(DB_HOST) ?>.</p>
     <?php if ($booksReady): ?>
-      <p>A saved copy of the books is included: <?= e(number_format($booksSummary['rows'])) ?> rows across <?= e((string) $booksSummary['tables']) ?> tables, saved <?= e(date('j M Y, g:i a', $booksSummary['saved_at'])) ?>. The gifts in that copy have no receipt generated yet. <?php if ($existingDonors === 0): ?>It will be loaded because this database has no devotees yet.<?php else: ?>This database already has devotees. Tick the box below to replace them with this copy. Leave it unticked and only the new tables and columns are added.<?php endif; ?> Form choices, including each puja purpose and its amount, are already in <code>storage/selections.json</code> and do not depend on that tick.</p>
+      <p>A saved copy of the books is included: <?= e(number_format($booksSummary['rows'])) ?> rows from <?= e((string) $booksSummary['tables']) ?> tables with data, saved <?= e(date('j M Y, g:i a', $booksSummary['saved_at'])) ?>. <?= $booksSummary['receipts'] === 0 ? 'No gift in that copy has a receipt yet.' : e(number_format($booksSummary['receipts'])) . ($booksSummary['receipts'] === 1 ? ' gift has' : ' gifts have') . ' a generated receipt; the rest have none yet.' ?> <?php if ($existingDonors === 0): ?>It will be loaded because this database has no devotees yet.<?php else: ?>This database already has devotees. Tick the box below to replace them with this copy. Leave it unticked and only the new tables and columns are added.<?php endif; ?> Form choices, including each puja purpose and its amount, are already in <code>storage/selections.json</code> and do not depend on that tick.</p>
     <?php else: ?>
       <p>No readable saved books were found with this copy. An empty database will get the demo devotees instead.</p>
     <?php endif; ?>
