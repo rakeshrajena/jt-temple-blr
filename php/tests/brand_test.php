@@ -40,7 +40,14 @@ $logoBefore = brand_setting(BRAND_LOGO_KEY);
 
 try {
     check($png !== false && $png !== '', 'a sample image is available');
+    check(brand_is_stored_logo_name('logo.webp') && !brand_is_stored_logo_name('logo-print.png'), 'the print copy is not treated as the uploaded logo');
     $temps[] = $pngPath = write_temp('dot.png', (string) $png);
+    $printDest = write_temp('print.png', '');
+    $temps[] = $printDest;
+    check(
+        brand_convert_to_png($pngPath, $printDest) && is_array(brand_decode_png($printDest)),
+        'a logo can be prepared for printing without Windows'
+    );
     $pngAsHeic = inspect_brand_logo($pngPath, 'temple.heic');
     check(($pngAsHeic['extension'] ?? '') === 'png', 'a real image is accepted under any image extension');
 

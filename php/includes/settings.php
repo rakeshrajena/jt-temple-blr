@@ -569,8 +569,7 @@ function inspect_brand_logo(string $path, string $originalName): array
     if ($size > BRAND_LOGO_MAX_BYTES) {
         return ['error' => 'The logo must be 2 MB or smaller.'];
     }
-    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path);
-    $mime = is_string($mime) ? strtolower($mime) : '';
+    $mime = brand_mime_type($path);
     $info = @getimagesize($path);
     $typeExtension = is_array($info) ? brand_extension_for_image_type((int) ($info[2] ?? 0)) : null;
     $imageMime = (is_array($info) && isset($info['mime']) && is_string($info['mime'])) ? strtolower($info['mime']) : '';
@@ -624,7 +623,8 @@ function save_brand_identity(
     if ($name === '') {
         return 'Enter the temple name.';
     }
-    if (mb_strlen($name) > 80) {
+    $nameLength = function_exists('mb_strlen') ? mb_strlen($name) : strlen($name);
+    if ($nameLength > 80) {
         return 'The temple name can be at most 80 characters.';
     }
     if (preg_match('/[\x00-\x1F\x7F<>]/u', $name) === 1) {
@@ -668,6 +668,10 @@ function save_brand_identity(
             $written = brand_write_logo($upload['path'], $extension, $upload['uploaded']);
             brand_upsert(BRAND_LOGO_KEY, 'logo.' . $extension);
             brand_remove_other_logos('logo.' . $extension);
+            brand_clear_print_png();
+            if (brand_ensure_print_png($written) === null && brand_decode_logo_file($written) === null) {
+                throw new RuntimeException('The logo could not be prepared for receipts.');
+            }
         } elseif ($useDefaultLogo) {
             brand_remove_other_logos('');
             brand_clear_print_png();
@@ -684,6 +688,9 @@ function save_brand_identity(
         if ($own && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
+        if ($e->getMessage() === 'The logo could not be prepared for receipts.') {
+            return 'This server could not prepare that logo for receipts and coupons. Upload a PNG or JPG image.';
+        }
         throw $e;
     }
 }
@@ -696,8 +703,8 @@ function serve_brand_logo(): void
         echo 'Logo not found.';
         return;
     }
-    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path);
-    if (!is_string($mime) || !str_starts_with(strtolower($mime), 'image/')) {
+    $mime = brand_mime_type($path);
+    if ($mime === '' || !str_starts_with($mime, 'image/')) {
         http_response_code(404);
         echo 'Logo not found.';
         return;
@@ -831,6 +838,11 @@ function brand_write_logo(string $source, string $extension, bool $uploaded): st
     return $dest;
 }
 
+function brand_is_stored_logo_name(string $basename): bool
+{
+    return preg_match('/^logo\.[a-z0-9]{1,8}$/', $basename) === 1;
+}
+
 function brand_remove_other_logos(string $keep): void
 {
     $dir = APP_ROOT . '/storage/brand';
@@ -838,7 +850,8 @@ function brand_remove_other_logos(string $keep): void
         return;
     }
     foreach (glob($dir . DIRECTORY_SEPARATOR . 'logo.*') ?: [] as $existing) {
-        if (basename($existing) !== $keep && is_file($existing)) {
+        $name = basename($existing);
+        if ($name !== $keep && brand_is_stored_logo_name($name) && is_file($existing)) {
             unlink($existing);
         }
     }

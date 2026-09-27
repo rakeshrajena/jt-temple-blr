@@ -20,8 +20,7 @@ function brand_logo_raster(): ?array
     }
 
     if ($path === null) {
-        $svg = file_get_contents($svgPath);
-        $decoded = is_string($svg) ? brand_rasterize_svg($svg, 128) : null;
+        $decoded = brand_builtin_logo_raster();
     } else {
         $info = @getimagesize($path);
         $tooLarge = is_array($info) && ((int) $info[0] > 256 || (int) $info[1] > 256);
@@ -32,6 +31,8 @@ function brand_logo_raster(): ?array
         }
         if ($decoded !== null) {
             $decoded = brand_limit_raster($decoded, 256);
+        } else {
+            $decoded = brand_builtin_logo_raster();
         }
     }
 
@@ -49,8 +50,7 @@ function brand_decode_logo_file(string $path): ?array
     if (!is_file($path)) {
         return null;
     }
-    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path);
-    $mime = is_string($mime) ? strtolower($mime) : '';
+    $mime = brand_mime_type($path);
     $info = @getimagesize($path);
     if (is_array($info) && ($info[2] ?? 0) === IMAGETYPE_JPEG && $mime === 'image/jpeg') {
         $channels = (int) ($info['channels'] ?? 3);
@@ -113,11 +113,99 @@ function brand_clear_print_png(): void
     }
 }
 
+function brand_builtin_logo_raster(): ?array
+{
+    $svg = file_get_contents(APP_ROOT . '/static/logo.svg');
+    return is_string($svg) ? brand_rasterize_svg($svg, 128) : null;
+}
+
+function brand_mime_type(string $path): string
+{
+    if (!is_file($path) || !class_exists(finfo::class)) {
+        $info = @getimagesize($path);
+        $mime = (is_array($info) && isset($info['mime']) && is_string($info['mime'])) ? $info['mime'] : '';
+        return strtolower($mime);
+    }
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path);
+    return is_string($mime) ? strtolower($mime) : '';
+}
+
 function brand_convert_to_png(string $source, string $dest): bool
+{
+    $dir = dirname($dest);
+    if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
+        return false;
+    }
+    if (brand_convert_with_gd($source, $dest) || brand_convert_with_imagick($source, $dest)) {
+        return true;
+    }
+    return brand_convert_with_windows($source, $dest);
+}
+
+function brand_convert_with_gd(string $source, string $dest): bool
+{
+    if (!function_exists('imagecreatefromstring') || !function_exists('imagecreatetruecolor') || !function_exists('imagepng')) {
+        return false;
+    }
+    $bytes = file_get_contents($source);
+    if (!is_string($bytes) || $bytes === '') {
+        return false;
+    }
+    $image = @imagecreatefromstring($bytes);
+    if ($image === false) {
+        return false;
+    }
+    $width = imagesx($image);
+    $height = imagesy($image);
+    if ($width < 1 || $height < 1) {
+        imagedestroy($image);
+        return false;
+    }
+    $longest = max($width, $height);
+    if ($longest > 256) {
+        $scale = 256 / $longest;
+        $newWidth = max(1, (int) round($width * $scale));
+        $newHeight = max(1, (int) round($height * $scale));
+        $scaled = imagecreatetruecolor($newWidth, $newHeight);
+        imagealphablending($scaled, false);
+        imagesavealpha($scaled, true);
+        $clear = imagecolorallocatealpha($scaled, 0, 0, 0, 127);
+        imagefilledrectangle($scaled, 0, 0, $newWidth, $newHeight, $clear);
+        imagecopyresampled($scaled, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+        imagedestroy($image);
+        $image = $scaled;
+    }
+    imagesavealpha($image, true);
+    $saved = imagepng($image, $dest);
+    imagedestroy($image);
+    return $saved && is_file($dest) && filesize($dest) > 32;
+}
+
+function brand_convert_with_imagick(string $source, string $dest): bool
+{
+    if (!class_exists(Imagick::class)) {
+        return false;
+    }
+    try {
+        $image = new Imagick($source);
+        $image->setImageFormat('png');
+        $longest = max($image->getImageWidth(), $image->getImageHeight());
+        if ($longest > 256) {
+            $image->thumbnailImage(256, 256, true);
+        }
+        $image->writeImage($dest);
+        $image->clear();
+        return is_file($dest) && filesize($dest) > 32;
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function brand_convert_with_windows(string $source, string $dest): bool
 {
     $script = APP_ROOT . '/bin/logo_to_png.ps1';
     $powershell = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
-    if (!is_file($script) || !is_file($powershell)) {
+    if (!is_file($script) || !is_file($powershell) || !function_exists('exec')) {
         return false;
     }
     $command = escapeshellarg($powershell)
