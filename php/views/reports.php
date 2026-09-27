@@ -1,6 +1,5 @@
 <div class="panel">
-  <h3><?= e(t('reports.title')) ?></h3>
-  <p class="sub"><?= e(t('reports.intro')) ?></p>
+  <h3><?= e(t('reports.title')) ?><?= help_tip(t('reports.intro')) ?></h3>
   <div class="report-grid">
     <a class="report-card" href="<?= e(url('reports/donations')) ?>" style="border-top-color: var(--gold);">
       <strong><?= e(t('reports.donations')) ?></strong>

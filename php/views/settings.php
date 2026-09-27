@@ -18,6 +18,7 @@ $groups = [
         'puja_purposes',
         'plans',
         'billing_cycles',
+        'subscriber_statuses',
     ],
 ];
 $wide = ['payment_modes', 'movements', 'donation_types', 'puja_purposes'];
@@ -37,8 +38,7 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
     <?= csrf_field() ?>
     <input type="hidden" name="form" value="brand">
     <section class="settings-card identity-card">
-      <h3><?= e(t('settings.identity')) ?></h3>
-      <p class="hint"><?= e(t('settings.identity_intro')) ?></p>
+      <h3><?= e(t('settings.identity')) ?><?= help_tip(t('settings.identity_intro')) ?></h3>
       <div class="identity-lockup">
         <img src="<?= e(app_logo_url()) ?>" alt="" class="identity-logo">
         <div>
@@ -56,19 +56,16 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
           <input id="app_place" type="text" name="app_place" value="<?= e(app_place()) ?>" maxlength="80" required>
         </div>
         <div class="form-group">
-          <label for="watermark_receipt"><?= e(t('settings.watermark_receipt')) ?></label>
+          <label for="watermark_receipt"><?= e(t('settings.watermark_receipt')) ?><?= help_tip(t('settings.watermark_hint')) ?></label>
           <input id="watermark_receipt" type="number" name="watermark_receipt" min="0" max="100" step="1" value="<?= e((string) brand_watermark_level('receipt')) ?>" required>
-          <p class="hint"><?= e(t('settings.watermark_hint')) ?></p>
         </div>
         <div class="form-group">
-          <label for="watermark_coupon"><?= e(t('settings.watermark_coupon')) ?></label>
+          <label for="watermark_coupon"><?= e(t('settings.watermark_coupon')) ?><?= help_tip(t('settings.watermark_hint')) ?></label>
           <input id="watermark_coupon" type="number" name="watermark_coupon" min="0" max="100" step="1" value="<?= e((string) brand_watermark_level('coupon')) ?>" required>
-          <p class="hint"><?= e(t('settings.watermark_hint')) ?></p>
         </div>
         <div class="form-group full">
-          <label for="logo"><?= e(t('settings.logo')) ?></label>
+          <label for="logo"><?= e(t('settings.logo')) ?><?= help_tip(t('settings.logo_hint')) ?></label>
           <input id="logo" type="file" name="logo" accept="image/*,.heic,.heif,.avif,.jxl,.bmp,.tif,.tiff,.ico,.svg,.webp,.gif,.jpg,.jpeg,.png,.jfif,.ppm,.wbmp">
-          <p class="hint"><?= e(t('settings.logo_hint')) ?></p>
         </div>
       </div>
       <?php if (brand_has_custom_logo()): ?>
@@ -85,8 +82,7 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
     <?= csrf_field() ?>
     <input type="hidden" name="form" value="approval">
     <section class="settings-card">
-      <h3><?= e(t('settings.approval')) ?></h3>
-      <p class="hint"><?= e(t('settings.approval_intro')) ?></p>
+      <h3><?= e(t('settings.approval')) ?><?= help_tip(t('settings.approval_intro')) ?></h3>
       <div class="form-grid">
         <div class="form-group">
           <label for="treasurer_limit"><?= e(t('settings.treasurer_limit')) ?></label>
@@ -109,15 +105,13 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
     <input type="hidden" name="form" value="messages">
     <div class="settings-head">
       <div>
-        <h3><?= e(t('settings.messages')) ?></h3>
-        <p><?= e(t('settings.messages_intro')) ?></p>
+        <h3><?= e(t('settings.messages')) ?><?= help_tip(t('settings.messages_intro')) ?></h3>
       </div>
       <span class="badge <?= $mailReady ? 'badge-green' : 'badge-amber' ?>"><?= e($mailReady ? t('settings.mail_ready') : t('settings.mail_missing')) ?></span>
     </div>
     <div class="settings-grid">
       <section class="settings-card">
-        <h4><?= e(t('settings.outgoing')) ?></h4>
-        <p class="hint"><?= e(t('settings.outgoing_hint')) ?></p>
+        <h4><?= e(t('settings.outgoing')) ?><?= help_tip(t('settings.outgoing_hint')) ?></h4>
         <div class="form-grid">
           <div class="form-group"><label><?= e(t('settings.host')) ?></label><input type="text" name="smtp_host" value="<?= e($settings['smtp_host']) ?>" placeholder="smtp.example.com" maxlength="200"></div>
           <div class="form-group"><label><?= e(t('settings.port')) ?></label><input type="number" name="smtp_port" min="1" max="65535" value="<?= e($settings['smtp_port']) ?>" required></div>
@@ -142,8 +136,7 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
         <?php endif; ?>
       </section>
       <section class="settings-card">
-        <h4><?= e(t('settings.whatsapp')) ?></h4>
-        <p class="hint"><?= e(t('settings.whatsapp_hint')) ?></p>
+        <h4><?= e(t('settings.whatsapp')) ?><?= help_tip(t('settings.whatsapp_hint')) ?></h4>
         <div class="settings-tokens" aria-label="Message placeholders">
           <?php foreach (['{name}', '{period}', '{amount}', '{link}', '{invoice}'] as $token): ?>
             <code><?= e($token) ?></code>
@@ -162,8 +155,7 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
   <div id="choices" class="settings-block">
     <div class="settings-head">
       <div>
-        <h3><?= e(t('settings.choices')) ?></h3>
-        <p><?= e(t('settings.choices_intro')) ?></p>
+        <h3><?= e(t('settings.choices')) ?><?= help_tip(t('settings.choices_intro') . ' ' . t('settings.note')) ?></h3>
       </div>
     </div>
     <?php foreach ($groups as $group => $keys): ?>
@@ -176,8 +168,7 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
             $limit = selection_name_limit($key);
           ?>
           <section id="choice-<?= e($key) ?>" class="settings-choice<?= in_array($key, $wide, true) ? ' wide' : '' ?>">
-            <header><h4><?= e(t('settings.choice.' . $key)) ?></h4></header>
-            <p class="where"><?= e(t('settings.where.' . $key)) ?></p>
+            <header><h4><?= e(t('settings.choice.' . $key)) ?><?= help_tip(t('settings.where.' . $key)) ?></h4></header>
             <form class="choice-add" method="POST" action="<?= e(url('settings')) ?>">
               <?= csrf_field() ?>
               <input type="hidden" name="form" value="selections">
@@ -291,6 +282,5 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
         <?php endforeach; ?>
       </div>
     <?php endforeach; ?>
-    <p class="settings-note"><?= e(t('settings.note')) ?></p>
   </div>
 </div>

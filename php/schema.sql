@@ -237,12 +237,27 @@ CREATE TABLE subscribers (
     name            VARCHAR(150) NOT NULL,
     mobile          VARCHAR(15) NOT NULL UNIQUE,
     email           VARCHAR(120),
+    family_members  VARCHAR(300) NULL,
+    gotra           VARCHAR(80) NULL,
+    seva_date       DATE NULL,
     plan_name       VARCHAR(100) NOT NULL DEFAULT 'Monthly Seva',
     plan_amount     DECIMAL(10,2) NOT NULL,
     frequency       VARCHAR(20) NOT NULL DEFAULT 'Monthly',
-    status          ENUM('Active','Paused','Cancelled') NOT NULL DEFAULT 'Active',
+    status          VARCHAR(30) NOT NULL DEFAULT 'Active',
     start_date      DATE NOT NULL,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE subscriber_status_log (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    subscriber_id   INT NOT NULL,
+    from_status     VARCHAR(30) NOT NULL,
+    to_status       VARCHAR(30) NOT NULL,
+    changed_by      INT NULL,
+    changed_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_subscriber_status_log_subscriber (subscriber_id),
+    FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE CASCADE,
+    FOREIGN KEY (changed_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE subscription_invoices (

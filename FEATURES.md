@@ -44,6 +44,10 @@ Nothing in the “To add” section is built yet.
 ### Subscriptions
 
 - Recurring seva plans and invoices.
+- A subscriber has a name, contact number, optional email, family members, gotra, special date for seva, plan, amount, billing cycle, and status.
+- Plan, billing cycle, and status suggest names as you type. Each is a list under Settings, Form choices. Active cannot be removed.
+- Statuses start as Active, Paused, Inactive, and Cancelled. Only Active gets a new invoice, and the server enforces this.
+- Update on each row edits every field. A status change is kept in `subscriber_status_log` with the old status, the new one, the user, and the time, and the latest change shows on the row.
 - Send writes the message to a log. When SMTP is saved under Settings, the same message is emailed. WhatsApp Web opens with the message filled in. There is no WhatsApp API. The devotee still confirms payment on the link.
 - The devotee opens a payment link without signing in. Confirming payment marks the invoice Paid and copies it into Donations.
 

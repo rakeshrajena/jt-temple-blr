@@ -96,8 +96,7 @@ $lines = $book['lines'];
   </div>
   <?php if ($canSetOpening): ?>
   <div class="panel reveal-panel" id="reveal-opening" hidden>
-    <h3>Opening balance for <?= e($book['financial_year']) ?></h3>
-    <p class="sub">A change stays pending until another person approves it. These boxes show the last approved figures.</p>
+    <h3>Opening balance for <?= e($book['financial_year']) ?><?= help_tip('A change stays pending until another person approves it. These boxes show the last approved figures.') ?></h3>
     <form method="POST" action="<?= e(url('cash-book/opening')) ?>">
       <?= csrf_field() ?>
       <input type="hidden" name="financial_year" value="<?= e($book['financial_year']) ?>">

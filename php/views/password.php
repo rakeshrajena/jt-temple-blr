@@ -1,6 +1,5 @@
 <div class="panel">
-  <h3><?= e(t('page.password')) ?></h3>
-  <p class="sub"><?= e(t('password.intro')) ?></p>
+  <h3><?= e(t('page.password')) ?><?= help_tip(t('password.intro')) ?></h3>
   <form method="POST" action="<?= e(url('account/password')) ?>">
     <?= csrf_field() ?>
     <div class="form-grid">

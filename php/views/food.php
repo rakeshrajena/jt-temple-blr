@@ -6,8 +6,7 @@
 ?>
 <div class="panel panel-banner">
   <div>
-    <h3>Coupons</h3>
-    <p class="sub">Print a batch or record a sold coupon. The same page is under Temple.</p>
+    <h3>Coupons<?= help_tip('Print a batch or record a sold coupon. The same page is under Temple.') ?></h3>
   </div>
   <a href="<?= e(url('food/coupons')) ?>" class="btn btn-gold"><?= e(t('ui.manage_coupons')) ?></a>
 </div>
@@ -49,8 +48,7 @@
     </form>
   </div>
   <div class="panel reveal-panel" id="reveal-food-log" hidden>
-    <h3><?= e(t('ui.log_movement')) ?></h3>
-    <p class="sub">Kitchen use of <?= e((string) $writeOffLimit) ?> or less is recorded immediately. Above that, it waits for approval and the quantity stays until then.</p>
+    <h3><?= e(t('ui.log_movement')) ?><?= help_tip('Kitchen use of ' . $writeOffLimit . ' or less is recorded immediately. Above that, it waits for approval and the quantity stays until then.') ?></h3>
     <form method="POST" action="<?= e(url('food')) ?>">
       <?= csrf_field() ?>
       <div class="form-grid">

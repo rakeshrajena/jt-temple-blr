@@ -248,6 +248,10 @@
         }
     ],
     "plans": [
+        "Mahaprasad",
+        "Flower and Bhog",
+        "Deepa Seva",
+        "Annadan Seva",
         "Monthly Annadaan Seva",
         "Monthly Mahaprasad Seva",
         "Monthly Deepa Seva",
@@ -258,6 +262,12 @@
         "Monthly",
         "Quarterly",
         "Yearly"
+    ],
+    "subscriber_statuses": [
+        "Active",
+        "Inactive",
+        "Paused",
+        "Cancelled"
     ],
     "deities": [
         "Jagannath",

@@ -1,22 +1,44 @@
 <?php
 /** @var list<array<string,mixed>> $subs */
 /** @var list<array<string,mixed>> $invoices */
-/** @var list<string> $planPresets */
 /** @var float $mrr */
 /** @var float $pendingAmount */
 /** @var array{country_code: string, template: string, smtp_ready: bool} $messaging */
+/** @var array<int, array{from_status: string, to_status: string, changed_at: string, changed_by_name: string}> $statusChanges */
+
+$subscriberFields = static function (string $prefix, array $s = []): void {
+    $value = static fn (string $key, string $fallback = ''): string => e((string) ($s[$key] ?? $fallback));
+    $suggest = static function (string $prefix, string $name, string $label, string $source, string $current, string $help = ''): void {
+        ?>
+        <div class="form-group">
+          <label for="<?= e($prefix . '-' . $name) ?>"><?= e($label) ?><?= help_tip($help) ?></label>
+          <div class="suggest">
+            <input id="<?= e($prefix . '-' . $name) ?>" type="text" name="<?= e($name) ?>" value="<?= e($current) ?>" required autocomplete="off" data-suggest data-kind="line" data-source="<?= e($source) ?>" data-open="focus" data-limit="20">
+            <div class="suggest-menu" hidden></div>
+          </div>
+        </div>
+        <?php
+    };
+    ?>
+    <div class="form-grid">
+      <div class="form-group"><label for="<?= e($prefix) ?>-name"><?= e(t('common.name')) ?></label><input id="<?= e($prefix) ?>-name" type="text" name="name" value="<?= $value('name') ?>" maxlength="150" required></div>
+      <div class="form-group"><label for="<?= e($prefix) ?>-mobile"><?= e(t('ui.contact_no')) ?></label><input id="<?= e($prefix) ?>-mobile" type="text" name="mobile" value="<?= $value('mobile') ?>" placeholder="9XXXXXXXXX" maxlength="15" required></div>
+      <div class="form-group"><label for="<?= e($prefix) ?>-email"><?= e(t('ui.email_optional')) ?></label><input id="<?= e($prefix) ?>-email" type="email" name="email" value="<?= $value('email') ?>" maxlength="120"></div>
+      <div class="form-group"><label for="<?= e($prefix) ?>-family"><?= e(t('ui.family_members')) ?></label><input id="<?= e($prefix) ?>-family" type="text" name="family_members" value="<?= $value('family_members') ?>" maxlength="300"></div>
+      <div class="form-group"><label for="<?= e($prefix) ?>-gotra"><?= e(t('ui.gotra')) ?></label><input id="<?= e($prefix) ?>-gotra" type="text" name="gotra" value="<?= $value('gotra') ?>" maxlength="80"></div>
+      <div class="form-group"><label for="<?= e($prefix) ?>-seva"><?= e(t('ui.seva_date')) ?></label><input id="<?= e($prefix) ?>-seva" type="date" name="seva_date" value="<?= $value('seva_date') ?>"></div>
+      <?php $suggest($prefix, 'plan_name', t('common.plan'), 'subscriber-plans', (string) ($s['plan_name'] ?? '')); ?>
+      <div class="form-group"><label for="<?= e($prefix) ?>-amount"><?= e(t('common.amount')) ?></label><input id="<?= e($prefix) ?>-amount" type="number" step="0.01" min="0.01" name="plan_amount" value="<?= $value('plan_amount') ?>" required></div>
+      <?php $suggest($prefix, 'frequency', t('ui.billing_cycle'), 'subscriber-cycles', (string) ($s['frequency'] ?? '')); ?>
+      <?php $suggest($prefix, 'status', t('common.status'), 'subscriber-statuses', (string) ($s['status'] ?? SUBSCRIBER_INVOICE_STATUS), t('ui.subscriber_status_help')); ?>
+    </div>
+    <?php
+};
 ?>
 <div class="kpi-grid">
   <div class="kpi-card good"><div class="value"><?= e(money($mrr)) ?></div><div class="label">Monthly Recurring Revenue (Active)</div></div>
   <div class="kpi-card warn"><div class="value"><?= e(money($pendingAmount)) ?></div><div class="label">Pending / Overdue Amount</div></div>
   <div class="kpi-card"><div class="value"><?= count($subs) ?></div><div class="label">Total Subscribers</div></div>
-</div>
-<div class="panel note-panel">
-  <h3>How this works</h3>
-  <p class="sub">
-    <strong>Generate Invoice</strong> creates a billing record. <strong>Send</strong> writes the message to the log. If outgoing mail is saved in Settings, it is also emailed. <strong>WhatsApp</strong> opens WhatsApp Web with the message filled in. Nothing is sent through a WhatsApp API. The devotee opens the payment link, pays, and the invoice
-    updates to <strong>Paid</strong> here — with the payment copied into Donations.
-  </p>
 </div>
 <div class="reveal-group">
 <div class="action-bar">
@@ -26,57 +48,75 @@
     <h3><?= e(t('ui.add_subscriber')) ?></h3>
     <form method="POST" action="<?= e(url('subscriptions')) ?>">
       <?= csrf_field() ?>
-      <div class="form-grid">
-        <div class="form-group"><label><?= e(t('common.name')) ?></label><input type="text" name="name" required></div>
-        <div class="form-group"><label><?= e(t('ui.mobile_number')) ?></label><input type="text" name="mobile" placeholder="9XXXXXXXXX" required></div>
-        <div class="form-group"><label><?= e(t('ui.email_optional')) ?></label><input type="email" name="email"></div>
-        <div class="form-group">
-          <label><?= e(t('common.plan')) ?></label>
-          <select name="plan_name">
-            <?php foreach ($planPresets as $p): ?><option value="<?= e($p) ?>"><?= e($p) ?></option><?php endforeach; ?>
-          </select>
-        </div>
-        <div class="form-group"><label><?= e(t('common.amount')) ?></label><input type="number" step="0.01" name="plan_amount" required></div>
-        <div class="form-group">
-          <label><?= e(t('ui.billing_cycle')) ?></label>
-          <select name="frequency">
-            <?php foreach (selection_values('billing_cycles') as $cycle): ?><option><?= e($cycle) ?></option><?php endforeach; ?>
-          </select>
-        </div>
-      </div>
+      <?php $subscriberFields('subscriber-new'); ?>
       <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.add_subscriber')) ?></button></div>
     </form>
+    <script type="application/json" id="subscriber-plans"><?= json_encode(array_map(static fn (string $name): array => ['name' => $name], selection_values('plans')), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+    <script type="application/json" id="subscriber-cycles"><?= json_encode(array_map(static fn (string $name): array => ['name' => $name], selection_values('billing_cycles')), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+    <script type="application/json" id="subscriber-statuses"><?= json_encode(array_map(static fn (string $name): array => ['name' => $name], selection_values('subscriber_statuses')), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
   </div>
-  <div class="panel">
+</div>
+<div class="panel reveal-group subscriber-list">
     <h3>Subscribers (<?= count($subs) ?>)</h3>
     <table class="data-table">
       <tr><th><?= e(t('common.name')) ?></th><th><?= e(t('common.plan')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('common.status')) ?></th><th><?= e(t('common.due')) ?></th><th></th></tr>
       <?php foreach ($subs as $s): ?>
       <tr>
-        <td><?= e($s['name']) ?><br><span style="color:var(--ink-soft); font-size:12px;"><?= e($s['mobile']) ?></span></td>
+        <td><?= e($s['name']) ?><br><span style="color:var(--ink-soft); font-size:12px;"><?= e($s['mobile']) ?><?php if (!empty($s['email'])): ?> · <?= e((string) $s['email']) ?><?php endif; ?></span>
+          <?php if (!empty($s['family_members'])): ?><br><span style="color:var(--ink-soft); font-size:12px;"><?= e(t('ui.family_members')) ?>: <?= e((string) $s['family_members']) ?></span><?php endif; ?>
+          <?php if (!empty($s['gotra'])): ?><br><span style="color:var(--ink-soft); font-size:12px;"><?= e(t('ui.gotra')) ?>: <?= e((string) $s['gotra']) ?></span><?php endif; ?>
+          <?php if (!empty($s['seva_date'])): ?><br><span style="color:var(--ink-soft); font-size:12px;"><?= e(t('ui.seva_date')) ?>: <?= e(date('d-M-Y', strtotime((string) $s['seva_date']))) ?></span><?php endif; ?>
+        </td>
         <td><?= e($s['plan_name']) ?></td>
         <td><?= e(money($s['plan_amount'])) ?> / <?= e($s['frequency']) ?></td>
         <td>
-          <?php if ($s['status'] === 'Active'): ?><span class="badge badge-green">Active</span>
-          <?php elseif ($s['status'] === 'Paused'): ?><span class="badge badge-amber">Paused</span>
-          <?php else: ?><span class="badge badge-grey">Cancelled</span><?php endif; ?>
+          <?php
+          $statusTone = match ((string) $s['status']) {
+              'Active' => 'badge-green',
+              'Paused' => 'badge-amber',
+              'Cancelled' => 'badge-red',
+              default => 'badge-grey',
+          };
+          $change = $statusChanges[(int) $s['id']] ?? null;
+          ?>
+          <span class="badge <?= e($statusTone) ?>"><?= e((string) $s['status']) ?></span>
+          <?php if ($change !== null): ?>
+          <br><span class="subscriber-status-change"><?= e(t('ui.status_changed', [
+              'from' => $change['from_status'],
+              'to' => $change['to_status'],
+              'name' => $change['changed_by_name'] !== '' ? $change['changed_by_name'] : '—',
+              'date' => date('d-M-Y H:i', strtotime($change['changed_at'])),
+          ])) ?></span>
+          <?php endif; ?>
         </td>
         <td><?php if ((int) $s['due_count'] > 0): ?><span class="badge badge-amber"><?= e((string) $s['due_count']) ?> due</span><?php else: ?><span class="badge badge-green">Up to date</span><?php endif; ?></td>
         <td>
-          <?php if ($s['status'] === 'Active'): ?>
-          <form method="POST" action="<?= e(url('subscriptions/' . $s['id'] . '/generate_invoice')) ?>">
+          <div class="subscriber-actions">
+            <button class="btn btn-sm btn-outline" type="button" data-reveal="subscriber-edit-<?= e((string) $s['id']) ?>"><?= e(t('common.update')) ?></button>
+            <?php if (subscriber_can_invoice((string) $s['status'])): ?>
+            <form method="POST" action="<?= e(url('subscriptions/' . $s['id'] . '/generate_invoice')) ?>">
+              <?= csrf_field() ?>
+              <button class="btn btn-sm btn-outline" type="submit">+ Invoice</button>
+            </form>
+            <?php endif; ?>
+          </div>
+        </td>
+      </tr>
+      <tr class="reveal-panel subscriber-edit" id="subscriber-edit-<?= e((string) $s['id']) ?>" hidden>
+        <td colspan="6">
+          <form method="POST" action="<?= e(url('subscriptions/' . $s['id'] . '/update')) ?>">
             <?= csrf_field() ?>
-            <button class="btn btn-sm btn-outline" type="submit">+ Invoice</button>
+            <h4><?= e(t('ui.update_subscriber')) ?> · <?= e((string) $s['name']) ?></h4>
+            <?php $subscriberFields('subscriber-' . (int) $s['id'], $s); ?>
+            <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.update_subscriber')) ?></button></div>
           </form>
-          <?php endif; ?>
         </td>
       </tr>
       <?php endforeach; ?>
     </table>
-  </div>
 </div>
 <div class="panel">
-  <h3>All Invoices (<?= count($invoices) ?>)</h3>
+  <h3>All Invoices (<?= count($invoices) ?>)<?= help_tip('+ Invoice creates a billing record. Send writes the message to the log. If outgoing mail is saved in Settings, it is also emailed. WhatsApp opens WhatsApp Web with the message filled in. Nothing is sent through a WhatsApp API. The devotee opens the payment link and pays. The invoice then shows Paid here, and the payment is copied into Donations.') ?></h3>
   <form method="POST" action="<?= e(url('subscriptions/bulk_send')) ?>" id="bulkSendForm">
     <?= csrf_field() ?>
     <div class="toolbar">

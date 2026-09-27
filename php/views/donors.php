@@ -7,8 +7,7 @@
 /** @var string $countryCode */
 ?>
 <div class="panel">
-  <h3>Devotees · <?= e($financialYear) ?></h3>
-  <p class="sub">Add a devotee, or open a name to update details, gifts, and pledges. Select several names, then Bulk email or Bulk WhatsApp. A message box opens so the note can be written before Send or Cancel. A devotee who already has a gift or a pledge stays on record. A pledge is not in the cash book.</p>
+  <h3>Devotees · <?= e($financialYear) ?><?= help_tip('Add a devotee, or open a name to update details, gifts, and pledges. Select several names, then Bulk email or Bulk WhatsApp. A message box opens so the note can be written before Send or Cancel. A devotee who already has a gift or a pledge stays on record. A pledge is not in the cash book.') ?></h3>
   <p class="no-print"><a class="btn btn-gold btn-sm" href="<?= e(url('donors/new')) ?>">Add devotee</a></p>
   <form class="filters" method="GET" action="<?= e(app_script()) ?>">
     <input type="hidden" name="r" value="donors">

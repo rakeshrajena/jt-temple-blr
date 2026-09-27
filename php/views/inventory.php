@@ -16,8 +16,7 @@
   <button class="btn btn-outline" type="button" data-reveal="reveal-stock-place"><?= e(t('ui.condition_location')) ?></button>
 </div>
 <div class="panel reveal-panel" id="reveal-stock-hand" hidden>
-  <h3><?= e(t('ui.on_hand')) ?></h3>
-  <p class="sub">This records quantity that is already in the store. It does not write a payment. Use the purchase form when money leaves the cash book.</p>
+  <h3><?= e(t('ui.on_hand')) ?><?= help_tip('This records quantity that is already in the store. It does not write a payment. Use the purchase form when money leaves the cash book.') ?></h3>
   <form method="POST" action="<?= e(url('inventory')) ?>">
     <?= csrf_field() ?>
     <div class="form-grid cols-3">
@@ -66,8 +65,7 @@
   </form>
 </div>
 <div class="panel reveal-panel" id="reveal-stock-buy" hidden>
-  <h3><?= e(t('ui.buy_stock')) ?></h3>
-  <p class="sub">The purchase waits for approval. Stock and the cash book change together only after it is approved.</p>
+  <h3><?= e(t('ui.buy_stock')) ?><?= help_tip('The purchase waits for approval. Stock and the cash book change together only after it is approved.') ?></h3>
   <form method="POST" action="<?= e(url('inventory')) ?>">
     <?= csrf_field() ?>
     <input type="hidden" name="action" value="purchase">
@@ -123,8 +121,7 @@
   </form>
 </div>
   <div class="panel reveal-panel" id="reveal-stock-move" hidden>
-    <h3><?= e(t('ui.record_movement')) ?></h3>
-    <p class="sub">Issue and return are recorded immediately. Damage, loss, and retired quantities above <?= e((string) $writeOffLimit) ?> wait for approval.</p>
+    <h3><?= e(t('ui.record_movement')) ?><?= help_tip('Issue and return are recorded immediately. Damage, loss, and retired quantities above ' . $writeOffLimit . ' wait for approval.') ?></h3>
     <form method="POST" action="<?= e(url('inventory')) ?>">
       <?= csrf_field() ?>
       <input type="hidden" name="action" value="move">
@@ -153,8 +150,7 @@
     </form>
   </div>
   <div class="panel reveal-panel" id="reveal-stock-place" hidden>
-    <h3><?= e(t('ui.condition_location')) ?></h3>
-    <p class="sub">Repair sets Needs Repair. A new location moves the item. Retired writes off the quantity still on hand.</p>
+    <h3><?= e(t('ui.condition_location')) ?><?= help_tip('Repair sets Needs Repair. A new location moves the item. Retired writes off the quantity still on hand.') ?></h3>
     <form method="POST" action="<?= e(url('inventory')) ?>">
       <?= csrf_field() ?>
       <input type="hidden" name="action" value="place">

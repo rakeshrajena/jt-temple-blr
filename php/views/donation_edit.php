@@ -17,8 +17,8 @@ $types = $typeLocked ? [(string) $donation['donation_type']] : donation_amount_t
 $currentPledge = (int) ($donation['pledge_id'] ?? 0);
 ?>
 <div class="panel">
-  <h3><?= e(t('ui.edit_donation')) ?></h3>
-  <p class="sub"><?= donation_edit_needs_both((string) ($donation['created_at'] ?? '')) ? e(t('ui.edit_both')) : e(t('ui.edit_scope')) ?> <a href="<?= e(url('donations')) ?>"><?= e(t('ui.all_donations')) ?></a></p>
+  <h3><?= e(t('ui.edit_donation')) ?><?= help_tip(donation_edit_needs_both((string) ($donation['created_at'] ?? '')) ? t('ui.edit_both') : t('ui.edit_scope')) ?></h3>
+  <p class="sub"><a href="<?= e(url('donations')) ?>"><?= e(t('ui.all_donations')) ?></a></p>
   <?php if ((int) ($donation['receipt_cancelled'] ?? 0) !== 1): ?>
     <form method="POST" action="<?= e(url('donations/' . $donation['id'] . '/generate_receipt')) ?>" style="margin-bottom:12px;">
       <?= csrf_field() ?>

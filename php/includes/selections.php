@@ -54,7 +54,7 @@ function selection_catalog(): array
         ],
         'vastra_statuses' => [
             'label' => 'Vastra status',
-            'modules' => 'Deity vastra. Approval status, subscriber status, and invoice status stay fixed because the books depend on those words.',
+            'modules' => 'Deity vastra. Approval status and invoice status stay fixed because the books depend on those words.',
             'kind' => 'lines',
             'required' => ['In Store', 'In Use', 'Retired'],
         ],
@@ -78,15 +78,21 @@ function selection_catalog(): array
         ],
         'plans' => [
             'label' => 'Subscription plan',
-            'modules' => 'Subscriptions, the plan box.',
+            'modules' => 'Subscriptions. The plan box suggests these names while typing.',
             'kind' => 'lines',
             'required' => [],
         ],
         'billing_cycles' => [
             'label' => 'Billing cycle',
-            'modules' => 'Subscriptions. Monthly is the cycle counted in monthly recurring revenue.',
+            'modules' => 'Subscriptions. The billing cycle box suggests these while typing. Monthly is the cycle counted in monthly recurring revenue.',
             'kind' => 'lines',
             'required' => ['Monthly', 'Quarterly', 'Yearly'],
+        ],
+        'subscriber_statuses' => [
+            'label' => 'Subscriber status',
+            'modules' => 'Subscriptions. The status box suggests these while typing. Active is counted in monthly recurring revenue and can receive a new invoice.',
+            'kind' => 'lines',
+            'required' => ['Active'],
         ],
         'deities' => [
             'label' => 'Deity',
@@ -160,8 +166,9 @@ function selection_defaults(): array
             ['name' => 'Full Day Ritual Puja', 'amount' => 2101],
             ['name' => 'Other', 'amount' => 101],
         ],
-        'plans' => ['Monthly Annadaan Seva', 'Monthly Mahaprasad Seva', 'Monthly Deepa Seva', 'Quarterly Vastra Seva', 'Yearly Nitya Seva'],
+        'plans' => ['Mahaprasad', 'Flower and Bhog', 'Deepa Seva', 'Annadan Seva', 'Monthly Annadaan Seva', 'Monthly Mahaprasad Seva', 'Monthly Deepa Seva', 'Quarterly Vastra Seva', 'Yearly Nitya Seva'],
         'billing_cycles' => ['Monthly', 'Quarterly', 'Yearly'],
+        'subscriber_statuses' => ['Active', 'Paused', 'Inactive', 'Cancelled'],
         'deities' => ['Jagannath', 'Balabhadra', 'Subhadra', 'Sudarshan'],
     ];
 }
@@ -190,6 +197,20 @@ function load_selections(bool $reload = false): array
         }
     }
     return $cache;
+}
+
+function selection_choice(string $key, string $value): ?string
+{
+    $needle = mb_strtolower(trim($value));
+    if ($needle === '') {
+        return null;
+    }
+    foreach (selection_values($key) as $option) {
+        if (mb_strtolower($option) === $needle) {
+            return $option;
+        }
+    }
+    return null;
 }
 
 /** @return list<string> */
@@ -359,7 +380,8 @@ function selection_name_limit(string $key): int
 {
     return match ($key) {
         'plans', 'expense_categories', 'puja_purposes' => 80,
-        'payment_modes', 'movements', 'donation_types' => 30,
+        'billing_cycles' => 20,
+        'subscriber_statuses', 'payment_modes', 'movements', 'donation_types' => 30,
         default => 50,
     };
 }
@@ -747,6 +769,14 @@ function write_default_selections(): void
     file_put_contents(selection_path(), $json . "\n", LOCK_EX);
 }
 
+function ensure_subscriber_schema(PDO $pdo): void
+{
+    ensure_column($pdo, 'subscribers', 'family_members', 'VARCHAR(300) NULL');
+    ensure_column($pdo, 'subscribers', 'gotra', 'VARCHAR(80) NULL');
+    ensure_column($pdo, 'subscribers', 'seva_date', 'DATE NULL');
+    ensure_subscriber_status_log($pdo);
+}
+
 function ensure_selection_columns(PDO $pdo): void
 {
     $columns = [
@@ -760,6 +790,7 @@ function ensure_selection_columns(PDO $pdo): void
         ['vastra_items', 'source', "VARCHAR(30) NULL DEFAULT 'Purchased'"],
         ['vastra_items', 'status', "VARCHAR(30) NULL DEFAULT 'In Store'"],
         ['subscribers', 'frequency', "VARCHAR(20) NOT NULL DEFAULT 'Monthly'"],
+        ['subscribers', 'status', "VARCHAR(30) NOT NULL DEFAULT 'Active'"],
         ['food_usage_log', 'txn_type', 'VARCHAR(30) NOT NULL'],
         ['stock_requests', 'movement_type', 'VARCHAR(30) NOT NULL'],
     ];

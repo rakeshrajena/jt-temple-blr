@@ -268,34 +268,34 @@ function ensure_receipt_share_schema(PDO $pdo): void
     if ($index === false) {
         $pdo->exec('ALTER TABLE donations ADD UNIQUE KEY uq_receipt_share_token (receipt_share_token)');
     }
-    $rows = db_all(
+    $ids = $pdo->query(
         "SELECT id FROM donations
          WHERE receipt_generated = 1
            AND receipt_number IS NOT NULL
            AND receipt_number <> ''
            AND (receipt_share_token IS NULL OR receipt_share_token = '')"
+    )->fetchAll(PDO::FETCH_COLUMN);
+    $update = $pdo->prepare(
+        'UPDATE donations SET receipt_share_token = ? WHERE id = ? AND (receipt_share_token IS NULL OR receipt_share_token = \'\')'
     );
-    foreach ($rows as $row) {
-        db_exec(
-            'UPDATE donations SET receipt_share_token = ? WHERE id = ? AND (receipt_share_token IS NULL OR receipt_share_token = \'\')',
-            [bin2hex(random_bytes(16)), (int) $row['id']]
-        );
+    foreach ($ids as $id) {
+        $update->execute([bin2hex(random_bytes(16)), (int) $id]);
     }
-    rebuild_public_receipt_pdfs();
+    rebuild_public_receipt_pdfs($pdo);
 }
 
-function rebuild_public_receipt_pdfs(): void
+function rebuild_public_receipt_pdfs(PDO $pdo): void
 {
-    $flag = db_one("SELECT setting_value FROM app_settings WHERE setting_key = 'receipt_public_qr'");
-    if ($flag !== null && (string) $flag['setting_value'] === '4') {
+    $flag = $pdo->query("SELECT setting_value FROM app_settings WHERE setting_key = 'receipt_public_qr'")->fetchColumn();
+    if ($flag !== false && (string) $flag === '4') {
         return;
     }
-    $rows = db_all(
+    $rows = $pdo->query(
         "SELECT d.*, don.name, don.phone, don.email, don.address, don.pan_number
          FROM donations d
          JOIN donors don ON d.donor_id = don.id
          WHERE d.receipt_generated = 1 AND d.receipt_number IS NOT NULL AND d.receipt_number <> ''"
-    );
+    )->fetchAll(PDO::FETCH_ASSOC);
     foreach ($rows as $row) {
         $path = APP_ROOT . '/storage/receipts/' . $row['receipt_number'] . '.pdf';
         if (!is_file($path)) {
@@ -327,14 +327,14 @@ function receipt_email_block_reason(string $email, bool $pdfReady, bool $smtpRea
     return null;
 }
 
-function backfill_receipt_pdfs(): void
+function backfill_receipt_pdfs(PDO $pdo): void
 {
-    $rows = db_all(
+    $rows = $pdo->query(
         "SELECT d.*, don.name, don.phone, don.email, don.address, don.pan_number
          FROM donations d
          JOIN donors don ON d.donor_id = don.id
          WHERE d.receipt_generated = 1 AND d.receipt_number IS NOT NULL AND d.receipt_number <> ''"
-    );
+    )->fetchAll(PDO::FETCH_ASSOC);
     foreach ($rows as $row) {
         $path = APP_ROOT . '/storage/receipts/' . $row['receipt_number'] . '.pdf';
         if (!is_file($path)) {

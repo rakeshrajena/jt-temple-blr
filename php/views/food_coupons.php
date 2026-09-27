@@ -31,8 +31,7 @@ $expiryInput = static function (mixed $value): string {
   <button class="btn btn-outline" type="button" data-reveal="reveal-coupon-generate"><?= e(t('ui.generate_coupons')) ?></button>
 </div>
 <div class="panel reveal-panel" id="reveal-coupon-record" hidden>
-  <h3><?= e(t('ui.record_coupon')) ?></h3>
-  <p class="sub">Opening a coupon link while signed in records it at once. No extra choice is asked. It is a Cash donation under Coupon counter, and the purpose is Donation. Type a code here only when the devotee name or the payment mode should be different. A coupon past its expiry is invalidated and cannot be recorded. Scanning a coupon that is already in the books does not add it again.</p>
+  <h3><?= e(t('ui.record_coupon')) ?><?= help_tip('Opening a coupon link while signed in records it at once. No extra choice is asked. It is a Cash donation under Coupon counter, and the purpose is Donation. Type a code here only when the devotee name or the payment mode should be different. A coupon past its expiry is invalidated and cannot be recorded. Scanning a coupon that is already in the books does not add it again.') ?></h3>
   <form method="POST" action="<?= e(url('food/coupons/validate')) ?>">
     <?= csrf_field() ?>
     <div class="form-grid cols-3">
@@ -73,7 +72,7 @@ $expiryInput = static function (mixed $value): string {
   </form>
 </div>
 <div class="panel reveal-panel" id="reveal-coupon-invalid" hidden>
-  <h3><?= e(t('ui.invalidate_coupon')) ?></h3>
+  <h3><?= e(t('ui.invalidate_coupon')) ?><?= help_tip('Invalidating a coupon does not add income. A coupon is invalidated on its own once the expiry time has passed.') ?></h3>
   <form method="POST" action="<?= e(url('food/coupons/invalidate')) ?>">
     <?= csrf_field() ?>
     <div class="form-grid cols-3">
@@ -82,13 +81,11 @@ $expiryInput = static function (mixed $value): string {
         <input type="text" name="code" placeholder="CU-…" required autocomplete="off">
       </div>
     </div>
-    <p class="sub">Invalidating a coupon does not add income. A coupon is invalidated on its own once the expiry time has passed.</p>
     <div class="form-actions"><button class="btn btn-outline" type="submit"><?= e(t('ui.invalidate_coupon')) ?></button></div>
   </form>
 </div>
 <div class="panel reveal-panel" id="reveal-coupon-generate" hidden>
-  <h3><?= e(t('ui.generate_coupons')) ?></h3>
-  <p class="sub"><?= e(t('ui.coupon_form_note', ['limit' => money(approval_limit('Treasurer'))])) ?></p>
+  <h3><?= e(t('ui.generate_coupons')) ?><?= help_tip(t('ui.coupon_form_note', ['limit' => money(approval_limit('Treasurer'))])) ?></h3>
   <form method="POST" action="<?= e(url('food/coupons')) ?>" data-coupon-expiry data-coupon-create>
     <?= csrf_field() ?>
     <div class="form-grid cols-3">
@@ -156,8 +153,7 @@ $expiryInput = static function (mixed $value): string {
 </div>
 </div>
 <div class="panel">
-  <h3>Coupon batches (<?= count($batches) ?>)</h3>
-  <p class="sub">Edit the name, the cost, the quantity, or the expiry. A cost or quantity change goes back to approval. Removing a batch deletes its unused coupons. A batch with a sold coupon stays, because that income is already in the books. Serial numbers stay in their range, so a larger quantity is refused when it would overlap the next batch.</p>
+  <h3>Coupon batches (<?= count($batches) ?>)<?= help_tip('Edit the name, the cost, the quantity, or the expiry. A cost or quantity change goes back to approval. Removing a batch deletes its unused coupons. A batch with a sold coupon stays, because that income is already in the books. Serial numbers stay in their range, so a larger quantity is refused when it would overlap the next batch.') ?></h3>
   <?php if ($batches): ?>
   <div class="batch-list">
     <?php foreach ($batches as $b): ?>

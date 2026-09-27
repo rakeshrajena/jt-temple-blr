@@ -10,8 +10,7 @@ foreach ($blocks as $block) {
 }
 ?>
 <div class="panel">
-  <h3>Design invitation</h3>
-  <p class="sub">What you see on the card is what the devotee receives. Add a heading, words, a picture, or a video link. The email starts with the devotee's name. A video is sent as a link, because mail apps do not play a video inside the message.</p>
+  <h3>Design invitation<?= help_tip('What you see on the card is what the devotee receives. Add a heading, words, a picture, or a video link. The email starts with the devotee\'s name. A video is sent as a link, because mail apps do not play a video inside the message.') ?></h3>
   <form id="inviteForm" method="POST" action="<?= e(url('invitations/' . $invitation['id'])) ?>">
     <?= csrf_field() ?>
     <div class="form-grid cols-2">

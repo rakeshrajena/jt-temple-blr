@@ -36,8 +36,7 @@
 </div>
 </div>
 <div class="panel">
-  <h3><?= e(t('ui.all_users')) ?></h3>
-  <p class="sub"><?= e(t('password.own_hint')) ?></p>
+  <h3><?= e(t('ui.all_users')) ?><?= help_tip(t('password.own_hint')) ?></h3>
   <table class="data-table">
     <tr><th><?= e(t('common.name')) ?></th><th><?= e(t('login.username')) ?></th><th><?= e(t('common.role')) ?></th><th><?= e(t('common.status')) ?></th><th><?= e(t('ui.created')) ?></th><th><?= e(t('password.set')) ?></th><th><?= e(t('ui.access')) ?></th></tr>
     <?php foreach ($users as $u): ?>

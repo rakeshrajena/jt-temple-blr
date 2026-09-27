@@ -81,8 +81,7 @@ $pledges = $statement['pledges'];
   <?php endif; ?>
 </div>
 <div class="panel">
-  <h3><?= e(t('ui.pledge_received')) ?></h3>
-  <p class="sub">A pledge is a promise. Only the amount received enters the cash book.</p>
+  <h3><?= e(t('ui.pledge_received')) ?><?= help_tip('A pledge is a promise. Only the amount received enters the cash book.') ?></h3>
   <?php if ($pledges === []): ?>
     <p>No pledge in this period, and nothing is still promised.</p>
   <?php else: ?>

@@ -190,7 +190,24 @@ Send opens the devotees who have an email address, and shows the address. Tick p
 
 ## Subscriptions
 
-Subscriptions are recurring seva: a plan, an amount, and a frequency. Generate an invoice, then send it. The message includes a payment link. When mail is saved under Settings, Send also emails that message. WhatsApp Web opens with the message filled in. There is no WhatsApp API. The devotee still confirms payment on the link.
+Subscriptions are recurring seva: a plan, an amount, and a billing cycle.
+
+Add subscriber asks for the name, contact number, email (optional), names of family members, gotra, special date for seva, plan, amount, billing cycle, and status. Name, contact number, plan, amount, billing cycle, and status are required. Status starts as Active.
+
+Plan, Billing cycle, and Status suggest names as you type. The form accepts only names in those lists. Change the lists under Settings, Form choices, in the Subscription plan, Billing cycle, and Subscriber status cards. The starting plans include Mahaprasad, Flower and Bhog, Deepa Seva, and Annadan Seva. The billing cycles are Monthly, Quarterly, and Yearly. The statuses are Active, Paused, Inactive, and Cancelled. Active cannot be removed.
+
+Choose a status by what the devotee has told the temple. Nothing changes a status on its own; an unpaid invoice does not pause anyone.
+
+| Status | Use it when | New invoice | Monthly revenue |
+|---|---|---|---|
+| Active | The devotee is paying | Yes | Counted when the cycle is Monthly |
+| Paused | A short break, such as travel; set Active again to resume | No | Not counted |
+| Inactive | Stopped for now, may restart later | No | Not counted |
+| Cancelled | The devotee asked to stop | No | Not counted |
+
+To change anything about a subscriber, press **Update** on that row. The same fields open with the saved values. Save with **Update subscriber**. When the status changes, the row shows the old status, the new one, who changed it, and when. Any signed-in user can update a subscriber. **+ Invoice** appears only for Active subscribers, and the app also refuses an invoice for any other status. Invoices already sent keep their payment links after a status change.
+
+Generate an invoice, then send it. The message includes a payment link. When mail is saved under Settings, Send also emails that message. WhatsApp Web opens with the message filled in. There is no WhatsApp API. The devotee still confirms payment on the link.
 
 The devotee opens the link without signing in. Confirming payment marks the invoice Paid and copies it into Donations.
 

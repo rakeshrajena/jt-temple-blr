@@ -2,8 +2,7 @@
 /** @var list<array<string, mixed>> $invitations */
 ?>
 <div class="panel">
-  <h3>Invitations</h3>
-  <p class="sub">Design a card with words, a picture, or a video link. Then send it in one click to devotees who have an email address.</p>
+  <h3>Invitations<?= help_tip('Design a card with words, a picture, or a video link. Then send it in one click to devotees who have an email address.') ?></h3>
   <div class="reveal-group">
   <div class="action-bar">
     <button class="btn btn-outline" type="button" data-reveal="reveal-invite">Design invitation</button>

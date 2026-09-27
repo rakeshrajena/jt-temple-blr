@@ -221,7 +221,17 @@ function import_books_snapshot(PDO $pdo, ?string $path = null): int
  */
 function install_database(bool $replaceBooks = false): array
 {
-    $pdo = db_connect();
+    return install_into(db_connect(), $replaceBooks);
+}
+
+/**
+ * The same setup as install_database, against any connection and books copy.
+ *
+ * @return array{tables:int,users:int,donors:int,seeded:bool,imported:bool}
+ */
+function install_into(PDO $pdo, bool $replaceBooks = false, ?string $snapshotPath = null): array
+{
+    $snapshotPath ??= books_snapshot_path();
     $exists = $pdo->query("SHOW TABLES LIKE 'users'")->fetchColumn();
     if ($exists === false) {
         run_sql_file($pdo, APP_ROOT . '/schema.sql', true);
@@ -229,9 +239,9 @@ function install_database(bool $replaceBooks = false): array
     migrate_schema($pdo);
     $seeded = false;
     $imported = false;
-    $snapshot = is_file(books_snapshot_path());
+    $snapshot = is_file($snapshotPath);
     if ($snapshot && ($replaceBooks || demo_data_is_pending($pdo))) {
-        import_books_snapshot($pdo);
+        import_books_snapshot($pdo, $snapshotPath);
         $imported = true;
     } elseif (demo_data_is_pending($pdo)) {
         Seed::run($pdo);
@@ -262,9 +272,10 @@ function migrate_schema(PDO $pdo): void
     ensure_receipt_share_schema($pdo);
     ensure_coupon_schema($pdo);
     ensure_invitation_schema($pdo);
+    ensure_subscriber_schema($pdo);
     ensure_selection_columns($pdo);
     ensure_write_claims($pdo);
-    backfill_receipt_pdfs();
+    backfill_receipt_pdfs($pdo);
 }
 
 function ensure_write_claims(PDO $pdo): void

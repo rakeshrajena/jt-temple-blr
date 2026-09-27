@@ -244,6 +244,10 @@ function dispatch_request(): void
         action_bulk_send();
         return;
     }
+    if (preg_match('#^subscriptions/(\d+)/update$#', $path, $m) === 1 && $method === 'POST') {
+        action_subscriber_update((int) $m[1]);
+        return;
+    }
     if (preg_match('#^subscriptions/(\d+)/generate_invoice$#', $path, $m) === 1 && $method === 'POST') {
         action_generate_invoice((int) $m[1]);
         return;
@@ -2623,28 +2627,13 @@ function action_subscriptions(string $method): void
 {
     login_required();
     if ($method === 'POST') {
-        $name = post_string('name', 150);
-        $mobile = post_string('mobile', 15);
-        $amount = (float) ($_POST['plan_amount'] ?? 0);
-        if ($name === '' || $mobile === '' || $amount <= 0) {
-            flash('error', 'Name, mobile, and amount are required.');
+        $input = subscriber_input($_POST);
+        if ($input['error'] !== null) {
+            flash('error', $input['error']);
             redirect(url('subscriptions'));
         }
         try {
-            db_exec(
-                'INSERT INTO subscribers (name, mobile, email, plan_name, plan_amount, frequency, status, start_date)
-                 VALUES (?,?,?,?,?,?,?,?)',
-                [
-                    $name,
-                    $mobile,
-                    post_string('email', 120) ?: null,
-                    one_of(post_string('plan_name', 80), selection_values('plans'), selection_values('plans')[0] ?? 'Monthly Annadaan Seva'),
-                    $amount,
-                    one_of(post_string('frequency', 20), selection_values('billing_cycles'), 'Monthly'),
-                    'Active',
-                    date('Y-m-d'),
-                ]
-            );
+            add_subscriber($input['values']);
             flash('success', 'Subscriber added.');
         } catch (PDOException $e) {
             $message = str_contains($e->getMessage(), 'Duplicate')
@@ -2654,26 +2643,45 @@ function action_subscriptions(string $method): void
         }
         redirect(url('subscriptions'));
     }
+    $subs = db_all(
+        "SELECT s.*,
+            (SELECT COUNT(*) FROM subscription_invoices i WHERE i.subscriber_id = s.id AND i.status = 'Paid') AS paid_count,
+            (SELECT COUNT(*) FROM subscription_invoices i WHERE i.subscriber_id = s.id AND i.status IN ('Sent','Pending','Overdue')) AS due_count
+         FROM subscribers s ORDER BY (s.status = 'Active') DESC, s.name"
+    );
     render('subscriptions', [
         'title' => t('nav.subscriptions'),
         'pageTitle' => t('page.subscriptions'),
         'active' => 'subscriptions',
-        'subs' => db_all(
-            "SELECT s.*,
-                (SELECT COUNT(*) FROM subscription_invoices i WHERE i.subscriber_id = s.id AND i.status = 'Paid') AS paid_count,
-                (SELECT COUNT(*) FROM subscription_invoices i WHERE i.subscriber_id = s.id AND i.status IN ('Sent','Pending','Overdue')) AS due_count
-             FROM subscribers s ORDER BY (s.status = 'Active') DESC, s.name"
-        ),
+        'subs' => $subs,
+        'statusChanges' => latest_subscriber_status_changes(array_map(static fn (array $s): int => (int) $s['id'], $subs)),
         'invoices' => db_all(
             "SELECT i.*, s.name AS subscriber_name, s.mobile, s.email FROM subscription_invoices i
              JOIN subscribers s ON i.subscriber_id = s.id
              ORDER BY (i.status = 'Overdue') DESC, (i.status = 'Sent') DESC, (i.status = 'Pending') DESC, i.due_date DESC"
         ),
-        'planPresets' => selection_values('plans'),
         'mrr' => (float) db_value("SELECT COALESCE(SUM(plan_amount),0) FROM subscribers WHERE status = 'Active' AND frequency = 'Monthly'"),
         'pendingAmount' => (float) db_value("SELECT COALESCE(SUM(amount),0) FROM subscription_invoices WHERE status IN ('Sent','Pending','Overdue')"),
         'messaging' => messaging_for_page(),
     ]);
+}
+
+function action_subscriber_update(int $subId): void
+{
+    login_required();
+    $input = subscriber_input($_POST);
+    if ($input['error'] !== null) {
+        flash('error', $input['error']);
+        redirect(url('subscriptions'));
+    }
+    try {
+        $error = update_subscriber($subId, $input['values'], (int) current_user()['id']);
+    } catch (PDOException $e) {
+        error_log('subscriber update failed: ' . $e->getMessage());
+        $error = 'Could not update the subscriber.';
+    }
+    flash($error === null ? 'success' : 'error', $error ?? 'Subscriber updated.');
+    redirect(url('subscriptions'));
 }
 
 function action_generate_invoice(int $subId): void
@@ -2682,6 +2690,10 @@ function action_generate_invoice(int $subId): void
     $sub = db_one('SELECT * FROM subscribers WHERE id = ?', [$subId]);
     if ($sub === null) {
         flash('error', 'Subscriber not found.');
+        redirect(url('subscriptions'));
+    }
+    if (!subscriber_can_invoice((string) $sub['status'])) {
+        flash('error', 'Only an Active subscriber can get a new invoice. Update the status first.');
         redirect(url('subscriptions'));
     }
     $year = date('Y');

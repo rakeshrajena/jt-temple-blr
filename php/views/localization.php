@@ -65,10 +65,7 @@ foreach ($english as $key => $unused) {
   </section>
 
   <section class="panel">
-    <h3><?= e(t('locale.phrases')) ?> — <?= e($selected) ?>.json</h3>
-    <?php if ($selected !== 'en'): ?>
-      <p class="hint"><?= e(t('locale.blank_hint')) ?></p>
-    <?php endif; ?>
+    <h3><?= e(t('locale.phrases')) ?> — <?= e($selected) ?>.json<?= $selected !== 'en' ? help_tip(t('locale.blank_hint')) : '' ?></h3>
     <div class="form-group">
       <label for="phrase-search"><?= e(t('locale.search')) ?></label>
       <input id="phrase-search" type="search" autocomplete="off">

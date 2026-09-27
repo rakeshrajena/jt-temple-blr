@@ -2,8 +2,7 @@
 /** @var array{name: string, phone: string, email: string, address: string, pan: string} $values */
 ?>
 <div class="panel">
-  <h3><?= e(t('ui.add_devotee')) ?></h3>
-  <p class="sub">Save the name and contact details before a gift is recorded. A phone number can belong to only one devotee, so later gifts match the same person.</p>
+  <h3><?= e(t('ui.add_devotee')) ?><?= help_tip('Save the name and contact details before a gift is recorded. A phone number can belong to only one devotee, so later gifts match the same person.') ?></h3>
   <form method="POST" action="<?= e(url('donors/new')) ?>">
     <?= csrf_field() ?>
     <div class="form-grid cols-3">

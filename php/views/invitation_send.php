@@ -8,8 +8,7 @@
 $sentDonorIds = array_fill_keys($sentDonorIds, true);
 ?>
 <div class="panel">
-  <h3><?= e((string) $invitation['title']) ?></h3>
-  <p class="sub">These are the devotees who have an email address. Tick the people you want, or tick everyone, then send. One click sends the invitation. Devotees without an email address are not listed.</p>
+  <h3><?= e((string) $invitation['title']) ?><?= help_tip('These are the devotees who have an email address. Tick the people you want, or tick everyone, then send. One click sends the invitation. Devotees without an email address are not listed.') ?></h3>
   <p><a href="<?= e(url('invitations/' . $invitation['id'])) ?>">Edit the design</a></p>
   <?php if (!$mailReady): ?>
     <p>Outgoing mail is not configured. An Admin can save it under Settings.</p>
@@ -41,8 +40,7 @@ $sentDonorIds = array_fill_keys($sentDonorIds, true);
       </div>
     </form>
   <?php endif; ?>
-  <h3 id="sent-box">Sent box</h3>
-  <p class="sub">People who have already been sent this invitation.</p>
+  <h3 id="sent-box">Sent box<?= help_tip('People who have already been sent this invitation.') ?></h3>
   <?php if ($sent === []): ?>
     <p>No one has been sent this invitation yet.</p>
   <?php else: ?>

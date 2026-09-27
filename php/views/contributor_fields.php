@@ -31,7 +31,7 @@ $value = static function (string $key) use ($contributor): string {
     <input type="url" name="profile_url" maxlength="300" value="<?= e($value('profile_url')) ?>" placeholder="https://">
   </div>
   <div class="form-group">
-    <label><?= e(t('contributors.photo')) ?></label>
+    <label><?= e(t('contributors.photo')) ?><?= $contributor !== null ? help_tip(t('contributors.photo_keep')) : '' ?></label>
     <input type="file" name="photo" accept="image/jpeg,image/png,image/gif,image/webp">
   </div>
 </div>

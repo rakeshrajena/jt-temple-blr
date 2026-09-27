@@ -17,8 +17,7 @@ $badge = static function (string $status): string {
   <button class="btn btn-outline" type="button" data-reveal="reveal-correct"><?= e(t('ui.correct_line')) ?></button>
 </div>
 <div class="panel reveal-panel" id="reveal-correct" hidden>
-  <h3><?= e(t('ui.correct_line')) ?></h3>
-  <p class="sub">The original donation or expense stays in the book. The correction is a second line, and it changes the balance only after someone else approves it.</p>
+  <h3><?= e(t('ui.correct_line')) ?><?= help_tip('The original donation or expense stays in the book. The correction is a second line, and it changes the balance only after someone else approves it.') ?></h3>
   <?php if ($targets === []): ?>
     <p>There is no cash or bank line that can be corrected.</p>
   <?php else: ?>

@@ -32,6 +32,23 @@ $priced = parse_selection_block('puja_purposes', "Vehicle Puja | 251.50\nOther |
 check(is_array($priced) && $priced[0]['name'] === 'Vehicle Puja' && $priced[0]['amount'] === 251.5, 'a puja purpose stores its amount');
 check(is_string(parse_selection_block('puja_purposes', 'Vehicle Puja | 0')), 'a puja amount must be above zero');
 check(puja_purpose_amount('Satyanarayan Puja') === 501.0, 'choosing Satyanarayan Puja fills ₹501 until Settings changes it');
+check(selection_choice('billing_cycles', 'yearly') === 'Yearly', 'a billing cycle matches ignoring case');
+check(selection_choice('subscriber_statuses', 'Inactive') === 'Inactive', 'Inactive is a subscriber status');
+check(selection_choice('plans', 'Not a plan') === null, 'an unknown plan is refused');
+$withoutActive = $posted;
+$withoutActive['subscriber_statuses'] = "Inactive\n";
+check(parse_selections($withoutActive)['error'] !== null, 'Active cannot be removed from subscriber status');
+foreach (['en', 'hi', 'or'] as $code) {
+    $phrases = locale_phrases($code, true);
+    foreach (array_keys(selection_catalog()) as $key) {
+        check(isset($phrases['settings.choice.' . $key], $phrases['settings.where.' . $key]), "{$code} names and explains the {$key} list in Settings");
+    }
+}
+foreach (['Mahaprasad', 'Flower and Bhog', 'Deepa Seva', 'Annadan Seva'] as $plan) {
+    check(in_array($plan, selection_defaults()['plans'], true), "{$plan} is a default subscription plan");
+}
+check(selection_defaults()['billing_cycles'] === ['Monthly', 'Quarterly', 'Yearly'], 'the default billing cycles are Monthly, Quarterly, and Yearly');
+check(selection_defaults()['subscriber_statuses'] === ['Active', 'Paused', 'Inactive', 'Cancelled'], 'the default subscriber statuses are Active, Paused, Inactive, and Cancelled');
 
 $withoutCash = $posted;
 $withoutCash['payment_modes'] = str_replace("Cash | cash\n", '', $withoutCash['payment_modes']);

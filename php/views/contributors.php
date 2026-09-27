@@ -8,8 +8,7 @@
     <button class="btn btn-outline" type="button" data-reveal="reveal-contributor"><?= e(t('contributors.add')) ?></button>
   </div>
   <div class="panel reveal-panel" id="reveal-contributor" hidden>
-    <h3><?= e(t('contributors.add')) ?></h3>
-    <p class="sub"><?= e(t('contributors.add_note')) ?></p>
+    <h3><?= e(t('contributors.add')) ?><?= help_tip(t('contributors.add_note')) ?></h3>
     <form method="POST" action="<?= e(url('contributors')) ?>" enctype="multipart/form-data">
       <?= csrf_field() ?>
       <?php require __DIR__ . '/contributor_fields.php'; ?>
@@ -81,7 +80,6 @@
         <form class="cell-form contributor-edit reveal-panel" id="contributor-edit-<?= e((string) $person['id']) ?>" hidden method="POST" action="<?= e(url('contributors/' . $person['id'])) ?>" enctype="multipart/form-data">
           <?= csrf_field() ?>
           <?php $contributor = $person; require __DIR__ . '/contributor_fields.php'; ?>
-          <p class="sub"><?= e(t('contributors.photo_keep')) ?></p>
           <button class="btn btn-sm btn-primary" type="submit"><?= e(t('contributors.save')) ?></button>
         </form>
       </div>
