@@ -276,8 +276,19 @@ function email_html_document(string $message, bool $withLogo): string
         . '</body></html>';
 }
 
-function smtp_data_payload(string $fromName, string $from, string $to, string $subject, string $body, ?array $attachment = null): string
-{
+/**
+ * @param list<array{cid:string,mime:string,bytes:string,filename:string}> $inlineImages
+ */
+function smtp_data_payload(
+    string $fromName,
+    string $from,
+    string $to,
+    string $subject,
+    string $body,
+    ?array $attachment = null,
+    ?string $htmlOverride = null,
+    array $inlineImages = []
+): string {
     $headers = 'From: ' . smtp_quoted_name($fromName) . ' <' . $from . ">\r\n"
         . 'To: <' . $to . ">\r\n"
         . 'Subject: ' . smtp_quoted_name($subject) . "\r\n"
@@ -286,10 +297,10 @@ function smtp_data_payload(string $fromName, string $from, string $to, string $s
     $text = str_replace("\n", "\r\n", $text);
     $plain = rtrim($text) . "\r\n\r\n" . email_signature_text();
     $logo = brand_logo_email_image();
-    $html = email_html_document($body, $logo !== null);
-    $message = smtp_signed_message($plain, $html, $logo);
+    $html = $htmlOverride ?? email_html_document($body, $logo !== null);
+    $message = smtp_signed_message($plain, $html, $logo, $inlineImages);
     if ($attachment === null) {
-        if ($logo === null) {
+        if ($logo === null && $htmlOverride === null && $inlineImages === []) {
             $raw = $headers . "Content-Type: text/plain; charset=UTF-8\r\n\r\n" . $plain;
             return smtp_dot_stuff($raw) . "\r\n.\r\n";
         }
@@ -313,8 +324,11 @@ function smtp_data_payload(string $fromName, string $from, string $to, string $s
     return smtp_dot_stuff($raw) . "\r\n.\r\n";
 }
 
-/** @param array{mime:string,bytes:string}|null $logo */
-function smtp_signed_message(string $plain, string $html, ?array $logo): string
+/**
+ * @param array{mime:string,bytes:string}|null $logo
+ * @param list<array{cid:string,mime:string,bytes:string,filename:string}> $inlineImages
+ */
+function smtp_signed_message(string $plain, string $html, ?array $logo, array $inlineImages = []): string
 {
     $alternative = 'jt_alt_' . bin2hex(random_bytes(6));
     $body = '--' . $alternative . "\r\n"
@@ -326,26 +340,71 @@ function smtp_signed_message(string $plain, string $html, ?array $logo): string
         . "\r\n"
         . $html . "\r\n"
         . '--' . $alternative . "--\r\n";
-    if ($logo === null) {
+    $images = smtp_inline_images($logo, $inlineImages);
+    if ($images === []) {
         return 'Content-Type: multipart/alternative; boundary="' . $alternative . "\"\r\n\r\n" . $body;
     }
     $related = 'jt_rel_' . bin2hex(random_bytes(6));
-    $encoded = rtrim(chunk_split(base64_encode($logo['bytes']), 76, "\r\n"));
-    $subtype = $logo['mime'] === 'image/jpeg' ? 'jpeg' : 'png';
-    return 'Content-Type: multipart/related; boundary="' . $related . "\"\r\n"
+    $raw = 'Content-Type: multipart/related; boundary="' . $related . "\"\r\n"
         . "\r\n"
         . '--' . $related . "\r\n"
         . 'Content-Type: multipart/alternative; boundary="' . $alternative . "\"\r\n"
         . "\r\n"
-        . $body
-        . '--' . $related . "\r\n"
-        . 'Content-Type: image/' . $subtype . "\r\n"
-        . "Content-Transfer-Encoding: base64\r\n"
-        . "Content-ID: <temple-logo>\r\n"
-        . "Content-Disposition: inline; filename=\"logo." . $subtype . "\"\r\n"
-        . "\r\n"
-        . $encoded . "\r\n"
-        . '--' . $related . "--\r\n";
+        . $body;
+    foreach ($images as $image) {
+        $encoded = rtrim(chunk_split(base64_encode($image['bytes']), 76, "\r\n"));
+        $raw .= '--' . $related . "\r\n"
+            . 'Content-Type: ' . $image['mime'] . "\r\n"
+            . "Content-Transfer-Encoding: base64\r\n"
+            . 'Content-ID: <' . $image['cid'] . ">\r\n"
+            . 'Content-Disposition: inline; filename="' . $image['filename'] . "\"\r\n"
+            . "\r\n"
+            . $encoded . "\r\n";
+    }
+    return $raw . '--' . $related . "--\r\n";
+}
+
+/**
+ * @param array{mime:string,bytes:string}|null $logo
+ * @param list<array{cid:string,mime:string,bytes:string,filename:string}> $inlineImages
+ * @return list<array{cid:string,mime:string,bytes:string,filename:string}>
+ */
+function smtp_inline_images(?array $logo, array $inlineImages): array
+{
+    $images = [];
+    if ($logo !== null && ($logo['bytes'] ?? '') !== '') {
+        $subtype = $logo['mime'] === 'image/jpeg' ? 'jpg' : 'png';
+        $images[] = [
+            'cid' => 'temple-logo',
+            'mime' => $logo['mime'] === 'image/jpeg' ? 'image/jpeg' : 'image/png',
+            'bytes' => $logo['bytes'],
+            'filename' => 'logo.' . $subtype,
+        ];
+    }
+    foreach ($inlineImages as $image) {
+        if (!is_array($image)) {
+            continue;
+        }
+        $cid = (string) ($image['cid'] ?? '');
+        $mime = (string) ($image['mime'] ?? '');
+        $filename = (string) ($image['filename'] ?? '');
+        $bytes = (string) ($image['bytes'] ?? '');
+        if (
+            preg_match('/^[A-Za-z0-9._-]{1,80}$/', $cid) !== 1
+            || !in_array($mime, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true)
+            || preg_match('/^[A-Za-z0-9._-]+$/', $filename) !== 1
+            || $bytes === ''
+        ) {
+            continue;
+        }
+        $images[] = [
+            'cid' => $cid,
+            'mime' => $mime,
+            'bytes' => $bytes,
+            'filename' => $filename,
+        ];
+    }
+    return $images;
 }
 
 /**
@@ -353,8 +412,17 @@ function smtp_signed_message(string $plain, string $html, ?array $logo): string
  *
  * @param array<string, string> $settings
  * @param array{filename: string, content: string, mime: string}|null $attachment
+ * @param list<array{cid:string,mime:string,bytes:string,filename:string}> $inlineImages
  */
-function send_smtp_message(array $settings, string $to, string $subject, string $body, ?array $attachment = null): ?string
+function send_smtp_message(
+    array $settings,
+    string $to,
+    string $subject,
+    string $body,
+    ?array $attachment = null,
+    ?string $html = null,
+    array $inlineImages = []
+): ?string
 {
     if (preg_match('/[\r\n]/', $to . $subject) === 1 || filter_var($to, FILTER_VALIDATE_EMAIL) === false) {
         return 'That email address is not valid.';
@@ -417,7 +485,7 @@ function send_smtp_message(array $settings, string $to, string $subject, string 
             return 'The mail server refused the message.';
         }
         $fromName = trim($settings['smtp_from_name']) !== '' ? trim($settings['smtp_from_name']) : APP_NAME;
-        fwrite($socket, smtp_data_payload($fromName, $from, $to, $subject, $body, $attachment));
+        fwrite($socket, smtp_data_payload($fromName, $from, $to, $subject, $body, $attachment, $html, $inlineImages));
         $accepted = smtp_read($socket);
         smtp_command($socket, 'QUIT');
         if (!str_starts_with($accepted, '250')) {

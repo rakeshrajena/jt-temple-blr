@@ -103,6 +103,7 @@ function migrate_schema(PDO $pdo): void
     ensure_messaging_schema($pdo);
     ensure_receipt_share_schema($pdo);
     ensure_coupon_schema($pdo);
+    ensure_invitation_schema($pdo);
     ensure_selection_columns($pdo);
     backfill_receipt_pdfs();
 }

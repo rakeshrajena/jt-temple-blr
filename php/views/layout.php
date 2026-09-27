@@ -28,6 +28,7 @@ $icon = static function (string $name): string {
         'print' => '<path d="M7 8V4h10v4"/><rect x="5" y="8" width="14" height="8" rx="1.5"/><path d="M8 13h8v7H8z"/>',
         'receipt' => '<path d="M7 3.5h7l4.5 4.5V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5V8h4.5"/><path d="M9 13h6M9 16.5h4"/>',
         'users' => '<circle cx="9" cy="9" r="2.4"/><circle cx="15.5" cy="9.5" r="2"/><path d="M4.8 17.2c.6-2.2 2.3-3.4 4.2-3.4s3.6 1.2 4.2 3.4"/><path d="M13 13.8c1.4-.3 2.8.2 3.6 1.6"/>',
+        'mail' => '<rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="m4 7 8 6 8-6"/>',
         'gear' => '<circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6 6l1.6 1.6M16.4 16.4 18 18M18 6l-1.6 1.6M7.6 16.4 6 18"/>',
         'globe' => '<circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.2 2.4 3.3 5.2 3.3 8s-1.1 5.6-3.3 8c-2.2-2.4-3.3-5.2-3.3-8s1.1-5.6 3.3-8z"/>',
     ];
@@ -67,7 +68,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><?= e($title) ?> — <?= e(app_display_name()) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=25">
+  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=28">
 </head>
 <body>
   <div class="app-shell">
@@ -87,6 +88,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
       <?php endforeach; ?>
       <div class="nav-label"><?= e(t('nav.section.administration')) ?></div>
       <a class="nav-link<?= $active === 'donors' ? ' active' : '' ?>" href="<?= e(url('donors')) ?>"><?= $icon('users') ?> <?= e(t('nav.donors')) ?></a>
+      <a class="nav-link<?= $active === 'invitations' ? ' active' : '' ?>" href="<?= e(url('invitations')) ?>"><?= $icon('mail') ?> <?= e(t('nav.invitations')) ?></a>
       <?php if ($role === 'Admin'): ?>
         <a class="nav-link<?= $active === 'users' ? ' active' : '' ?>" href="<?= e(url('users')) ?>"><?= $icon('users') ?> <?= e(t('nav.users')) ?></a>
         <a class="nav-link<?= $active === 'settings' ? ' active' : '' ?>" href="<?= e(url('settings')) ?>"><?= $icon('gear') ?> <?= e(t('nav.settings')) ?></a>

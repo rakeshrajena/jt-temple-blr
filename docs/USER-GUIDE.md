@@ -17,6 +17,7 @@ Everyone who is signed in can open the temple registers and the books. The diffe
 | Work | Staff | Treasurer | Admin |
 | --- | --- | --- | --- |
 | Record devotees, gifts, stock, vastra, expenses, coupons, and subscriptions | Yes | Yes | Yes |
+| Design an invitation and email it to selected devotees | Yes | Yes | Yes |
 | Print a receipt or a coupon sheet | Yes | Yes | Yes |
 | Approve a waiting item up to ₹10,000 | No | Yes, if they did not prepare it | Yes, if they did not prepare it |
 | Approve a waiting item above ₹10,000 | No | No | Yes, if they did not prepare it |
@@ -33,7 +34,7 @@ A Treasurer signed in as Lakshmi sees the same registers, without Users, Setting
 
 A Staff account sees the same registers. Staff can prepare work. Staff cannot approve it.
 
-![Dashboard as Staff. The totals are the same books. The Administration menu stops at Donors.](images/23-staff-dashboard.png)
+![Dashboard as Staff. The totals are the same books. The Administration menu includes Donors and Invitations.](images/23-staff-dashboard.png)
 
 The person who prepared an item cannot approve that same item. Ask the other role to decide.
 
@@ -166,6 +167,12 @@ A pledge is a promise. The page shows promised, received, and still to come. Onl
 **Example.** A devotee pledges ₹25,000 for Annadaan and pays ₹5,000 today. Record the pledge on the devotee page, then receive ₹5,000 against it. The cash book rises by ₹5,000. The statement still shows ₹20,000 to come.
 
 Bulk email on the devotee list sends one note to the selected people who have an email address.
+
+## Invitations
+
+Invitations is a card you design on screen. Add a heading, words, a picture, or a video link. Bold, italic, and left, center, or right apply to the words. The card is what the devotee receives. A video is a link in the email, because mail apps do not play a video inside the message. Each email starts with that devotee's name.
+
+Send opens the devotees who have an email address, and shows the address. Tick people one by one, or tick everyone. Send invitation sends the card in one click. Up to 100 people can be included at once. Someone without an email address is not on that list. Outgoing mail has to be saved under Settings before a message can leave.
 
 ## Subscriptions
 

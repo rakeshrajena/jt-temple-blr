@@ -856,6 +856,31 @@ a.badge:hover { filter: brightness(0.95); text-decoration: underline; }
   .identity-lockup, .identity-actions { flex-direction: column; align-items: stretch; }
   .identity-actions .btn { width: 100%; }
 }
+.invite-create { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin-bottom: 16px; }
+.invite-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 12px; }
+.invite-video-form { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 12px; align-items: end; margin-bottom: 12px; }
+.invite-video-form[hidden] { display: none; }
+.invite-stage { display: flex; justify-content: center; padding: 12px 0 18px; }
+.invite-card { width: 560px; max-width: 100%; background: #fff; border: 1px solid #e6dcc8; border-radius: 12px; padding: 24px; min-height: 180px; }
+.invite-empty { color: var(--ink-soft); text-align: center; margin: 48px 0; }
+.invite-block { margin: 0 0 14px; }
+.invite-block-bar { display: flex; gap: 6px; justify-content: flex-end; margin-bottom: 4px; }
+.invite-text { min-height: 28px; outline: none; line-height: 1.45; font-size: 16px; }
+.invite-heading { font-size: 22px; font-weight: 700; color: var(--maroon); }
+.invite-image { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.invite-video { display: inline-block; background: var(--maroon); color: #fff; text-decoration: none; padding: 10px 16px; border-radius: 8px; }
+.invite-block:has(.invite-video) { text-align: center; }
+.invite-video-url { color: var(--ink-soft); font-size: 12px; margin: 6px 0 0; word-break: break-all; }
+.invite-delete { margin-top: 8px; }
+.invite-mail { display: none; }
+@media (max-width: 767px) {
+  .invite-mail { display: block; color: var(--ink-soft); font-size: 13px; word-break: break-all; }
+  .invite-people th:nth-child(3),
+  .invite-mail-col { display: none; }
+}
+@media (max-width: 767px) {
+  .invite-video-form { grid-template-columns: minmax(0, 1fr); }
+}
 .locale-phrases input[type="text"] { width: 100%; }
 .locale-key { margin-top: 4px; font-size: 12px; color: var(--ink-soft); }
 .locale-group { margin: 18px 0 8px; font-size: 14px; color: var(--maroon-deep); }

@@ -100,6 +100,10 @@ function dispatch_request(): void
         action_donations($method);
         return;
     }
+    if (str_starts_with($path, 'invitations')) {
+        dispatch_invitations($method, $path);
+        return;
+    }
     if ($path === 'donors' && $method === 'GET') {
         action_donors();
         return;

@@ -381,3 +381,14 @@ CREATE TABLE app_settings (
     setting_key    VARCHAR(64) PRIMARY KEY,
     setting_value  TEXT NULL
 ) ENGINE=InnoDB;
+
+CREATE TABLE invitations (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    title        VARCHAR(120) NOT NULL,
+    subject      VARCHAR(160) NOT NULL,
+    blocks_json  MEDIUMTEXT NOT NULL,
+    created_by   INT NULL,
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB;
