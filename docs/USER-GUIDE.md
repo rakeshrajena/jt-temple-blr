@@ -95,15 +95,27 @@ Food stock is rice, dal, ghee, and the rest of the kitchen, with a minimum level
 
 ## Food coupons
 
-A coupon batch is a print run. It does not enter the cash book, day book, or ledger. The amount that waits is the face value of the whole batch: cost times quantity.
+A coupon batch is a print run for prasad, puja, or another temple service. Each coupon in the batch is stored on its own. The face value, cost times quantity, waits for approval. That face value does not enter the books.
 
-A Treasurer can approve up to ₹10,000. Above that, an Admin decides. The person who prepared the batch cannot approve it. Print the PDF only after approval. Each coupon carries the serial `CU-` plus the time and a 4-digit number, and a QR code of that serial.
+Income is recorded when a coupon is sold. Scan the QR code, type the code, or send it to the coupon API. The amount is added as a donation under the coupon name, and it posts to the cash book or the bank book on that date. Leave the devotee name blank to record the sale under Coupon counter.
 
-The name, cost, and quantity can be edited. A change sends the batch back for approval. An unapproved batch can be removed by anyone who can open the page. Only an Admin can remove a batch after it is approved. Neither change touches the cash book.
+A batch can expire at a date and time, or it can have no expiry. Once the expiry time has passed, the coupon is invalidated on its own and cannot be recorded as income. Invalidating a coupon by hand also adds no income.
+
+A Treasurer can approve up to ₹10,000. Above that, an Admin decides. The person who prepared the batch cannot approve it. Print the PDF only after approval. Each coupon carries the serial `CU-` plus the time and a 4-digit number, and a QR code of that serial. If the batch expires, the sheet also prints that time.
+
+The name, cost, quantity, and expiry can be edited. A cost or quantity change sends the batch back for approval. An unapproved batch can be removed by anyone who can open the page. Only an Admin can remove a batch after it is approved. Removing a batch deletes its unused coupons. A batch that already has a sold coupon stays, because that donation is already in the books.
+
+A signed-in person can call these addresses on `index.php`:
+
+- `r=api/coupons/validate` records a sale. Send `code`, and optionally `donor_name`, `payment_mode`, and the UPI or cheque details.
+- `r=api/coupons/invalidate` invalidates a code and does not add income.
+- `r=api/coupons/status` reads one code.
+
+Send JSON, or ordinary form fields. A program that is not using the browser session sends `Authorization: Bearer` and the coupon API token from the server `.env` file. The token is at least 16 characters. Without that token, only a signed-in session can call the API.
 
 ![Food Coupon Generator, with one approved batch of 200 coupons and the print button](images/06-food-coupons.png)
 
-**Example.** Staff creates "Lunch Mahaprasad" at ₹50 each, quantity 100. Face value is ₹5,000, so a Treasurer can approve it. After approval, Print PDF builds the sheet. If the quantity is later changed to 250, the face value becomes ₹12,500 and the batch goes back to Waiting for an Admin.
+**Example.** Staff creates "Lunch Mahaprasad" at ₹50 each, quantity 100, with no expiry. Face value is ₹5,000, so a Treasurer can approve it. After approval, Print PDF builds the sheet. When one coupon is scanned or typed in, ₹50 is added as a donation and enters the cash book. The other 99 stay valid until they are sold or invalidated. If the quantity is later changed to 250, the face value becomes ₹12,500 and the batch goes back to Waiting for an Admin.
 
 ## Deity vastra
 

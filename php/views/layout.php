@@ -67,7 +67,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><?= e($title) ?> — <?= e(app_display_name()) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=24">
+  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=25">
 </head>
 <body>
   <div class="app-shell">

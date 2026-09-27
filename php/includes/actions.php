@@ -6,6 +6,11 @@ function dispatch_request(): void
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
     $path = request_path();
 
+    if (str_starts_with($path, 'api/coupons')) {
+        action_coupon_api($method, $path);
+        return;
+    }
+
     if ($method === 'POST') {
         require_csrf();
     }
@@ -57,6 +62,14 @@ function dispatch_request(): void
     }
     if ($path === 'food/coupons') {
         action_food_coupons($method);
+        return;
+    }
+    if ($path === 'food/coupons/validate' && $method === 'POST') {
+        action_validate_coupon();
+        return;
+    }
+    if ($path === 'food/coupons/invalidate' && $method === 'POST') {
+        action_invalidate_coupon();
         return;
     }
     if (preg_match('#^food/coupons/(\d+)/remove$#', $path, $m) === 1 && $method === 'POST') {
@@ -549,11 +562,17 @@ function action_food_coupons(string $method): void
 {
     login_required();
     if ($method === 'POST') {
+        $expiry = coupon_expires_at(isset($_POST['no_expiry']), (string) ($_POST['expires_at'] ?? ''));
+        if ($expiry['error'] !== null) {
+            flash('error', $expiry['error']);
+            redirect(url('food/coupons'));
+        }
         $result = create_coupon_batch(
             post_string('coupon_name', 100),
             (float) ($_POST['cost'] ?? 0),
             (int) ($_POST['quantity'] ?? 0),
-            (int) $_SESSION['user_id']
+            (int) $_SESSION['user_id'],
+            $expiry['expires_at']
         );
         if ($result['error'] !== null) {
             flash('error', $result['error']);
@@ -567,6 +586,7 @@ function action_food_coupons(string $method): void
         ));
         redirect(url('food/coupons'));
     }
+    expire_due_coupons();
     $batches = db_all(
         "SELECT b.*, u.full_name AS created_by_name, a.status AS approval_status, a.prepared_by
          FROM food_coupon_batches b
@@ -582,27 +602,174 @@ function action_food_coupons(string $method): void
         "SELECT COALESCE(SUM(b.quantity),0) FROM food_coupon_batches b
          JOIN approvals a ON a.subject_type = 'coupon' AND a.subject_id = b.id AND a.status = 'Approved'"
     );
+    $couponIncome = (float) db_value(
+        "SELECT COALESCE(SUM(d.amount),0)
+         FROM food_coupons c
+         JOIN donations d ON d.id = c.donation_id
+         WHERE c.status = 'Redeemed'"
+    );
     render('food_coupons', [
         'title' => t('page.coupons'),
         'pageTitle' => t('page.coupons'),
         'active' => 'food',
         'batches' => $batches,
+        'couponCounts' => coupon_batch_counts(),
+        'moneyModes' => money_payment_modes(),
         'totalCouponsValue' => $totalValue,
         'totalCouponQty' => $totalQty,
+        'couponIncome' => $couponIncome,
         'role' => (string) ($_SESSION['role'] ?? ''),
     ]);
+}
+
+function action_validate_coupon(): void
+{
+    login_required();
+    try {
+        $result = redeem_coupon(
+            post_string('code', 40),
+            (int) $_SESSION['user_id'],
+            post_string('donor_name', 150),
+            post_string('payment_mode', 30),
+            post_string('upi_reference', 64),
+            post_string('cheque_number', 30),
+            post_string('cheque_date', 10),
+            isset($_POST['cheque_cleared'])
+        );
+    } catch (Throwable $e) {
+        error_log('[jt_blr] coupon redeem: ' . $e->getMessage());
+        flash('error', 'The coupon could not be recorded.');
+        redirect(url('food/coupons'));
+    }
+    if ($result['error'] !== null) {
+        flash('error', $result['error']);
+    } else {
+        flash('success', sprintf(
+            'Recorded %s as a %s donation for %s. It is in the books.',
+            (string) $result['code'],
+            money((float) $result['amount'], 2),
+            (string) $result['purpose']
+        ));
+    }
+    redirect(url('food/coupons'));
+}
+
+function action_invalidate_coupon(): void
+{
+    login_required();
+    try {
+        $result = invalidate_coupon(post_string('code', 40));
+    } catch (Throwable $e) {
+        error_log('[jt_blr] coupon invalidate: ' . $e->getMessage());
+        flash('error', 'The coupon could not be invalidated.');
+        redirect(url('food/coupons'));
+    }
+    if ($result['error'] !== null) {
+        flash('error', $result['error']);
+    } else {
+        flash('success', (string) $result['code'] . ' is invalidated. No donation was added.');
+    }
+    redirect(url('food/coupons'));
+}
+
+function action_coupon_api(string $method, string $path): void
+{
+    if ($path === 'api/coupons/status' && $method === 'GET') {
+        $actor = coupon_actor_from_bearer() ?? (isset($_SESSION['user_id']) ? (int) $_SESSION['user_id'] : null);
+        if ($actor === null) {
+            coupon_json(['ok' => false, 'error' => 'Sign in, or send the coupon API token.'], 401);
+        }
+        $code = isset($_GET['code']) && is_string($_GET['code']) ? $_GET['code'] : '';
+        $result = coupon_status($code);
+        if ($result['error'] !== null) {
+            $status = $result['error'] === 'That coupon was not found.' ? 404 : 422;
+            coupon_json(['ok' => false, 'error' => $result['error']], $status);
+        }
+        coupon_json(['ok' => true] + ($result['coupon'] ?? []));
+    }
+    if ($method !== 'POST' || ($path !== 'api/coupons/validate' && $path !== 'api/coupons/invalidate')) {
+        coupon_json(['ok' => false, 'error' => 'That coupon API call was not found.'], 404);
+    }
+    $bearer = coupon_actor_from_bearer();
+    if ($bearer === null && isset($_SESSION['user_id'])) {
+        require_csrf();
+        $bearer = (int) $_SESSION['user_id'];
+    }
+    if ($bearer === null) {
+        coupon_json(['ok' => false, 'error' => 'Sign in, or send the coupon API token.'], 401);
+    }
+    $input = coupon_api_fields();
+    if ($input['error'] !== null) {
+        coupon_json(['ok' => false, 'error' => $input['error']], 422);
+    }
+    $fields = $input['fields'];
+    try {
+        if ($path === 'api/coupons/invalidate') {
+            $result = invalidate_coupon(coupon_field($fields, 'code', 40));
+            if ($result['error'] !== null) {
+                coupon_json(['ok' => false, 'error' => $result['error'], 'code' => $result['code'], 'status' => $result['status']], 409);
+            }
+            coupon_json(['ok' => true, 'code' => $result['code'], 'status' => $result['status']]);
+        }
+        $result = redeem_coupon(
+            coupon_field($fields, 'code', 40),
+            $bearer,
+            coupon_field($fields, 'donor_name', 150),
+            coupon_field($fields, 'payment_mode', 30),
+            coupon_field($fields, 'upi_reference', 64),
+            coupon_field($fields, 'cheque_number', 30),
+            coupon_field($fields, 'cheque_date', 10),
+            !empty($fields['cheque_cleared'])
+        );
+    } catch (Throwable $e) {
+        error_log('[jt_blr] coupon api: ' . $e->getMessage());
+        coupon_json(['ok' => false, 'error' => 'The coupon could not be recorded.'], 500);
+    }
+    if ($result['error'] !== null) {
+        $status = $result['error'] === 'That coupon was not found.' ? 404 : 409;
+        if (str_starts_with($result['error'], 'Enter ') || str_starts_with($result['error'], 'Choose ') || str_starts_with($result['error'], 'Send ')) {
+            $status = 422;
+        }
+        coupon_json(['ok' => false, 'error' => $result['error'], 'code' => $result['code'], 'status' => $result['status']], $status);
+    }
+    coupon_json([
+        'ok' => true,
+        'code' => $result['code'],
+        'status' => $result['status'],
+        'amount' => $result['amount'],
+        'purpose' => $result['purpose'],
+        'donor_name' => $result['donor_name'],
+        'payment_mode' => $result['payment_mode'],
+        'donation_id' => $result['donation_id'],
+    ]);
+}
+
+function coupon_json(array $payload, int $status = 200): never
+{
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
 function action_update_coupons(int $batchId): void
 {
     login_required();
     try {
+        $expiry = coupon_expires_at(isset($_POST['no_expiry']), (string) ($_POST['expires_at'] ?? ''));
+        if ($expiry['error'] !== null) {
+            flash('error', $expiry['error']);
+            redirect(url('food/coupons'));
+        }
         $result = update_coupon_batch(
             $batchId,
             post_string('coupon_name', 100),
             (float) ($_POST['cost'] ?? 0),
             (int) ($_POST['quantity'] ?? 0),
-            (int) $_SESSION['user_id']
+            (int) $_SESSION['user_id'],
+            $expiry['expires_at'],
+            true
         );
     } catch (Throwable $e) {
         error_log('[jt_blr] coupon edit: ' . $e->getMessage());
@@ -629,7 +796,7 @@ function action_remove_coupons(int $batchId): void
         flash('error', 'The coupon batch could not be removed.');
         redirect(url('food/coupons'));
     }
-    flash($error !== null ? 'error' : 'success', $error ?? 'Coupon batch removed. The cash book is unchanged.');
+    flash($error !== null ? 'error' : 'success', $error ?? 'Coupon batch removed, including its unused coupons.');
     redirect(url('food/coupons'));
 }
 

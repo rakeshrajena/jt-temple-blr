@@ -113,6 +113,10 @@ function donation_movement(array $row): ?array
     if ($trail !== '') {
         $particulars .= ' · ' . $trail;
     }
+    $couponNote = trim((string) ($row['notes'] ?? ''));
+    if (coupon_code_is_valid($couponNote)) {
+        $particulars .= ' · ' . $couponNote;
+    }
     return book_movement(
         (string) $row['donation_date'],
         1,
@@ -291,7 +295,7 @@ function load_book_movements(string $from, string $to): array
     $fyStart = financial_year_start(financial_year_label($from));
     $movements = [];
     $donations = db_all(
-        'SELECT d.id, d.donation_date, d.amount, d.payment_mode, d.purpose, d.receipt_number,
+        'SELECT d.id, d.donation_date, d.amount, d.payment_mode, d.purpose, d.receipt_number, d.notes,
                 don.name AS donor_name, u.full_name AS entered_by_name
          FROM donations d
          JOIN donors don ON don.id = d.donor_id
@@ -503,6 +507,10 @@ function donation_ledger_line(array $row): ?array
     if ($receipt !== '') {
         $particulars .= ' ' . $receipt;
     }
+    $couponNote = trim((string) ($row['notes'] ?? ''));
+    if (coupon_code_is_valid($couponNote)) {
+        $particulars .= ' · ' . $couponNote;
+    }
     return [
         'head' => ledger_head_name((string) ($row['purpose'] ?? ''), 'General'),
         'date' => (string) $row['donation_date'],
@@ -606,7 +614,7 @@ function load_ledger_lines(string $from, string $to): array
     $fyStart = financial_year_start(financial_year_label($from));
     $lines = [];
     $donations = db_all(
-        'SELECT d.id, d.donation_date, d.amount, d.payment_mode, d.purpose, d.receipt_number,
+        'SELECT d.id, d.donation_date, d.amount, d.payment_mode, d.purpose, d.receipt_number, d.notes,
                 don.name AS donor_name, u.full_name AS entered_by_name
          FROM donations d
          JOIN donors don ON don.id = d.donor_id

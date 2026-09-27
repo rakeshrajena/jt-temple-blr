@@ -26,7 +26,7 @@ Nothing in the “To add” section is built yet.
 - A purchase raises stock and writes the payment in the cash book in one step, only after approval. The rate on hand becomes the weighted average of the old stock and the new purchase.
 - Condition and location can be changed after the item is added. Needs Repair marks a repair. A new location moves it. Retired writes off the quantity still on hand, and that write-off waits when it is above 5 units.
 - Food stock with a minimum level, a low-stock flag, and a log of stock added or used. Kitchen use of 5 units or less is a normal log. Above that it waits for approval.
-- Food coupon batches with sequential numbers and a printable PDF. A batch does not enter the cash book. Its face value (cost times quantity) waits for approval. A Treasurer can approve up to ₹10,000. Above that, an Admin decides. The name, cost, and quantity can be edited, which sends the batch back for approval. An unapproved batch can be removed. An Admin can also remove an approved batch. Neither change touches the cash book.
+- Food coupon batches with one stored coupon per serial, a printable PDF, and an optional expiry. The face value waits for approval and does not enter the books. Scanning, validating, or typing a sold coupon adds a donation and posts that income to the cash or bank book. A coupon past its expiry is invalidated automatically. Removing a batch deletes its unused coupons. A sold coupon stays in the books. A JSON API can validate, invalidate, or read a code.
 - Deity vastra by deity, colour, quantity, source, and status: In Store, In Use, or Retired.
 
 ### Donations and receipts

@@ -447,6 +447,8 @@ a.badge:hover { filter: brightness(0.95); text-decoration: underline; }
   min-height: 0;
   accent-color: var(--maroon);
 }
+.check-line { display: flex; align-items: center; gap: 8px; min-height: 40px; font-size: 14px; }
+.check-line input { width: 18px; height: 18px; }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
   outline: 3px solid rgba(196, 150, 58, 0.25);
   border-color: var(--gold);

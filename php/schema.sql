@@ -302,7 +302,27 @@ CREATE TABLE food_coupon_batches (
     created_date    DATE NOT NULL,
     created_by      INT,
     issued_unix     INT UNSIGNED NULL,
+    expires_at      DATETIME NULL,
     FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE food_coupons (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    batch_id        INT NOT NULL,
+    serial_no       INT NOT NULL,
+    code            VARCHAR(40) NOT NULL,
+    status          ENUM('Valid','Redeemed','Expired','Invalid') NOT NULL DEFAULT 'Valid',
+    expires_at      DATETIME NULL,
+    redeemed_at     DATETIME NULL,
+    donation_id     INT NULL,
+    invalidated_at  DATETIME NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_coupon_code (code),
+    UNIQUE KEY uq_coupon_batch_serial (batch_id, serial_no),
+    KEY idx_coupon_status (status),
+    KEY idx_coupon_expires (expires_at),
+    FOREIGN KEY (batch_id) REFERENCES food_coupon_batches(id) ON DELETE CASCADE,
+    FOREIGN KEY (donation_id) REFERENCES donations(id)
 ) ENGINE=InnoDB;
 
 CREATE INDEX idx_subscribers_status ON subscribers(status);
