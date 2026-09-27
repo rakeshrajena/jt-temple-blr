@@ -172,7 +172,7 @@ Bulk email on the devotee list sends one note to the selected people who have an
 
 Invitations is a card you design on screen. Add a heading, words, a picture, or a video link. Bold, italic, and left, center, or right apply to the words. The card is what the devotee receives. A video is a link in the email, because mail apps do not play a video inside the message. Each email starts with that devotee's name.
 
-Send opens the devotees who have an email address, and shows the address. Tick people one by one, or tick everyone. Send invitation sends the card in one click. A wait screen stays up until the confirmation appears, so nothing else can be clicked while the mail is going out. Up to 100 people can be included at once. Someone without an email address is not on that list. The Sent box on that same invitation lists who has already received it, with the address and the time. Outgoing mail has to be saved under Settings before a message can leave.
+Send opens the devotees who have an email address, and shows the address. Tick people one by one, or tick everyone. Send invitation sends the card in one click. Every action in the app, including this send, shows the temple logo and a short message for that action until the page confirms it is done. Nothing else can be clicked while that message is up. Up to 100 people can be included at once. Someone without an email address is not on that list. The Sent box on that same invitation lists who has already received it, with the address and the time. Outgoing mail has to be saved under Settings before a message can leave.
 
 ## Subscriptions
 

@@ -17,6 +17,15 @@ function check(bool $ok, string $name): void
 }
 
 check(t('nav.invitations') === 'Invitations', 'the menu names Invitations');
+ob_start();
+app_busy_overlay();
+$busy = ob_get_clean();
+check(
+    str_contains($busy, 'id="appBusy"')
+    && str_contains($busy, 'class="busy-logo"')
+    && str_contains($busy, 'js/busy.js'),
+    'every page can show the temple logo while an action runs'
+);
 check(invitation_safe_url('javascript:alert(1)') === '', 'a video link cannot be a script');
 check(invitation_safe_url('https://example.com/watch') === 'https://example.com/watch', 'an https video link is kept');
 $clean = invitation_clean_text('<strong onclick="alert(1)">Hello</strong><script>bad()</script><img src=x onerror=alert(1)>');

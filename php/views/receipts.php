@@ -135,6 +135,7 @@
         return;
       }
       event.preventDefault();
+      if (window.jtBusy) window.jtBusy('Preparing the receipt');
       fetch(pdfUrl, { credentials: 'same-origin' })
         .then(function (response) {
           if (!response.ok) {
@@ -156,6 +157,9 @@
         })
         .catch(function () {
           window.open(link.href, '_blank', 'noopener');
+        })
+        .finally(function () {
+          if (window.jtBusyDone) window.jtBusyDone();
         });
     });
   });

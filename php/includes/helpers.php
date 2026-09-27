@@ -212,6 +212,17 @@ function safe_next(?string $next): string
     return $path . $query;
 }
 
+function app_busy_overlay(): void
+{
+    echo '<div id="appBusy" class="busy-screen" hidden>'
+        . '<div class="busy-card" role="status" aria-live="polite">'
+        . '<img src="' . e(app_logo_url()) . '" alt="" class="busy-logo">'
+        . '<div class="busy-spin" aria-hidden="true"></div>'
+        . '<p id="appBusyMessage">Please wait…</p>'
+        . '</div></div>'
+        . '<script src="' . e(asset('js/busy.js')) . '?v=1"></script>';
+}
+
 function render(string $template, array $vars = [], bool $useLayout = true): void
 {
     $vars['currentUser'] = current_user();

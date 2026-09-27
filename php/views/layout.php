@@ -68,7 +68,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><?= e($title) ?> — <?= e(app_display_name()) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=29">
+  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=30">
 </head>
 <body>
   <div class="app-shell">
@@ -113,7 +113,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
             <?= csrf_field() ?>
             <input type="hidden" name="next" value="<?= e($returnTo) ?>">
             <label class="sr-only" for="locale-code"><?= e(t('locale.language')) ?></label>
-            <select id="locale-code" name="code" onchange="this.form.submit()">
+            <select id="locale-code" name="code" onchange="this.form.requestSubmit()">
               <?php foreach (language_catalog() as $language): ?>
                 <option value="<?= e($language['code']) ?>"<?= current_locale() === $language['code'] ? ' selected' : '' ?>><?= e($language['native']) ?></option>
               <?php endforeach; ?>
@@ -140,5 +140,6 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
     });
   </script>
   <script src="<?= e(asset('js/suggest.js')) ?>?v=1"></script>
+  <?php app_busy_overlay(); ?>
 </body>
 </html>

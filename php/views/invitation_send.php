@@ -59,13 +59,6 @@ $sentDonorIds = array_fill_keys($sentDonorIds, true);
     </table>
   <?php endif; ?>
 </div>
-<div id="inviteBusy" class="busy-screen" hidden>
-  <div class="busy-card" role="status" aria-live="polite">
-    <div class="busy-spin" aria-hidden="true"></div>
-    <p>Sending the invitation…</p>
-    <p class="sub">Please wait. This page will confirm when the mail has been sent.</p>
-  </div>
-</div>
 <script>
 (function () {
   const boxes = Array.from(document.querySelectorAll('.invite-check'));
@@ -73,17 +66,14 @@ $sentDonorIds = array_fill_keys($sentDonorIds, true);
   const send = document.getElementById('inviteSend');
   const count = document.getElementById('inviteCount');
   const form = document.getElementById('inviteSendForm');
-  const busy = document.getElementById('inviteBusy');
   let sending = false;
-  if (form && busy) {
+  if (form) {
     form.addEventListener('submit', function (event) {
       if (sending) {
         event.preventDefault();
         return;
       }
       sending = true;
-      busy.hidden = false;
-      document.body.classList.add('is-busy');
       if (send) send.disabled = true;
     });
   }

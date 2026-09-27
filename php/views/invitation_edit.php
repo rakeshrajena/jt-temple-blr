@@ -196,12 +196,14 @@ foreach ($blocks as $block) {
     fileInput.value = '';
     if (!file) return;
     status.textContent = 'Adding the picture…';
+    if (window.jtBusy) window.jtBusy('Adding the picture');
     const body = new FormData();
     body.append('csrf', csrf);
     body.append('image', file);
     fetch(uploadUrl, { method: 'POST', body: body, credentials: 'same-origin' })
       .then(function (response) { return response.json().then(function (data) { return { ok: response.ok, data: data }; }); })
       .then(function (result) {
+        if (window.jtBusyDone) window.jtBusyDone();
         if (!result.ok || !result.data.token) {
           status.textContent = (result.data && result.data.error) || 'That picture could not be added.';
           return;
@@ -211,7 +213,10 @@ foreach ($blocks as $block) {
         status.textContent = '';
         render();
       })
-      .catch(function () { status.textContent = 'That picture could not be added.'; });
+      .catch(function () {
+        if (window.jtBusyDone) window.jtBusyDone();
+        status.textContent = 'That picture could not be added.';
+      });
   });
   document.getElementById('videoSave').addEventListener('click', function () {
     const url = document.getElementById('videoUrl').value.trim();

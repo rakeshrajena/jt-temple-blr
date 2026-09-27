@@ -143,7 +143,7 @@ $bulkKind = $bulkKind === 'receipt' ? 'receipt' : 'devotee';
         input.value = person.id;
         idFields.appendChild(input);
       });
-      form.submit();
+      form.requestSubmit();
       return;
     }
     let opened = 0;

@@ -872,10 +872,11 @@ a.badge:hover { filter: brightness(0.95); text-decoration: underline; }
 .invite-block:has(.invite-video) { text-align: center; }
 .invite-video-url { color: var(--ink-soft); font-size: 12px; margin: 6px 0 0; word-break: break-all; }
 .invite-delete { margin-top: 8px; }
-.busy-screen { position: fixed; inset: 0; z-index: 80; background: rgba(62, 12, 22, 0.55); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.busy-screen { position: fixed; inset: 0; z-index: 80; background: rgba(62, 12, 22, 0.55); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 11vh 20px 20px; }
 .busy-screen[hidden] { display: none; }
-.busy-card { background: #fff; border-radius: 14px; padding: 28px 24px; width: 360px; max-width: 100%; text-align: center; }
-.busy-card p { margin: 0 0 8px; }
+.busy-card { background: #fff; border-radius: 14px; padding: 22px 24px 26px; width: 360px; max-width: 100%; text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,0.25); }
+.busy-logo { width: 72px; height: 72px; object-fit: contain; display: block; margin: 0 auto 14px; }
+.busy-card p { margin: 0; font-size: 16px; color: var(--maroon-deep); }
 .busy-spin { width: 36px; height: 36px; margin: 0 auto 14px; border: 3px solid #e6dcc8; border-top-color: var(--maroon); border-radius: 50%; animation: busy-spin 0.8s linear infinite; }
 @keyframes busy-spin { to { transform: rotate(360deg); } }
 body.is-busy { overflow: hidden; }
