@@ -71,9 +71,9 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><?= e($title) ?> — <?= e(app_display_name()) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=42">
+  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=43">
 </head>
-<body>
+<body data-table-filter-label="<?= e(t('ui.table_filter')) ?>" data-table-filter-count="<?= e(t('ui.table_filter_count')) ?>">
   <div class="app-shell">
     <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-hidden="true">
     <label for="nav-toggle" class="nav-scrim" aria-hidden="true"></label>
@@ -147,6 +147,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
   <script src="<?= e(asset('js/suggest.js')) ?>?v=3"></script>
   <script src="<?= e(asset('js/reveal.js')) ?>?v=1"></script>
   <script src="<?= e(asset('js/help_tip.js')) ?>?v=1"></script>
+  <script src="<?= e(asset('js/table_filter.js')) ?>?v=1"></script>
   <?php app_busy_overlay(); ?>
 </body>
 </html>

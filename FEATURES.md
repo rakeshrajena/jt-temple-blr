@@ -14,6 +14,7 @@ Nothing in the “To add” section is built yet.
 - An Admin opens Settings to save the outgoing mail server and the WhatsApp Web message. The mail password is kept and is not shown again.
 - App contributors is a card list in Administration: name, photo, contact, email, location, designation, and a public profile link. Everyone who is signed in can read the cards. Only an Admin can add, update, or remove a person.
 - Every screen shows ©, the temple name, and the current year. On the registers that line is centered.
+- Long tables without their own filters (6 rows or more) get a Filter this table box that hides rows not matching the typed words and shows the count. Tables with selection checkboxes are left out so a bulk action never includes hidden rows. A table can opt out with `data-no-filter` or opt in with `data-filter`. The code is in `php/static/js/table_filter.js`.
 - Form instructions sit behind a **?** icon beside the heading or field they explain. Pointing at it, focusing it with the keyboard, or tapping it shows the text one sentence per line. A click keeps it open until you click elsewhere or press Escape. Live status lines, such as counts and errors, stay visible.
 
 ### Server install
@@ -45,6 +46,7 @@ Nothing in the “To add” section is built yet.
 - Payment modes: Cash, UPI, bank transfer, cheque, card, netbanking, and in-kind.
 - A PDF receipt (`RCPT-YYYY-NNNN`). The receipt number is a link on Donations, the dashboard, the overview, the donation report, and a matched bank line. Generate receipt stays available after a receipt exists, and it writes the current gift over the same number. A cancelled receipt is left as it is.
 - Edit on a gift changes the devotee, amount, purpose, date, or payment only after approval. Within 24 hours of when the gift was added, a Treasurer can approve it up to the Treasurer limit, and an Admin decides above that. After 24 hours, both a Treasurer and an Admin must approve any change. The person who submitted the edit cannot approve it. Approving an edit rewrites the receipt when one already exists.
+- Every value on the receipt PDF wraps inside the gold border. A crowded receipt uses smaller text before anything is shortened, and the text never reaches the signature or QR code. Dashes, quotes, and the rupee sign print as plain text. Tests are in `php/tests/receipt_layout_test.php`.
 - A Receipts page lists every generated PDF. Anyone signed in can open one. An Admin can download a zip of many receipts. Cancelling a receipt keeps the number and the PDF and waits for approval.
 
 ### Subscriptions
@@ -54,8 +56,11 @@ Nothing in the “To add” section is built yet.
 - Plan, billing cycle, and status suggest names as you type. Each is a list under Settings, Form choices. Active cannot be removed.
 - Statuses start as Active, Paused, Inactive, and Cancelled. Only Active gets a new invoice, and the server enforces this.
 - Update on each row edits every field. A status change is kept in `subscriber_status_log` with the old status, the new one, the user, and the time, and the latest change shows on the row.
-- Send writes the message to a log. When SMTP is saved under Settings, the same message is emailed. WhatsApp Web opens with the message filled in. There is no WhatsApp API. The devotee still confirms payment on the link.
+- + Invoice creates this month's invoice and emails the subscriber a payment request: plan, billing cycle, period, amount, due date, invoice number, and a Pay or donate button to the payment link. An unpaid invoice for the same month is emailed again instead of being duplicated. Without an email address or SMTP, the invoice is created and the page says nothing was emailed. A refused email leaves the invoice Pending. Tests are in `php/tests/subscriber_test.php`.
+- The invoice list filters by name, phone, email, or invoice number; status; period; due date range; and receipt made or missing. Unknown values in the address are ignored, and search text is bound as a parameter. Tests are in `php/tests/invoice_filter_test.php`.
+- Send writes the message to a log and emails the same payment request when SMTP is saved under Settings. WhatsApp Web opens with the message filled in. There is no WhatsApp API. The devotee still confirms payment on the link.
 - The devotee opens a payment link without signing in. Confirming payment marks the invoice Paid and copies it into Donations.
+- A paid invoice gets its receipt at once, through the same code as a donation receipt: next `RCPT-` number, same PDF, public link, and Receipts page entry. The thank-you page links to it. On the invoice row, the receipt number opens the PDF, Send receipt emails it to the subscriber, and Generate or Update receipt makes or rewrites it. Tests are in `php/tests/subscription_receipt_test.php`.
 
 ### Expenses and bank
 

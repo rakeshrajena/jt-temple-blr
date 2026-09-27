@@ -75,7 +75,7 @@ foreach ($english as $key => $unused) {
       <input type="hidden" name="code" value="<?= e($selected) ?>">
       <?php foreach ($groups as $prefix => $keys): ?>
         <h4 class="locale-group"><?= e($prefix) ?></h4>
-        <table class="data-table locale-phrases">
+        <table class="data-table locale-phrases" data-no-filter>
           <tr>
             <th><?= e(t('locale.english')) ?></th>
             <th><?= e(t('locale.translation')) ?></th>

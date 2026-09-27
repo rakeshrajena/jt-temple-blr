@@ -10,6 +10,8 @@ Open the app and sign in with the username and password an Admin gave you. The l
 
 Every screen ends with a copyright line: ©, the temple name, and the current year. On the registers that line is centered. The year moves forward on its own.
 
+Long tables without their own filters show a **Filter this table** box above them. Type any words, such as a name, a voucher number, or a status, and only the matching rows stay. The count beside the box shows how many rows match. Press Escape to show every row again. Tables with selection boxes, such as bulk send, do not get this box, so a bulk action never includes rows you cannot see.
+
 Instructions for a form are behind the small **?** icon beside its heading or field. Point at the icon, or tap it on a phone, and the steps appear one per line. Click it to keep them open. Click anywhere else or press Escape to close them.
 
 ![Sign-in screen, with the temple name on the left and the sign-in card on the right](images/01-sign-in.png)
@@ -209,13 +211,19 @@ Choose a status by what the devotee has told the temple. Nothing changes a statu
 
 To change anything about a subscriber, press **Update** on that row. The same fields open with the saved values. Save with **Update subscriber**. When the status changes, the row shows the old status, the new one, who changed it, and when. Any signed-in user can update a subscriber. **+ Invoice** appears only for Active subscribers, and the app also refuses an invoice for any other status. Invoices already sent keep their payment links after a status change.
 
-Generate an invoice, then send it. The message includes a payment link. When mail is saved under Settings, Send also emails that message. WhatsApp Web opens with the message filled in. There is no WhatsApp API. The devotee still confirms payment on the link.
+**+ Invoice** creates this month's invoice and at once emails the subscriber a payment request. The email lists the seva plan, billing cycle, period, amount, due date, and invoice number, with a **Pay or donate** button that opens the payment link. If this month's invoice is still unpaid, pressing **+ Invoice** again emails that same invoice instead of making a second one. When the subscriber has no email, or outgoing mail is not saved under Settings, the invoice is still created. The page then says nothing was emailed. Use WhatsApp Web on the invoice instead. If the mail server refuses the email, the invoice stays Pending, and **Send** tries again.
 
-The devotee opens the link without signing in. Confirming payment marks the invoice Paid and copies it into Donations.
+Filters above the invoice list narrow it by name, phone, or invoice number; status; period; due date from and to; and receipt (made, or paid with no receipt yet). Press **Show**. The heading then reads, for example, Invoices (4 of 11). **Clear filters** shows every invoice again. **Send Selected** and the header checkbox only include the invoices shown.
+
+**Send** on an invoice emails the same payment request again and writes it to the message log. WhatsApp Web opens with the short message from Settings filled in. There is no WhatsApp API. The devotee still confirms payment on the link.
+
+The devotee opens the link without signing in. Confirming payment marks the invoice Paid and copies it into Donations. A receipt is made at once in the same format as a donation receipt: the next `RCPT-` number, the same PDF, and the same public receipt link. The devotee's thank-you page shows the receipt number and a **View receipt** button. The subscriber's email is saved on the devotee record so the receipt can be emailed.
+
+On a Paid invoice, the receipt number opens the PDF. **Send receipt** emails that PDF with the receipt link to the subscriber's email, just like **Email** on the Receipts page. The button is greyed out when the subscriber has no email. **Generate receipt** makes the receipt for an older paid invoice that has none. **Update receipt** rewrites the PDF and keeps the number. The receipt also appears on the Receipts page and on the Donations page.
 
 ![Subscribers, plans, and invoices](images/10-subscriptions.png)
 
-**Example.** Bikash's Monthly Annadaan Seva is ₹1,100. Generate the September invoice and send it. He opens the link and confirms. The invoice becomes Paid, and a ₹1,100 donation appears under his name with the purpose of that seva.
+**Example.** Bikash's Monthly Annadaan Seva is ₹1,100. Press **+ Invoice** on his row. He receives the September payment request by email, opens **Pay or donate**, and confirms. The invoice becomes Paid, a ₹1,100 donation appears under his name with the purpose of that seva, and its receipt is ready. Press **Send receipt** on that invoice to email him the PDF.
 
 ## Expenses
 

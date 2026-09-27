@@ -172,6 +172,257 @@ function latest_subscriber_status_changes(array $ids): array
     return $latest;
 }
 
+const SUBSCRIPTION_INVOICE_STATUSES = ['Pending', 'Sent', 'Overdue', 'Paid', 'Failed'];
+const INVOICE_RECEIPT_FILTERS = ['with', 'without'];
+
+/**
+ * Reads the invoice filters from the query string. Unknown values are dropped.
+ *
+ * @param array<string, mixed> $get
+ * @return array{q: string, status: string, period: string, from: string, to: string, receipt: string}
+ */
+function invoice_filters(array $get): array
+{
+    $text = static function (string $key, int $max) use ($get): string {
+        $value = $get[$key] ?? '';
+        return is_string($value) ? mb_substr(trim($value), 0, $max) : '';
+    };
+    $status = '';
+    foreach (SUBSCRIPTION_INVOICE_STATUSES as $known) {
+        if (strcasecmp($known, $text('status', 20)) === 0) {
+            $status = $known;
+        }
+    }
+    $date = static fn (string $value): string => subscriber_date_is_valid($value) ? $value : '';
+    $from = $date($text('from', 10));
+    $to = $date($text('to', 10));
+    if ($from !== '' && $to !== '' && $from > $to) {
+        [$from, $to] = [$to, $from];
+    }
+    $receipt = $text('receipt', 10);
+    return [
+        'q' => $text('q', 60),
+        'status' => $status,
+        'period' => $text('period', 30),
+        'from' => $from,
+        'to' => $to,
+        'receipt' => in_array($receipt, INVOICE_RECEIPT_FILTERS, true) ? $receipt : '',
+    ];
+}
+
+/** @param array{q: string, status: string, period: string, from: string, to: string, receipt: string} $filters */
+function invoice_filters_active(array $filters): bool
+{
+    return implode('', $filters) !== '';
+}
+
+/**
+ * @param array{q: string, status: string, period: string, from: string, to: string, receipt: string} $filters
+ * @return list<array<string, mixed>>
+ */
+function invoice_list(array $filters): array
+{
+    $where = [];
+    $params = [];
+    if ($filters['q'] !== '') {
+        $like = '%' . addcslashes($filters['q'], '%_\\') . '%';
+        $where[] = '(s.name LIKE ? OR s.mobile LIKE ? OR s.email LIKE ? OR i.invoice_number LIKE ?)';
+        array_push($params, $like, $like, $like, $like);
+    }
+    if ($filters['status'] !== '') {
+        $where[] = 'i.status = ?';
+        $params[] = $filters['status'];
+    }
+    if ($filters['period'] !== '') {
+        $where[] = 'i.period_label = ?';
+        $params[] = $filters['period'];
+    }
+    if ($filters['from'] !== '') {
+        $where[] = 'i.due_date >= ?';
+        $params[] = $filters['from'];
+    }
+    if ($filters['to'] !== '') {
+        $where[] = 'i.due_date <= ?';
+        $params[] = $filters['to'];
+    }
+    if ($filters['receipt'] === 'with') {
+        $where[] = 'd.receipt_generated = 1';
+    } elseif ($filters['receipt'] === 'without') {
+        $where[] = "(i.status = 'Paid' AND (d.id IS NULL OR d.receipt_generated = 0))";
+    }
+    $sql = "SELECT i.*, s.name AS subscriber_name, s.mobile, s.email,
+                   d.receipt_number, d.receipt_generated, d.receipt_cancelled
+            FROM subscription_invoices i
+            JOIN subscribers s ON i.subscriber_id = s.id
+            LEFT JOIN donations d ON d.id = i.linked_donation_id"
+        . ($where === [] ? '' : ' WHERE ' . implode(' AND ', $where))
+        . " ORDER BY (i.status = 'Overdue') DESC, (i.status = 'Sent') DESC, (i.status = 'Pending') DESC, i.due_date DESC, i.id DESC";
+    return db_all($sql, $params);
+}
+
+/** @return list<string> Stored periods, newest first. */
+function invoice_periods(): array
+{
+    $rows = db_all(
+        "SELECT period_label FROM subscription_invoices
+         WHERE period_label IS NOT NULL AND period_label <> ''
+         GROUP BY period_label ORDER BY MAX(due_date) DESC"
+    );
+    return array_map(static fn (array $r): string => (string) $r['period_label'], $rows);
+}
+
+/**
+ * Creates this period's invoice for an Active subscriber, or returns the unpaid one already made for it.
+ *
+ * @return array{error: ?string, id: int, number: string, reused: bool}
+ */
+function create_subscription_invoice(int $subscriberId): array
+{
+    $none = ['id' => 0, 'number' => '', 'reused' => false];
+    $sub = db_one('SELECT id, status, plan_amount FROM subscribers WHERE id = ?', [$subscriberId]);
+    if ($sub === null) {
+        return ['error' => 'Subscriber not found.'] + $none;
+    }
+    if (!subscriber_can_invoice((string) $sub['status'])) {
+        return ['error' => 'Only an Active subscriber can get a new invoice. Update the status first.'] + $none;
+    }
+    $period = date('F Y');
+    $open = db_one(
+        "SELECT id, invoice_number FROM subscription_invoices
+         WHERE subscriber_id = ? AND period_label = ? AND status IN ('Pending','Sent','Overdue','Failed')
+         ORDER BY id DESC LIMIT 1",
+        [$subscriberId, $period]
+    );
+    if ($open !== null) {
+        return ['error' => null, 'id' => (int) $open['id'], 'number' => (string) $open['invoice_number'], 'reused' => true];
+    }
+    $year = date('Y');
+    $last = db_value(
+        'SELECT invoice_number FROM subscription_invoices WHERE invoice_number LIKE ? ORDER BY id DESC LIMIT 1',
+        ["INV-{$year}-%"]
+    );
+    $parts = explode('-', (string) ($last ?? ''));
+    $number = sprintf('INV-%s-%04d', $year, ((int) end($parts)) + 1);
+    $id = db_exec(
+        "INSERT INTO subscription_invoices (subscriber_id, invoice_number, amount, period_label, due_date, status, payment_token)
+         VALUES (?,?,?,?,?,'Pending',?)",
+        [$subscriberId, $number, $sub['plan_amount'], $period, date('Y-m-d'), random_token()]
+    );
+    return ['error' => null, 'id' => $id, 'number' => $number, 'reused' => false];
+}
+
+/** @return array{donation_id: int, email: string}|null Null when the invoice is unknown or not yet paid. */
+function paid_subscription_invoice(int $invoiceId): ?array
+{
+    $row = db_one(
+        "SELECT i.linked_donation_id, s.email
+         FROM subscription_invoices i JOIN subscribers s ON s.id = i.subscriber_id
+         WHERE i.id = ? AND i.status = 'Paid' AND i.linked_donation_id IS NOT NULL",
+        [$invoiceId]
+    );
+    if ($row === null) {
+        return null;
+    }
+    return ['donation_id' => (int) $row['linked_donation_id'], 'email' => trim((string) ($row['email'] ?? ''))];
+}
+
+/**
+ * Issues the donation receipt for a paid subscription invoice.
+ *
+ * @return array{error: ?string, number: string, created: bool}
+ */
+function issue_subscription_receipt(int $invoiceId, ?int $userId): array
+{
+    $paid = paid_subscription_invoice($invoiceId);
+    if ($paid === null) {
+        return ['error' => 'A receipt is made only after the invoice is paid.', 'number' => '', 'created' => false];
+    }
+    $issued = issue_donation_receipt($paid['donation_id'], $userId);
+    return ['error' => null] + $issued;
+}
+
+/**
+ * Emails the receipt of a paid invoice to the subscriber, or to the devotee email when the subscriber has none.
+ *
+ * @param array<string, string> $settings Messaging settings.
+ * @return array{error: ?string, email: string, number: string}
+ */
+function send_subscription_receipt(int $invoiceId, array $settings): array
+{
+    $paid = paid_subscription_invoice($invoiceId);
+    if ($paid === null) {
+        return ['error' => 'A receipt is sent only after the invoice is paid.', 'email' => '', 'number' => ''];
+    }
+    return send_donation_receipt($paid['donation_id'], $settings, $paid['email'] !== '' ? $paid['email'] : null);
+}
+
+function subscription_request_block_reason(?string $email, bool $smtpReady): ?string
+{
+    if ($email === null || filter_var(trim($email), FILTER_VALIDATE_EMAIL) === false) {
+        return 'This subscriber has no email address, so no payment request was emailed.';
+    }
+    if (!$smtpReady) {
+        return 'Outgoing mail is not set up under Settings, so no payment request was emailed.';
+    }
+    return null;
+}
+
+/**
+ * The payment request emailed to a subscriber for one invoice.
+ *
+ * @param array<string, mixed> $invoice Invoice joined with the subscriber's name, plan_name, and frequency.
+ * @return array{subject: string, text: string, html: string}
+ */
+function subscription_request_email(array $invoice, string $payUrl): array
+{
+    $name = (string) ($invoice['name'] ?? '');
+    $number = (string) ($invoice['invoice_number'] ?? '');
+    $period = (string) ($invoice['period_label'] ?? '');
+    $due = DateTimeImmutable::createFromFormat('!Y-m-d', (string) ($invoice['due_date'] ?? ''));
+    $details = [
+        'Seva plan' => (string) ($invoice['plan_name'] ?? ''),
+        'Billing cycle' => (string) ($invoice['frequency'] ?? ''),
+        'Period' => $period,
+        'Amount' => '₹' . number_format((float) ($invoice['amount'] ?? 0), 0),
+        'Due date' => $due instanceof DateTimeImmutable ? $due->format('j M Y') : '',
+        'Invoice' => $number,
+    ];
+    $temple = app_display_name();
+    $intro = "Your seva contribution for {$period} is due. Thank you for supporting {$temple}.";
+    $outro = 'Open the link to pay or donate online. If you have already paid, please ignore this message.';
+
+    $lines = ["Namaskar {$name},", '', $intro, ''];
+    foreach ($details as $label => $value) {
+        $lines[] = "{$label}: {$value}";
+    }
+    array_push($lines, '', "Pay or donate: {$payUrl}", '', $outro);
+
+    $h = static fn (string $value): string => htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $rows = '';
+    foreach ($details as $label => $value) {
+        $rows .= '<tr><td style="padding:6px 12px 6px 0;color:#6b625a;">' . $h($label) . '</td>'
+            . '<td style="padding:6px 0;font-weight:700;">' . $h($value) . '</td></tr>';
+    }
+    $html = '<!DOCTYPE html><html><body style="margin:0;padding:16px;background:#f3f0ea;">'
+        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">'
+        . '<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e6dcc8;border-radius:12px;">'
+        . '<tr><td style="padding:24px;font-family:Georgia,serif;color:#222222;font-size:15px;line-height:1.5;">'
+        . '<p style="margin:0 0 12px;">Namaskar ' . $h($name) . ',</p>'
+        . '<p style="margin:0 0 16px;">' . $h($intro) . '</p>'
+        . '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">' . $rows . '</table>'
+        . '<p style="margin:0 0 20px;"><a href="' . $h($payUrl) . '" style="display:inline-block;background:#7A1626;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;">Pay or donate ' . $h($details['Amount']) . '</a></p>'
+        . '<p style="margin:0 0 4px;font-size:13px;color:#6b625a;">' . $h($outro) . '</p>'
+        . '<p style="margin:0;font-size:12px;color:#6b625a;word-break:break-all;">' . $h($payUrl) . '</p>'
+        . email_signature_html(brand_logo_email_image() !== null)
+        . '</td></tr></table></td></tr></table></body></html>';
+
+    return [
+        'subject' => "Seva contribution request — {$period} ({$number})",
+        'text' => implode("\n", $lines),
+        'html' => $html,
+    ];
+}
+
 function ensure_subscriber_status_log(PDO $pdo): void
 {
     $pdo->exec(

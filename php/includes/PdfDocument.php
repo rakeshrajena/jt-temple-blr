@@ -79,7 +79,7 @@ final class PdfDocument
     public function textWidth(string $text, float $size, bool $bold = false): float
     {
         $width = 0;
-        $chars = preg_split('//u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $chars = str_split(self::plainText($text));
         foreach ($chars as $ch) {
             $width += $this->charWidth($ch, $bold);
         }
@@ -104,12 +104,39 @@ final class PdfDocument
             if ($current !== '') {
                 $lines[] = $current;
             }
-            $current = $word;
+            $current = '';
+            foreach ($this->splitWord($word, $size, $maxWidth, $bold) as $piece) {
+                if ($current !== '') {
+                    $lines[] = $current;
+                }
+                $current = $piece;
+            }
         }
         if ($current !== '') {
             $lines[] = $current;
         }
         return $lines;
+    }
+
+    /** @return list<string> Pieces of one word, each no wider than $maxWidth. */
+    private function splitWord(string $word, float $size, float $maxWidth, bool $bold): array
+    {
+        if ($this->textWidth($word, $size, $bold) <= $maxWidth) {
+            return [$word];
+        }
+        $pieces = [];
+        $piece = '';
+        foreach (preg_split('//u', $word, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $ch) {
+            if ($piece !== '' && $this->textWidth($piece . $ch, $size, $bold) > $maxWidth) {
+                $pieces[] = $piece;
+                $piece = '';
+            }
+            $piece .= $ch;
+        }
+        if ($piece !== '') {
+            $pieces[] = $piece;
+        }
+        return $pieces;
     }
 
     /**
@@ -342,10 +369,23 @@ final class PdfDocument
         return $dict . "\nstream\n" . $data . "\nendstream";
     }
 
+    /** Text as it will print with the built-in Helvetica: common punctuation becomes ASCII, anything else one ? per character. */
+    public static function plainText(string $text): string
+    {
+        $ascii = strtr($text, [
+            '—' => '-', '–' => '-', '‐' => '-', '−' => '-',
+            '‘' => "'", '’' => "'", '“' => '"', '”' => '"',
+            '…' => '...', '₹' => 'Rs.', "\u{00A0}" => ' ', '•' => '-',
+        ]);
+        if (preg_match('//u', $ascii) !== 1) {
+            return preg_replace('/[^\x20-\x7E]/', '?', $ascii) ?? '';
+        }
+        return preg_replace('/[^\x20-\x7E]/u', '?', $ascii) ?? '';
+    }
+
     private function escape(string $text): string
     {
-        $clean = preg_replace('/[^\x20-\x7E]/', '?', $text) ?? '';
-        return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $clean);
+        return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], self::plainText($text));
     }
 
     private function charWidth(string $ch, bool $bold): int

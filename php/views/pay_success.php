@@ -24,8 +24,16 @@
         <div class="pay-detail-row"><span><?= e(t('pay.amount_paid')) ?></span><span><strong><?= e(money($inv['amount'])) ?></strong></span></div>
         <div class="pay-detail-row"><span><?= e(t('pay.invoice')) ?></span><span><?= e($inv['invoice_number']) ?></span></div>
         <div class="pay-detail-row"><span><?= e(t('pay.reference')) ?></span><span><?= e($ref) ?></span></div>
-        <div class="pay-detail-row" style="border-bottom:none;"><span><?= e(t('common.plan')) ?></span><span><?= e($inv['plan_name']) ?></span></div>
+        <?php $hasReceipt = (int) ($inv['receipt_generated'] ?? 0) === 1 && (int) ($inv['receipt_cancelled'] ?? 0) !== 1; ?>
+        <div class="pay-detail-row"<?= $hasReceipt ? '' : ' style="border-bottom:none;"' ?>><span><?= e(t('common.plan')) ?></span><span><?= e($inv['plan_name']) ?></span></div>
+        <?php if ($hasReceipt): ?>
+        <div class="pay-detail-row" style="border-bottom:none;"><span><?= e(t('common.receipt')) ?></span><span><?= e((string) $inv['receipt_number']) ?></span></div>
+        <?php endif; ?>
       </div>
+      <?php $receiptUrl = $hasReceipt ? receipt_public_url((string) ($inv['receipt_share_token'] ?? '')) : ''; ?>
+      <?php if ($receiptUrl !== ''): ?>
+      <p style="margin:0 0 14px;"><a class="btn btn-gold" href="<?= e($receiptUrl) ?>"><?= e(t('pay.view_receipt')) ?></a></p>
+      <?php endif; ?>
       <p style="color:var(--ink-soft); font-size:12px;"><?= e(t('pay.office')) ?></p>
     </div>
   </div>

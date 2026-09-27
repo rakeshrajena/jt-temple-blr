@@ -33,10 +33,67 @@ function next_receipt_number(PDO $pdo): string
     return sprintf('RCPT-%d-%04d', time(), $highest + 1);
 }
 
+const RECEIPT_PAGE_WIDTH = 419.53;
+const RECEIPT_PAGE_HEIGHT = 595.28;
+const RECEIPT_LABEL_X = 40.0;
+const RECEIPT_VALUE_X = 136.0;
+/** Right edge for text; the gold border is at 396.83. */
+const RECEIPT_CONTENT_RIGHT = RECEIPT_PAGE_WIDTH - 40.0;
+const RECEIPT_LINE_FACTOR = 1.3;
+const RECEIPT_ROW_FACTOR = 1.9;
+const RECEIPT_FIELD_SIZES = [9.5, 9.0, 8.5, 8.0, 7.5, 7.0];
+
+/**
+ * Wraps each receipt value inside the border and keeps the block above $bottom,
+ * shrinking the text first and shortening values only when the smallest size still does not fit.
+ *
+ * @param list<array{0: string, 1: string}> $fields Label and value pairs.
+ * @return array{size: float, rows: list<array{label: string, lines: list<string>, y: float}>, end: float}
+ */
+function receipt_field_layout(PdfDocument $pdf, array $fields, float $top, float $bottom): array
+{
+    $width = RECEIPT_CONTENT_RIGHT - RECEIPT_VALUE_X;
+    $build = static function (float $size, ?int $maxLines) use ($pdf, $fields, $top, $width): array {
+        $rows = [];
+        $y = $top;
+        foreach ($fields as [$label, $value]) {
+            $lines = $pdf->wrap($value, $size, $width);
+            if ($lines === []) {
+                $lines = [''];
+            }
+            if ($maxLines !== null && count($lines) > $maxLines) {
+                $lines = array_slice($lines, 0, $maxLines);
+                $last = $lines[$maxLines - 1];
+                while ($last !== '' && $pdf->textWidth($last . '...', $size) > $width) {
+                    $last = mb_substr($last, 0, -1);
+                }
+                $lines[$maxLines - 1] = rtrim($last) . '...';
+            }
+            $rows[] = ['label' => $label, 'lines' => $lines, 'y' => $y];
+            $y -= (count($lines) - 1) * $size * RECEIPT_LINE_FACTOR + $size * RECEIPT_ROW_FACTOR;
+        }
+        return ['size' => $size, 'rows' => $rows, 'end' => $y];
+    };
+    foreach (RECEIPT_FIELD_SIZES as $size) {
+        $layout = $build($size, null);
+        if ($layout['end'] >= $bottom) {
+            return $layout;
+        }
+    }
+    $smallest = RECEIPT_FIELD_SIZES[count(RECEIPT_FIELD_SIZES) - 1];
+    for ($maxLines = 4; $maxLines > 1; $maxLines--) {
+        $layout = $build($smallest, $maxLines);
+        if ($layout['end'] >= $bottom) {
+            return $layout;
+        }
+    }
+    return $build($smallest, 1);
+}
+
 function generate_receipt_pdf(array $donation, array $donor, string $receiptNumber): string
 {
-    $pageW = 419.53;
-    $pageH = 595.28;
+    $pageW = RECEIPT_PAGE_WIDTH;
+    $pageH = RECEIPT_PAGE_HEIGHT;
     $pdf = new PdfDocument($pageW, $pageH);
     $navy = [122 / 255, 22 / 255, 38 / 255];
     $gold = [201 / 255, 138 / 255, 43 / 255];
@@ -105,11 +162,19 @@ function generate_receipt_pdf(array $donation, array $donor, string $receiptNumb
     $fields[] = ['Purpose', (string) ($donation['purpose'] ?: 'General')];
     $fields[] = ['Payment Mode', (string) $donation['payment_mode']];
 
-    foreach ($fields as [$label, $value]) {
-        $pdf->text(40, $y, $label . ':', 9.5, 'F2');
-        $pdf->text(136, $y, $value, 9.5, 'F1');
-        $y -= 18;
+    $qrSize = 78.0;
+    $qrY = 46.0;
+    $signatureRoom = 34.0;
+    $bottom = ($qrY + $qrSize + 26.0) + $signatureRoom;
+    $layout = receipt_field_layout($pdf, $fields, $y, $bottom);
+    $size = $layout['size'];
+    foreach ($layout['rows'] as $row) {
+        $pdf->text(RECEIPT_LABEL_X, $row['y'], $row['label'] . ':', $size, 'F2');
+        foreach ($row['lines'] as $index => $line) {
+            $pdf->text(RECEIPT_VALUE_X, $row['y'] - $index * $size * RECEIPT_LINE_FACTOR, $line, $size, 'F1');
+        }
     }
+    $y = $layout['end'];
 
     $y -= 6;
     $pdf->setStroke(0.867, 0.867, 0.867);
@@ -122,9 +187,7 @@ function generate_receipt_pdf(array $donation, array $donor, string $receiptNumb
     $token = (string) ($donation['receipt_share_token'] ?? '');
     $link = receipt_public_url($token);
     $symbol = $link === '' ? [] : qr_matrix($link);
-    $qrSize = 78.0;
     $qrX = $pageW - 40 - $qrSize;
-    $qrY = 46.0;
     if ($symbol !== []) {
         $pdf->setFill(1, 1, 1);
         $pdf->rect($qrX - 4, $qrY - 4, $qrSize + 8, $qrSize + 8, false, true);
@@ -308,6 +371,93 @@ function rebuild_public_receipt_pdfs(PDO $pdo): void
         }
     }
     brand_upsert('receipt_public_qr', '4');
+}
+
+/**
+ * Writes the receipt PDF for a donation, giving it the next receipt number the first time.
+ *
+ * @return array{number: string, created: bool}
+ */
+function issue_donation_receipt(int $donationId, ?int $userId): array
+{
+    $pdo = db();
+    $own = !$pdo->inTransaction();
+    if ($own) {
+        $pdo->beginTransaction();
+    }
+    try {
+        $donation = db_one('SELECT * FROM donations WHERE id = ? FOR UPDATE', [$donationId]);
+        if ($donation === null) {
+            throw new RuntimeException('Donation not found.');
+        }
+        $donor = db_one('SELECT * FROM donors WHERE id = ?', [(int) $donation['donor_id']]);
+        if ($donor === null) {
+            throw new RuntimeException('Donor not found.');
+        }
+        $existing = trim((string) ($donation['receipt_number'] ?? ''));
+        $receiptNumber = $existing !== '' ? $existing : next_receipt_number($pdo);
+        $donation['receipt_share_token'] = receipt_ensure_share_token($donationId);
+        generate_receipt_pdf($donation, $donor, $receiptNumber);
+        if ($existing === '') {
+            $marked = $pdo->prepare(
+                "UPDATE donations SET receipt_number = ?, receipt_generated = 1
+                 WHERE id = ? AND (receipt_number IS NULL OR receipt_number = '')"
+            );
+            $marked->execute([$receiptNumber, $donationId]);
+            if ($marked->rowCount() !== 1) {
+                throw new RuntimeException('Receipt number was already saved.');
+            }
+        } else {
+            db_exec('UPDATE donations SET receipt_generated = 1 WHERE id = ?', [$donationId]);
+        }
+        db_exec(
+            'INSERT IGNORE INTO receipts (donation_id, receipt_number, generated_by) VALUES (?,?,?)',
+            [$donationId, $receiptNumber, $userId]
+        );
+        if ($own) {
+            $pdo->commit();
+        }
+        return ['number' => $receiptNumber, 'created' => $existing === ''];
+    } catch (Throwable $e) {
+        if ($own && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
+}
+
+/**
+ * Emails a generated receipt PDF with the public receipt link.
+ *
+ * @param array<string, string> $settings Messaging settings.
+ * @param ?string $to Send here instead of the devotee email saved on the donation.
+ * @return array{error: ?string, email: string, number: string}
+ */
+function send_donation_receipt(int $donationId, array $settings, ?string $to = null): array
+{
+    $row = receipt_rows($donationId)[0] ?? null;
+    if ($row === null) {
+        return ['error' => 'Receipt not found.', 'email' => '', 'number' => ''];
+    }
+    $email = trim($to ?? (string) ($row['donor_email'] ?? ''));
+    $number = (string) $row['receipt_number'];
+    $result = ['error' => null, 'email' => $email, 'number' => $number];
+    $blocked = receipt_email_block_reason($email, receipt_file_exists($number), smtp_is_ready($settings));
+    if ($blocked !== null) {
+        return ['error' => $blocked] + $result;
+    }
+    $pdf = file_get_contents(receipt_path($number));
+    if ($pdf === false) {
+        return ['error' => 'The receipt PDF is not ready to send.'] + $result;
+    }
+    $subject = 'Receipt ' . $number;
+    $error = send_smtp_message($settings, $email, $subject, receipt_email_body($row, receipt_public_url((string) ($row['receipt_share_token'] ?? ''))), [
+        'filename' => $number . '.pdf',
+        'content' => $pdf,
+        'mime' => 'application/pdf',
+    ]);
+    notify_log('EMAIL', $email, $error === null ? 'Sent. ' . $subject : 'Not sent. ' . $subject . ' ' . $error);
+    return ['error' => $error] + $result;
 }
 
 function receipt_email_block_reason(string $email, bool $pdfReady, bool $smtpReady): ?string

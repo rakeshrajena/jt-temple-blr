@@ -511,6 +511,10 @@ a.badge:hover { filter: brightness(0.95); text-decoration: underline; }
 }
 .filters .form-group { flex: 1 1 150px; min-width: min(100%, 140px); margin: 0; max-width: 220px; }
 .filters .btn { align-self: flex-end; height: 40px; min-height: 40px; width: auto; flex: 0 0 auto; padding: 0 18px; }
+.table-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; position: sticky; left: 0; }
+.table-filter input[type="search"] { flex: 0 1 280px; min-width: 0; max-width: 100%; height: 38px; }
+.table-filter-count { font-size: 12.5px; color: var(--ink-soft); }
+.data-table tr.table-filter-hide { display: none !important; }
 .book-nav {
   display: inline-flex;
   gap: 2px;

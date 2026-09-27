@@ -252,6 +252,12 @@ function dispatch_request(): void
         action_generate_invoice((int) $m[1]);
         return;
     }
+    if (preg_match('#^subscriptions/invoice/(\d+)/receipt$#', $path, $m) === 1 && $method === 'POST') {
+        action_subscription_receipt((int) $m[1]);
+    }
+    if (preg_match('#^subscriptions/invoice/(\d+)/send_receipt$#', $path, $m) === 1 && $method === 'POST') {
+        action_send_subscription_receipt((int) $m[1]);
+    }
     if (preg_match('#^subscriptions/invoice/(\d+)/send$#', $path, $m) === 1 && $method === 'POST') {
         action_send_invoice((int) $m[1]);
         return;
@@ -1457,49 +1463,13 @@ function action_receive_pledge(int $donorId): void
 function action_generate_receipt(int $donationId): void
 {
     login_required();
-    $pdo = db();
-    $pdo->beginTransaction();
     try {
-        $donation = db_one('SELECT * FROM donations WHERE id = ? FOR UPDATE', [$donationId]);
-        if ($donation === null) {
-            $pdo->rollBack();
-            flash('error', 'Donation not found.');
-            redirect(url('donations'));
-        }
-        $donor = db_one('SELECT * FROM donors WHERE id = ?', [(int) $donation['donor_id']]);
-        if ($donor === null) {
-            $pdo->rollBack();
-            flash('error', 'Donor not found.');
-            redirect(url('donations'));
-        }
-        $existing = trim((string) ($donation['receipt_number'] ?? ''));
-        $receiptNumber = $existing !== '' ? $existing : next_receipt_number($pdo);
-        $donation['receipt_share_token'] = receipt_ensure_share_token($donationId);
-        generate_receipt_pdf($donation, $donor, (string) $receiptNumber);
-        if ($existing === '') {
-            $marked = db()->prepare(
-                "UPDATE donations SET receipt_number = ?, receipt_generated = 1
-                 WHERE id = ? AND (receipt_number IS NULL OR receipt_number = '')"
-            );
-            $marked->execute([$receiptNumber, $donationId]);
-            if ($marked->rowCount() !== 1) {
-                throw new RuntimeException('Receipt number was already saved.');
-            }
-        } else {
-            db_exec('UPDATE donations SET receipt_generated = 1 WHERE id = ?', [$donationId]);
-        }
-        db_exec(
-            'INSERT IGNORE INTO receipts (donation_id, receipt_number, generated_by) VALUES (?,?,?)',
-            [$donationId, $receiptNumber, (int) $_SESSION['user_id']]
-        );
-        $pdo->commit();
-        flash('success', $existing !== '' ? 'Receipt ' . $receiptNumber . ' updated.' : 'Receipt ' . $receiptNumber . ' generated.');
+        $issued = issue_donation_receipt($donationId, (int) $_SESSION['user_id']);
+        flash('success', 'Receipt ' . $issued['number'] . ($issued['created'] ? ' generated.' : ' updated.'));
     } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
         error_log('[jt_blr] receipt: ' . $e->getMessage());
-        flash('error', 'Could not generate the receipt.');
+        $known = ['Donation not found.', 'Donor not found.'];
+        flash('error', in_array($e->getMessage(), $known, true) ? $e->getMessage() : 'Could not generate the receipt.');
     }
     redirect(url('donations'));
 }
@@ -1627,40 +1597,20 @@ function action_receipts_cancel(): void
 function action_receipt_email(int $donationId): void
 {
     login_required();
-    $rows = receipt_rows($donationId);
-    $row = $rows[0] ?? null;
-    if ($row === null) {
-        flash('error', 'Receipt not found.');
-        redirect(url('receipts'));
-    }
-    $email = trim((string) ($row['donor_email'] ?? ''));
-    $number = (string) $row['receipt_number'];
-    $ready = receipt_file_exists($number);
-    $settings = load_messaging_settings();
-    $blocked = receipt_email_block_reason($email, $ready, smtp_is_ready($settings));
-    if ($blocked !== null) {
-        flash('error', $blocked);
-        redirect(url('receipts'));
-    }
-    $pdf = file_get_contents(receipt_path($number));
-    if ($pdf === false) {
-        flash('error', 'The receipt PDF is not ready to send.');
-        redirect(url('receipts'));
-    }
-    $subject = 'Receipt ' . $number;
-    $error = send_smtp_message($settings, $email, $subject, receipt_email_body($row, receipt_public_url((string) ($row['receipt_share_token'] ?? ''))), [
-        'filename' => $number . '.pdf',
-        'content' => $pdf,
-        'mime' => 'application/pdf',
-    ]);
-    if ($error !== null) {
-        notify_log('EMAIL', $email, 'Not sent. ' . $subject . ' ' . $error);
-        flash('error', 'The receipt was not emailed: ' . $error);
-        redirect(url('receipts'));
-    }
-    notify_log('EMAIL', $email, 'Sent. ' . $subject);
-    flash('success', 'Receipt ' . $number . ' emailed to ' . $email . '.');
+    $sent = send_donation_receipt($donationId, load_messaging_settings());
+    receipt_send_flash($sent);
     redirect(url('receipts'));
+}
+
+/** @param array{error: ?string, email: string, number: string} $sent */
+function receipt_send_flash(array $sent): void
+{
+    if ($sent['error'] === null) {
+        flash('success', 'Receipt ' . $sent['number'] . ' emailed to ' . $sent['email'] . '.');
+        return;
+    }
+    $before = ['Receipt not found.', 'This devotee has no email address.', 'The devotee email address is not valid.', 'The receipt PDF is not ready to send.', 'Outgoing mail is not configured.'];
+    flash('error', in_array($sent['error'], $before, true) ? $sent['error'] : 'The receipt was not emailed: ' . $sent['error']);
 }
 
 function action_receipts_bulk_email(): void
@@ -2649,17 +2599,17 @@ function action_subscriptions(string $method): void
             (SELECT COUNT(*) FROM subscription_invoices i WHERE i.subscriber_id = s.id AND i.status IN ('Sent','Pending','Overdue')) AS due_count
          FROM subscribers s ORDER BY (s.status = 'Active') DESC, s.name"
     );
+    $invoiceFilters = invoice_filters($_GET);
     render('subscriptions', [
         'title' => t('nav.subscriptions'),
         'pageTitle' => t('page.subscriptions'),
         'active' => 'subscriptions',
         'subs' => $subs,
         'statusChanges' => latest_subscriber_status_changes(array_map(static fn (array $s): int => (int) $s['id'], $subs)),
-        'invoices' => db_all(
-            "SELECT i.*, s.name AS subscriber_name, s.mobile, s.email FROM subscription_invoices i
-             JOIN subscribers s ON i.subscriber_id = s.id
-             ORDER BY (i.status = 'Overdue') DESC, (i.status = 'Sent') DESC, (i.status = 'Pending') DESC, i.due_date DESC"
-        ),
+        'invoices' => invoice_list($invoiceFilters),
+        'invoiceFilters' => $invoiceFilters,
+        'invoicePeriods' => invoice_periods(),
+        'invoiceTotal' => (int) db_value('SELECT COUNT(*) FROM subscription_invoices'),
         'mrr' => (float) db_value("SELECT COALESCE(SUM(plan_amount),0) FROM subscribers WHERE status = 'Active' AND frequency = 'Monthly'"),
         'pendingAmount' => (float) db_value("SELECT COALESCE(SUM(amount),0) FROM subscription_invoices WHERE status IN ('Sent','Pending','Overdue')"),
         'messaging' => messaging_for_page(),
@@ -2687,32 +2637,57 @@ function action_subscriber_update(int $subId): void
 function action_generate_invoice(int $subId): void
 {
     login_required();
-    $sub = db_one('SELECT * FROM subscribers WHERE id = ?', [$subId]);
-    if ($sub === null) {
-        flash('error', 'Subscriber not found.');
+    try {
+        $created = create_subscription_invoice($subId);
+    } catch (PDOException $e) {
+        error_log('[jt_blr] subscription invoice: ' . $e->getMessage());
+        $created = ['error' => 'Could not create the invoice. Try again.', 'id' => 0, 'number' => '', 'reused' => false];
+    }
+    if ($created['error'] !== null) {
+        flash('error', $created['error']);
         redirect(url('subscriptions'));
     }
-    if (!subscriber_can_invoice((string) $sub['status'])) {
-        flash('error', 'Only an Active subscriber can get a new invoice. Update the status first.');
+    $number = $created['number'];
+    $made = $created['reused']
+        ? 'Invoice ' . $number . ' for this month was still unpaid, so no new invoice was made.'
+        : 'Invoice ' . $number . ' created.';
+    $sub = db_one('SELECT name, email FROM subscribers WHERE id = ?', [$subId]);
+    $blocked = subscription_request_block_reason($sub['email'] ?? null, smtp_is_ready(load_messaging_settings()));
+    if ($blocked !== null) {
+        flash('error', $made . ' ' . $blocked . ' Use WhatsApp Web on the invoice to send it yourself.');
         redirect(url('subscriptions'));
     }
-    $year = date('Y');
-    $last = db_one(
-        'SELECT invoice_number FROM subscription_invoices WHERE invoice_number LIKE ? ORDER BY id DESC LIMIT 1',
-        ["INV-{$year}-%"]
-    );
-    $seq = 1;
-    if ($last !== null) {
-        $parts = explode('-', (string) $last['invoice_number']);
-        $seq = ((int) end($parts)) + 1;
+    $inv = notify_invoice($created['id']);
+    if ($inv === null || !empty($inv['email_error'])) {
+        $reason = $inv['email_error'] ?? 'The invoice could not be found.';
+        flash('error', $made . ' The payment request email was not sent: ' . $reason . ' Use Send on the invoice to try again.');
+        redirect(url('subscriptions'));
     }
-    $number = sprintf('INV-%s-%04d', $year, $seq);
-    db_exec(
-        "INSERT INTO subscription_invoices (subscriber_id, invoice_number, amount, period_label, due_date, status, payment_token)
-         VALUES (?,?,?,?,?,'Pending',?)",
-        [$subId, $number, $sub['plan_amount'], date('F Y'), date('Y-m-d'), random_token()]
-    );
-    flash('success', 'Invoice ' . $number . ' created for ' . $sub['name'] . '.');
+    flash('success', $made . ' Payment request emailed to ' . $inv['email'] . '.');
+    redirect(url('subscriptions'));
+}
+
+function action_subscription_receipt(int $invoiceId): void
+{
+    login_required();
+    try {
+        $issued = issue_subscription_receipt($invoiceId, (int) $_SESSION['user_id']);
+        if ($issued['error'] !== null) {
+            flash('error', $issued['error']);
+        } else {
+            flash('success', 'Receipt ' . $issued['number'] . ($issued['created'] ? ' generated.' : ' updated.'));
+        }
+    } catch (Throwable $e) {
+        error_log('[jt_blr] subscription receipt: ' . $e->getMessage());
+        flash('error', 'Could not generate the receipt.');
+    }
+    redirect(url('subscriptions'));
+}
+
+function action_send_subscription_receipt(int $invoiceId): void
+{
+    login_required();
+    receipt_send_flash(send_subscription_receipt($invoiceId, load_messaging_settings()));
     redirect(url('subscriptions'));
 }
 
@@ -2768,7 +2743,7 @@ function action_bulk_send(): void
 function notify_invoice(int $invoiceId): ?array
 {
     $inv = db_one(
-        'SELECT i.*, s.name, s.mobile, s.email FROM subscription_invoices i
+        'SELECT i.*, s.name, s.mobile, s.email, s.plan_name, s.frequency FROM subscription_invoices i
          JOIN subscribers s ON i.subscriber_id = s.id WHERE i.id = ?',
         [$invoiceId]
     );
@@ -2781,9 +2756,10 @@ function notify_invoice(int $invoiceId): ?array
     notify_log('SMS', (string) $inv['mobile'], $message);
     $inv['email_error'] = null;
     if (!empty($inv['email'])) {
-        $subject = 'Seva Contribution Due — ' . $inv['invoice_number'];
+        $request = subscription_request_email($inv, $payUrl);
+        $subject = $request['subject'];
         if (smtp_is_ready($settings)) {
-            $emailError = send_smtp_message($settings, (string) $inv['email'], $subject, $message);
+            $emailError = send_smtp_message($settings, (string) $inv['email'], $subject, $request['text'], null, $request['html'], []);
             $inv['email_error'] = $emailError;
             notify_log('EMAIL', (string) $inv['email'], $emailError === null ? 'Sent. ' . $subject : 'Not sent. ' . $emailError);
             if ($emailError !== null) {
@@ -2839,7 +2815,12 @@ function action_pay_confirm(string $token): void
         echo 'Payment could not be recorded.';
         return;
     }
-    render('pay_success', ['inv' => $inv, 'ref' => $ref], false);
+    try {
+        issue_subscription_receipt((int) $inv['id'], null);
+    } catch (Throwable $e) {
+        error_log('[jt_blr] subscription receipt after payment ' . $inv['invoice_number'] . ': ' . $e->getMessage());
+    }
+    render('pay_success', ['inv' => find_invoice_by_token($token) ?? $inv, 'ref' => $ref], false);
 }
 
 function record_paid_invoice(int $invoiceId, string $paidVia, string $ref): string
@@ -2851,7 +2832,7 @@ function record_paid_invoice(int $invoiceId, string $paidVia, string $ref): stri
     }
     try {
         $inv = db_one(
-            'SELECT i.*, s.name, s.mobile, s.plan_name
+            'SELECT i.*, s.name, s.mobile, s.email, s.plan_name
              FROM subscription_invoices i
              JOIN subscribers s ON i.subscriber_id = s.id
              WHERE i.id = ? FOR UPDATE',
@@ -2869,14 +2850,19 @@ function record_paid_invoice(int $invoiceId, string $paidVia, string $ref): stri
             }
             return 'paid';
         }
+        $subscriberEmail = trim((string) ($inv['email'] ?? ''));
+        $subscriberEmail = filter_var($subscriberEmail, FILTER_VALIDATE_EMAIL) !== false ? $subscriberEmail : null;
         $donor = db_one('SELECT id FROM donors WHERE phone = ? FOR UPDATE', [$inv['mobile']]);
         if ($donor === null) {
             $donorId = db_exec(
-                'INSERT INTO donors (name, phone) VALUES (?,?)',
-                [$inv['name'], $inv['mobile']]
+                'INSERT INTO donors (name, phone, email) VALUES (?,?,?)',
+                [$inv['name'], $inv['mobile'], $subscriberEmail]
             );
         } else {
             $donorId = (int) $donor['id'];
+            if ($subscriberEmail !== null) {
+                db_exec("UPDATE donors SET email = ? WHERE id = ? AND (email IS NULL OR email = '')", [$subscriberEmail, $donorId]);
+            }
         }
         $donationMode = $paidVia === 'Netbanking' ? 'Netbanking' : ($paidVia === 'Card' ? 'Card' : 'UPI');
         $donationId = db_exec(
@@ -2923,8 +2909,12 @@ function find_invoice_by_token(string $token): ?array
         return null;
     }
     return db_one(
-        'SELECT i.*, s.name, s.mobile, s.plan_name FROM subscription_invoices i
-         JOIN subscribers s ON i.subscriber_id = s.id WHERE i.payment_token = ?',
+        'SELECT i.*, s.name, s.mobile, s.plan_name,
+                d.receipt_number, d.receipt_generated, d.receipt_cancelled, d.receipt_share_token
+         FROM subscription_invoices i
+         JOIN subscribers s ON i.subscriber_id = s.id
+         LEFT JOIN donations d ON d.id = i.linked_donation_id
+         WHERE i.payment_token = ?',
         [$token]
     );
 }

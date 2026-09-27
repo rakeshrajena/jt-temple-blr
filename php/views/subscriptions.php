@@ -1,6 +1,9 @@
 <?php
 /** @var list<array<string,mixed>> $subs */
 /** @var list<array<string,mixed>> $invoices */
+/** @var array{q: string, status: string, period: string, from: string, to: string, receipt: string} $invoiceFilters */
+/** @var list<string> $invoicePeriods */
+/** @var int $invoiceTotal */
 /** @var float $mrr */
 /** @var float $pendingAmount */
 /** @var array{country_code: string, template: string, smtp_ready: bool} $messaging */
@@ -96,7 +99,7 @@ $subscriberFields = static function (string $prefix, array $s = []): void {
             <?php if (subscriber_can_invoice((string) $s['status'])): ?>
             <form method="POST" action="<?= e(url('subscriptions/' . $s['id'] . '/generate_invoice')) ?>">
               <?= csrf_field() ?>
-              <button class="btn btn-sm btn-outline" type="submit">+ Invoice</button>
+              <button class="btn btn-sm btn-outline" type="submit" title="<?= e(!empty($s['email']) ? 'Creates this month’s invoice and emails the payment request to ' . $s['email'] : 'Creates this month’s invoice. No email is saved for this subscriber.') ?>">+ Invoice</button>
             </form>
             <?php endif; ?>
           </div>
@@ -116,7 +119,43 @@ $subscriberFields = static function (string $prefix, array $s = []): void {
     </table>
 </div>
 <div class="panel">
-  <h3>All Invoices (<?= count($invoices) ?>)<?= help_tip('+ Invoice creates a billing record. Send writes the message to the log. If outgoing mail is saved in Settings, it is also emailed. WhatsApp opens WhatsApp Web with the message filled in. Nothing is sent through a WhatsApp API. The devotee opens the payment link and pays. The invoice then shows Paid here, and the payment is copied into Donations.') ?></h3>
+  <h3 id="invoices"><?= invoice_filters_active($invoiceFilters) ? e(t('ui.invoices_shown', ['shown' => (string) count($invoices), 'total' => (string) $invoiceTotal])) : 'All Invoices (' . count($invoices) . ')' ?><?= help_tip('+ Invoice creates this month’s invoice and emails the subscriber a payment request with the plan, period, amount, due date, and a pay or donate link. If this month’s invoice is still unpaid, it is emailed again instead of making a second one. Without a saved email or outgoing mail in Settings, nothing is emailed. Send writes the message to the log. If outgoing mail is saved in Settings, it is also emailed. WhatsApp opens WhatsApp Web with the message filled in. Nothing is sent through a WhatsApp API. The devotee opens the payment link and pays. The invoice then shows Paid here, and the payment is copied into Donations. A receipt is made at once in the same format as a donation receipt, and its number opens the PDF. Send receipt emails that PDF to the subscriber. Generate receipt makes one if it is missing.') ?></h3>
+  <form class="filters" method="GET" action="<?= e(app_script()) ?>#invoices">
+    <input type="hidden" name="r" value="subscriptions">
+    <div class="form-group"><label for="invoice-q"><?= e(t('ui.invoice_search')) ?></label><input id="invoice-q" type="search" name="q" value="<?= e($invoiceFilters['q']) ?>"></div>
+    <div class="form-group"><label for="invoice-status"><?= e(t('common.status')) ?></label>
+      <select id="invoice-status" name="status">
+        <option value=""><?= e(t('common.all')) ?></option>
+        <?php foreach (SUBSCRIPTION_INVOICE_STATUSES as $status): ?>
+        <option value="<?= e($status) ?>"<?= $invoiceFilters['status'] === $status ? ' selected' : '' ?>><?= e($status) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+    <div class="form-group"><label for="invoice-period"><?= e(t('common.period')) ?></label>
+      <select id="invoice-period" name="period">
+        <option value=""><?= e(t('common.all')) ?></option>
+        <?php foreach ($invoicePeriods as $period): ?>
+        <option value="<?= e($period) ?>"<?= $invoiceFilters['period'] === $period ? ' selected' : '' ?>><?= e($period) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+    <div class="form-group"><label for="invoice-from"><?= e(t('ui.due_from')) ?></label><input id="invoice-from" type="date" name="from" value="<?= e($invoiceFilters['from']) ?>"></div>
+    <div class="form-group"><label for="invoice-to"><?= e(t('ui.due_to')) ?></label><input id="invoice-to" type="date" name="to" value="<?= e($invoiceFilters['to']) ?>"></div>
+    <div class="form-group"><label for="invoice-receipt"><?= e(t('common.receipt')) ?></label>
+      <select id="invoice-receipt" name="receipt">
+        <option value=""><?= e(t('common.all')) ?></option>
+        <option value="with"<?= $invoiceFilters['receipt'] === 'with' ? ' selected' : '' ?>><?= e(t('ui.receipt_with')) ?></option>
+        <option value="without"<?= $invoiceFilters['receipt'] === 'without' ? ' selected' : '' ?>><?= e(t('ui.receipt_without')) ?></option>
+      </select>
+    </div>
+    <button class="btn btn-outline btn-sm" type="submit"><?= e(t('common.show')) ?></button>
+    <?php if (invoice_filters_active($invoiceFilters)): ?>
+    <a class="btn btn-sm btn-outline" href="<?= e(url('subscriptions')) ?>#invoices"><?= e(t('ui.clear_filters')) ?></a>
+    <?php endif; ?>
+  </form>
+  <?php if ($invoices === [] && invoice_filters_active($invoiceFilters)): ?>
+  <p><?= e(t('ui.no_invoices_match')) ?></p>
+  <?php endif; ?>
   <form method="POST" action="<?= e(url('subscriptions/bulk_send')) ?>" id="bulkSendForm">
     <?= csrf_field() ?>
     <div class="toolbar">
@@ -152,9 +191,22 @@ $subscriberFields = static function (string $prefix, array $s = []): void {
           <a href="<?= e(url('pay/' . $i['payment_token'])) ?>" target="_blank" class="btn btn-sm btn-outline"><?= e(t('ui.preview_pay')) ?></a>
           <?php else: ?>
           <span style="color:var(--ink-soft); font-size:12px;">Ref: <?= e($i['payment_reference']) ?></span>
+          <?php if ((int) ($i['receipt_generated'] ?? 0) === 1): ?>
+          <br><?= receipt_link($i['receipt_number']) ?> <?= receipt_cancel_badge($i['receipt_cancelled'] ?? 0, '') ?>
+          <?php endif; ?>
           <?php endif; ?>
         </td>
         <td>
+          <?php if ($i['status'] === 'Paid' && !empty($i['linked_donation_id'])): ?>
+          <div class="subscriber-actions">
+            <?php if ((int) ($i['receipt_generated'] ?? 0) === 1 && (int) ($i['receipt_cancelled'] ?? 0) !== 1): ?>
+            <button class="btn btn-sm btn-gold" type="submit" form="sendReceipt<?= e((string) $i['id']) ?>" data-busy="Sending the receipt"<?= empty($i['email']) ? ' disabled title="No email is saved for this subscriber."' : ' title="' . e('Emails the receipt PDF to ' . $i['email']) . '"' ?>><?= e(t('ui.send_receipt')) ?></button>
+            <?php endif; ?>
+            <?php if ((int) ($i['receipt_cancelled'] ?? 0) !== 1): ?>
+            <button class="btn btn-sm btn-outline" type="submit" form="makeReceipt<?= e((string) $i['id']) ?>" data-busy="Updating the receipt"><?= (int) ($i['receipt_generated'] ?? 0) === 1 ? e(t('ui.update_receipt')) : e(t('ui.generate_receipt')) ?></button>
+            <?php endif; ?>
+          </div>
+          <?php endif; ?>
           <?php if (in_array($i['status'], ['Pending', 'Overdue'], true)): ?>
           <button class="btn btn-sm btn-gold" type="submit" form="singleSend<?= e((string) $i['id']) ?>">📲 Send</button>
           <?php elseif ($i['status'] === 'Sent'): ?>
@@ -181,6 +233,9 @@ $subscriberFields = static function (string $prefix, array $s = []): void {
   <?php foreach ($invoices as $i): ?>
     <?php if ($i['status'] !== 'Paid'): ?>
     <form method="POST" action="<?= e(url('subscriptions/invoice/' . $i['id'] . '/send')) ?>" id="singleSend<?= e((string) $i['id']) ?>"><?= csrf_field() ?></form>
+    <?php elseif (!empty($i['linked_donation_id'])): ?>
+    <form method="POST" action="<?= e(url('subscriptions/invoice/' . $i['id'] . '/receipt')) ?>" id="makeReceipt<?= e((string) $i['id']) ?>"><?= csrf_field() ?></form>
+    <form method="POST" action="<?= e(url('subscriptions/invoice/' . $i['id'] . '/send_receipt')) ?>" id="sendReceipt<?= e((string) $i['id']) ?>"><?= csrf_field() ?></form>
     <?php endif; ?>
   <?php endforeach; ?>
 </div>
