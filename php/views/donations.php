@@ -145,12 +145,14 @@
         <?php endif; ?>
       </td>
       <td>
-        <?php if ((int) $d['receipt_generated'] !== 1): ?>
+        <?php if ((int) ($d['receipt_cancelled'] ?? 0) !== 1): ?>
         <form method="POST" action="<?= e(url('donations/' . $d['id'] . '/generate_receipt')) ?>" style="display:inline;">
           <?= csrf_field() ?>
-          <button class="btn btn-sm btn-gold" type="submit"><?= e(t('ui.generate_receipt')) ?></button>
+          <button class="btn btn-sm btn-gold" type="submit" data-busy="Updating the receipt"><?= (int) $d['receipt_generated'] === 1 ? e(t('ui.update_receipt')) : e(t('ui.generate_receipt')) ?></button>
         </form>
         <?php endif; ?>
+        <a class="btn btn-sm btn-outline" href="<?= e(url('donations/' . $d['id'] . '/edit')) ?>"><?= e(t('ui.edit')) ?></a>
+        <?php if (!empty($d['edit_status'])): ?><br><span class="badge badge-amber"><?= e(t('ui.edit_waiting')) ?></span><?php endif; ?>
       </td>
     </tr>
     <?php endforeach; ?>

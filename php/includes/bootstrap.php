@@ -18,6 +18,7 @@ require APP_ROOT . '/includes/coupons.php';
 require APP_ROOT . '/includes/vouchers.php';
 require APP_ROOT . '/includes/approval.php';
 require APP_ROOT . '/includes/corrections.php';
+require APP_ROOT . '/includes/donation_edits.php';
 require APP_ROOT . '/includes/books.php';
 require APP_ROOT . '/includes/donors.php';
 require APP_ROOT . '/includes/stock.php';

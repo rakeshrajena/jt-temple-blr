@@ -132,6 +132,10 @@ Use Donations to record a gift. A repeat phone number matches the devotee alread
 
 A cash gift posts at once. It does not wait for approval. An in-kind gift of food, vastra, or inventory updates that register as well.
 
+Edit on a gift changes the devotee, amount, purpose, date, or payment only after approval. The gift stays as it was until then. If the gift was added within the last 24 hours, a Treasurer can approve it up to the Treasurer limit in Settings, and an Admin decides above that. If the gift is older than 24 hours, both a Treasurer and an Admin must approve any change. Neither one is enough, for any amount and any field. The person who submitted the edit cannot approve it. A gift linked to food, vastra, or inventory keeps its type. If the gift already has an approved amount correction, change the amount from Corrections.
+
+Generate receipt stays available after a receipt exists, unless that receipt was cancelled. Update receipt writes the current gift over the same receipt number. Approving an edit does the same when a receipt is already on file.
+
 A cheque stores its number, date, and whether it has cleared. A UPI payment stores the transaction id. Those references are what the bank match looks for.
 
 ![The donation form and the list of gifts, including receipt links and Generate receipt](images/08-donations.png)
@@ -196,7 +200,7 @@ A new expense waits for approval before it enters the books. A UPI expense store
 
 ## Approvals
 
-Approvals is the queue for expenses, cash deposited or withdrawn, opening-balance changes, purchases, stock write-offs, corrections, receipt cancellations, and coupon batches.
+Approvals is the queue for expenses, cash deposited or withdrawn, opening-balance changes, purchases, stock write-offs, corrections, receipt cancellations, donation edits, and coupon batches.
 
 ![The approval queue. An empty queue still states the rule.](images/12-approvals-admin.png)
 
@@ -292,4 +296,12 @@ Localization is Admin only. It changes labels, headings, and buttons for English
 
 **Treasurer.** Open Approvals. Approve the kitchen use and the electrician's bill when both are within the Treasurer limit and someone else prepared them. Leave the salary line for an Admin while it is above that limit. If the year is opening, submit the opening cash and bank, and ask an Admin to approve it.
 
-**Admin.** Approve anything above the Treasurer and Staff limits, including a large coupon batch. Set those limits on Settings. Save the temple name, logo, and watermarks if they are not yet on this server. Add or deactivate accounts when people join or leave. Download a zip of receipts when the office needs a bundle.
+**Admin.** Approve anything above the Treasurer and Staff limits, including a large coupon batch. Set those limits on Settings. Save the temple name, logo, and watermarks if they are not yet on this server. Add or deactivate accounts when people join or leave. Download a zip of receipts when the office needs a bundle. A donation edit older than 24 hours also needs this Admin together with a Treasurer.
+
+## Putting this copy on the hosting server
+
+Upload the `php` folder, including `storage`. Leave the `.env` file that is already on the server in place. That file holds the database name, the database user, and the setup key. Do not replace it with the `.env` from this computer, and do not upload the `.env` that sits next to the `php` folder.
+
+The saved books travel in `php/storage/install/books.jsonl`. This copy was saved with the gifts still in the books and with no receipt generated. Coupon sheets, the logo, and settings travel with the same folder. Receipt PDFs are created on the server when someone uses Generate receipt.
+
+On the server, open `install.php`. Enter the setup key from that server’s `.env`. If devotees are already there, tick **Replace the devotees and books already in this database with the saved copy**. That loads this copy, including the new donation-edit columns. Leave the box unticked only when the server’s own devotees must stay; the new tables are still added. Sign in, then delete `INSTALL_TOKEN` from the server `.env` so the setup page cannot be used again. Open Donations and use Generate receipt for each gift that should have one.

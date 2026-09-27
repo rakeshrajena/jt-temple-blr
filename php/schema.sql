@@ -373,9 +373,39 @@ CREATE TABLE receipt_cancellations (
     KEY idx_receipt_cancel_donation (donation_id)
 ) ENGINE=InnoDB;
 
+CREATE TABLE donation_edits (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    donation_id     INT NOT NULL,
+    donor_name      VARCHAR(150) NOT NULL,
+    donor_phone     VARCHAR(20) NULL,
+    donor_email     VARCHAR(120) NULL,
+    donor_address   VARCHAR(500) NULL,
+    donor_pan       VARCHAR(20) NULL,
+    donation_type   VARCHAR(30) NOT NULL,
+    amount          DECIMAL(12,2) NULL,
+    purpose         VARCHAR(200) NULL,
+    donation_date   DATE NOT NULL,
+    payment_mode    VARCHAR(30) NOT NULL,
+    cheque_number   VARCHAR(30) NULL,
+    cheque_date     DATE NULL,
+    cheque_cleared  TINYINT(1) NOT NULL DEFAULT 0,
+    upi_reference   VARCHAR(64) NULL,
+    pledge_id       INT NULL,
+    reason          VARCHAR(500) NOT NULL,
+    prepared_by     INT NOT NULL,
+    treasurer_approved_by INT NULL,
+    admin_approved_by INT NULL,
+    applied         TINYINT(1) NOT NULL DEFAULT 0,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (donation_id) REFERENCES donations(id),
+    FOREIGN KEY (pledge_id) REFERENCES pledges(id),
+    FOREIGN KEY (prepared_by) REFERENCES users(id),
+    KEY idx_donation_edit (donation_id, applied)
+) ENGINE=InnoDB;
+
 CREATE TABLE approvals (
     id              INT AUTO_INCREMENT PRIMARY KEY,
-    subject_type    ENUM('expense','contra','opening','purchase','correction','receipt','stock','coupon') NOT NULL,
+    subject_type    ENUM('expense','contra','opening','purchase','correction','receipt','stock','coupon','donation_edit') NOT NULL,
     subject_id      INT NOT NULL,
     status          ENUM('Draft','Waiting','Approved','Sent back','Rejected') NOT NULL DEFAULT 'Draft',
     amount          DECIMAL(14,2) NOT NULL DEFAULT 0,

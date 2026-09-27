@@ -96,6 +96,10 @@ function dispatch_request(): void
         action_clear_cheque('donations', (int) $m[1]);
         return;
     }
+    if (preg_match('#^donations/(\d+)/edit$#', $path, $m) === 1 && ($method === 'GET' || $method === 'POST')) {
+        action_donation_edit((int) $m[1], $method);
+        return;
+    }
     if ($path === 'donations') {
         action_donations($method);
         return;
@@ -962,7 +966,11 @@ function action_donations(string $method): void
                     (SELECT a.status FROM receipt_cancellations rc
                      JOIN approvals a ON a.subject_type = 'receipt' AND a.subject_id = rc.id
                      WHERE rc.donation_id = d.id AND a.status IN ('Draft', 'Waiting', 'Sent back')
-                     ORDER BY rc.id DESC LIMIT 1) AS cancel_status
+                     ORDER BY rc.id DESC LIMIT 1) AS cancel_status,
+                    (SELECT a.status FROM donation_edits e
+                     JOIN approvals a ON a.subject_type = 'donation_edit' AND a.subject_id = e.id
+                     WHERE e.donation_id = d.id AND a.status IN ('Draft', 'Waiting', 'Sent back')
+                     ORDER BY e.id DESC LIMIT 1) AS edit_status
              FROM donations d
              JOIN donors don ON d.donor_id = don.id ORDER BY d.donation_date DESC"
         ),
@@ -1164,6 +1172,33 @@ function record_donation(): void
         error_log('[jt_blr] donation: ' . $e->getMessage());
         flash('error', 'Could not record the donation.');
     }
+}
+
+function action_donation_edit(int $id, string $method): void
+{
+    login_required();
+    $donation = donation_edit_row($id);
+    if ($donation === null) {
+        flash('error', 'Donation not found.');
+        redirect(url('donations'));
+    }
+    if ($method === 'POST') {
+        $error = save_donation_edit($id, donation_edit_from_post(), (int) $_SESSION['user_id']);
+        flash($error === null ? 'success' : 'error', $error ?? 'The edit is waiting for approval. The gift stays as it is until then.');
+        redirect(url('donations/' . $id . '/edit'));
+    }
+    render('donation_edit', [
+        'title' => t('ui.edit_donation'),
+        'pageTitle' => t('ui.edit_donation'),
+        'active' => 'donations',
+        'donation' => $donation,
+        'waiting' => open_donation_edit($id),
+        'pledges' => db_all(
+            'SELECT id, purpose, pledged_amount, pledge_date FROM pledges WHERE donor_id = ? ORDER BY pledge_date DESC, id DESC',
+            [(int) $donation['donor_id']]
+        ),
+        'typeLocked' => donation_type_is_locked($donation),
+    ]);
 }
 
 function action_donors(): void
@@ -1432,7 +1467,7 @@ function action_generate_receipt(int $donationId): void
             [$donationId, $receiptNumber, (int) $_SESSION['user_id']]
         );
         $pdo->commit();
-        flash('success', 'Receipt ' . $receiptNumber . ' generated.');
+        flash('success', $existing !== '' ? 'Receipt ' . $receiptNumber . ' updated.' : 'Receipt ' . $receiptNumber . ' generated.');
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
@@ -1892,7 +1927,12 @@ function action_approvals(): void
                     rd.receipt_number AS cancel_receipt, rn.name AS cancel_donor, rc.reason AS cancel_reason,
                     pur.item_name AS purchase_name, pur.quantity AS purchase_qty,
                     sr.item_name AS stock_name, sr.movement_type AS stock_movement, sr.quantity AS stock_qty,
-                    cb.coupon_name, cb.quantity AS coupon_qty, cb.cost AS coupon_cost
+                    cb.coupon_name, cb.quantity AS coupon_qty, cb.cost AS coupon_cost,
+                    de.reason AS edit_reason, de.donor_name AS edit_donor, de.amount AS edit_amount,
+                    de.purpose AS edit_purpose, de.payment_mode AS edit_payment, de.donation_date AS edit_date,
+                    de.treasurer_approved_by AS edit_treasurer_by, de.admin_approved_by AS edit_admin_by,
+                    ed.amount AS edit_was_amount, edn.name AS edit_was_donor, ed.created_at AS edit_added_at,
+                    et.full_name AS edit_treasurer_name, ea.full_name AS edit_admin_name
              FROM approvals a
              JOIN users p ON p.id = a.prepared_by
              LEFT JOIN users d ON d.id = a.decided_by
@@ -1906,6 +1946,11 @@ function action_approvals(): void
              LEFT JOIN purchases pur ON a.subject_type = 'purchase' AND pur.id = a.subject_id
              LEFT JOIN stock_requests sr ON a.subject_type = 'stock' AND sr.id = a.subject_id
              LEFT JOIN food_coupon_batches cb ON a.subject_type = 'coupon' AND cb.id = a.subject_id
+             LEFT JOIN donation_edits de ON a.subject_type = 'donation_edit' AND de.id = a.subject_id
+             LEFT JOIN donations ed ON ed.id = de.donation_id
+             LEFT JOIN donors edn ON edn.id = ed.donor_id
+             LEFT JOIN users et ON et.id = de.treasurer_approved_by
+             LEFT JOIN users ea ON ea.id = de.admin_approved_by
              WHERE a.status IN ('Draft', 'Waiting', 'Sent back')
              ORDER BY FIELD(a.status, 'Waiting', 'Sent back', 'Draft'), a.updated_at DESC"
         ),
@@ -1923,15 +1968,30 @@ function action_decide_approval(int $id): void
     $user = current_user();
     $decision = post_string('decision', 20);
     $note = post_string('decision_note', 500);
-    $error = approval_error(
-        (string) ($user['role'] ?? ''),
-        (float) $row['amount'],
-        (int) $row['prepared_by'],
-        (int) ($user['id'] ?? 0),
-        $decision,
-        (string) $row['status'],
-        $note
-    );
+    $needsBoth = false;
+    if ($row['subject_type'] === 'donation_edit') {
+        $addedAt = db_value(
+            'SELECT d.created_at FROM donation_edits e JOIN donations d ON d.id = e.donation_id WHERE e.id = ?',
+            [(int) $row['subject_id']]
+        );
+        $needsBoth = donation_edit_needs_both(is_string($addedAt) ? $addedAt : '');
+    }
+    $role = (string) ($user['role'] ?? '');
+    if ($needsBoth && $role !== 'Treasurer' && $role !== 'Admin') {
+        flash('error', 'An edit older than 24 hours needs both a Treasurer and an Admin.');
+        redirect(url('approvals'));
+    }
+    $error = $needsBoth && $decision === 'approve'
+        ? donation_edit_both_error($role, (int) $row['prepared_by'], (int) ($user['id'] ?? 0), (string) $row['status'])
+        : approval_error(
+            $role,
+            (float) $row['amount'],
+            (int) $row['prepared_by'],
+            (int) ($user['id'] ?? 0),
+            $decision,
+            (string) $row['status'],
+            $note
+        );
     if ($error !== null) {
         flash('error', $error);
         redirect(url('approvals'));
@@ -1941,6 +2001,14 @@ function action_decide_approval(int $id): void
     $couponBatch = null;
     $pdo->beginTransaction();
     try {
+        if ($needsBoth && $decision === 'approve') {
+            $sign = donation_edit_record_signature((int) $row['subject_id'], $role, (int) $user['id']);
+            if ($sign !== 'complete') {
+                $pdo->commit();
+                flash($sign === 'already' ? 'error' : 'success', donation_edit_sign_message($sign));
+                redirect(url('approvals'));
+            }
+        }
         $deciding = in_array($decision, ['approve', 'send_back', 'reject'], true);
         $claimed = approval_claim_decision(
             $id,
@@ -1974,6 +2042,12 @@ function action_decide_approval(int $id): void
         if ($row['subject_type'] === 'stock' && $decision === 'approve') {
             apply_approved_stock((int) $row['subject_id']);
         }
+        if ($row['subject_type'] === 'donation_edit' && $decision === 'approve') {
+            apply_donation_edit((int) $row['subject_id']);
+        }
+        if ($row['subject_type'] === 'donation_edit' && in_array($decision, ['send_back', 'reject'], true)) {
+            donation_edit_clear_signatures((int) $row['subject_id']);
+        }
         if ($row['subject_type'] === 'coupon' && $decision === 'approve') {
             $couponBatch = db_one('SELECT * FROM food_coupon_batches WHERE id = ?', [(int) $row['subject_id']]);
             if ($couponBatch === null) {
@@ -1987,7 +2061,7 @@ function action_decide_approval(int $id): void
             );
         }
         $pdo->commit();
-    } catch (StockApplyException $e) {
+    } catch (StockApplyException | DonationEditException $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }

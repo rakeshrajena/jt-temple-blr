@@ -48,6 +48,24 @@ $label = static function (array $row): string {
         $name = (string) ($row['stock_name'] ?? '');
         return $movement . ($qty !== '' ? ' ' . $qty : '') . ($name !== '' ? ' · ' . $name : '');
     }
+    if ($type === 'donation_edit') {
+        $who = (string) ($row['edit_was_donor'] ?? $row['edit_donor'] ?? '');
+        $reason = (string) ($row['edit_reason'] ?? '');
+        $both = donation_edit_needs_both((string) ($row['edit_added_at'] ?? ''));
+        $signed = [];
+        if (!empty($row['edit_treasurer_name'])) {
+            $signed[] = 'Treasurer ' . (string) $row['edit_treasurer_name'];
+        }
+        if (!empty($row['edit_admin_name'])) {
+            $signed[] = 'Admin ' . (string) $row['edit_admin_name'];
+        }
+        return 'Edit donation' . ($who !== '' ? ' · ' . $who : '')
+            . ' · was ' . money($row['edit_was_amount'] ?? 0)
+            . ' now ' . money($row['edit_amount'] ?? 0)
+            . ($both ? ' · needs Treasurer and Admin' : '')
+            . ($signed !== [] ? ' · ' . implode(', ', $signed) : '')
+            . ($reason !== '' ? ' · ' . $reason : '');
+    }
     if ($type === 'coupon') {
         $name = (string) ($row['coupon_name'] ?? 'Coupons');
         $qty = (string) ($row['coupon_qty'] ?? '');
@@ -64,7 +82,21 @@ $label = static function (array $row): string {
 ?>
 <div class="panel">
   <h3><?= e(t('ui.approval_queue')) ?></h3>
-  <p class="sub"><?php if ($staffLimit !== null && $staffLimit > 0): ?>Staff can approve up to <?= e(money($staffLimit)) ?>.<?php else: ?>Staff prepare an item and cannot decide it.<?php endif; ?> A Treasurer can approve up to <?= e(money($treasurerLimit)) ?>. Above that, an Admin decides. The person who prepared it cannot approve it. Only an approved line changes the cash book, day book, ledger, bank match, or stock. A write-off above <?= e((string) STOCK_WRITE_OFF_LIMIT) ?> units waits here even when the money amount is zero.</p>
+  <ol class="rules">
+    <?php if ($staffLimit !== null && $staffLimit > 0): ?>
+      <li>Staff can approve up to <?= e(money($staffLimit)) ?>.</li>
+    <?php else: ?>
+      <li>Staff prepare an item and cannot decide it.</li>
+    <?php endif; ?>
+    <li>A Treasurer can approve up to <?= e(money($treasurerLimit)) ?>.</li>
+    <li>Above that, an Admin decides.</li>
+    <li>The person who prepared it cannot approve it.</li>
+    <li>A donation edit from the last 24 hours follows that limit.</li>
+    <li>An older donation edit changes nothing until both a Treasurer and an Admin approve it, whatever the amount or the field.</li>
+    <li>Only an approved line changes the cash book, day book, ledger, bank match, stock, or a donation.</li>
+    <li>Approving a donation edit rewrites its receipt when one already exists.</li>
+    <li>A write-off above <?= e((string) STOCK_WRITE_OFF_LIMIT) ?> units waits here even when the money amount is zero.</li>
+  </ol>
   <?php if (!$rows): ?>
     <p>Nothing is waiting.</p>
   <?php else: ?>
@@ -74,7 +106,14 @@ $label = static function (array $row): string {
       <?php
         $status = (string) $row['status'];
         $mine = $me === (int) $row['prepared_by'];
-        $open = $status === 'Waiting' && $canDecide && !$mine;
+        $needsBoth = (string) $row['subject_type'] === 'donation_edit' && donation_edit_needs_both((string) ($row['edit_added_at'] ?? ''));
+        $roleSigned = $needsBoth && (
+            ($role === 'Treasurer' && !empty($row['edit_treasurer_by']))
+            || ($role === 'Admin' && !empty($row['edit_admin_by']))
+        );
+        $open = $needsBoth
+            ? $status === 'Waiting' && !$mine && ($role === 'Treasurer' || $role === 'Admin') && !$roleSigned
+            : $status === 'Waiting' && $canDecide && !$mine;
       ?>
       <tr>
         <td><?= e($label($row)) ?></td>
@@ -95,6 +134,8 @@ $label = static function (array $row): string {
                 <button class="btn btn-sm btn-outline" type="submit" name="decision" value="reject"><?= e(t('ui.reject')) ?></button>
               </div>
             </form>
+          <?php elseif ($needsBoth && $roleSigned): ?>
+            <?= $role === 'Treasurer' ? 'Waiting for an Admin' : 'Waiting for a Treasurer' ?>
           <?php elseif ($mine && $status === 'Draft'): ?>
             <form method="POST" action="<?= e(url('approvals/' . $row['id'])) ?>"><?= csrf_field() ?><button class="btn btn-sm btn-primary" type="submit" name="decision" value="submit"><?= e(t('ui.submit')) ?></button></form>
           <?php elseif ($mine && $status === 'Sent back'): ?>

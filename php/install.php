@@ -75,7 +75,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $ready) {
 <body>
 <main>
   <h1>Set up the temple books</h1>
-  <p>This updates the database that already exists. It creates any missing tables and adds the latest columns for receipts, coupons, invitations, approvals, and settings. It does not create a new database.</p>
+  <p>This updates the database that already exists. It creates any missing tables and adds the latest columns for receipts, coupons, invitations, donation edits, approvals, and settings. It does not create a new database, and it does not change the gifts until you choose to load the saved books.</p>
   <?php if ($error !== null): ?>
     <p class="error"><?= e($error) ?></p>
   <?php endif; ?>
@@ -83,7 +83,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $ready) {
     <div class="ok">
       <p><strong><?= e(DB_NAME) ?></strong> on <?= e(DB_HOST) ?> has <?= e((string) $result['tables']) ?> tables, <?= e((string) $result['users']) ?> users, and <?= e((string) $result['donors']) ?> devotees.</p>
       <p><?php if ($result['imported']): ?>
-        The saved books from this copy were loaded, including devotees, gifts, stock, expenses, coupons, invitations, and settings.
+        The saved books from this copy were loaded, including devotees, gifts, stock, expenses, coupons, invitations, and settings. Open Donations and use Generate receipt for any gift that does not have one yet.
       <?php elseif ($result['seeded']): ?>
         Demo data was loaded because this copy had no saved books and the database had no devotees yet.
       <?php else: ?>
@@ -94,7 +94,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $ready) {
   <?php elseif ($ready): ?>
     <p>Target database: <strong><?= e(DB_NAME) ?></strong> on <?= e(DB_HOST) ?>.</p>
     <?php if ($booksReady): ?>
-      <p>A saved copy of the books is included. <?php if ($existingDonors === 0): ?>It will be loaded because this database has no devotees yet.<?php else: ?>This database already has devotees, so they stay unless you choose to replace them.<?php endif; ?></p>
+      <p>A saved copy of the books is included. The gifts in that copy have no receipt generated yet, so each one shows Generate receipt after it is loaded. <?php if ($existingDonors === 0): ?>The copy will be loaded because this database has no devotees yet.<?php else: ?>This database already has devotees. Tick the box below to replace them with this copy. Leave it unticked and only the new tables and columns are added.<?php endif; ?></p>
     <?php else: ?>
       <p>No saved books were found with this copy. An empty database will get the demo devotees instead.</p>
     <?php endif; ?>

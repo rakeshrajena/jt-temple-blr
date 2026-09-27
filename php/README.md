@@ -9,7 +9,7 @@ This is the PHP 8 port of the Flask app in `../python/`. It uses MySQL on the lo
 1. Start Apache and MySQL in AMPPS.
 2. Open [http://localhost/jt_blr/jt-temple-blr/php/](http://localhost/jt_blr/jt-temple-blr/php/).
 
-The first request creates the `sjt_temple_blr` database, the tables in `schema.sql`, and the demo records.
+On this computer the first request creates the `sjt_temple_blr` database, the tables in `schema.sql`, and the demo records. On the hosting server, upload this `php` folder (including `storage`) and open `install.php`. Keep the server’s own `.env`. If devotees are already there, tick replace so the saved books in `storage/install/books.jsonl` are loaded. Then remove `INSTALL_TOKEN` from that `.env`. The saved books have the gifts and no receipt generated yet.
 
 | Username | Password | Role |
 |---|---|---|
