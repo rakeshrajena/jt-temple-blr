@@ -262,7 +262,33 @@ function migrate_schema(PDO $pdo): void
     ensure_coupon_schema($pdo);
     ensure_invitation_schema($pdo);
     ensure_selection_columns($pdo);
+    ensure_write_claims($pdo);
     backfill_receipt_pdfs();
+}
+
+function ensure_write_claims(PDO $pdo): void
+{
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS write_claims (
+            token       CHAR(32) NOT NULL PRIMARY KEY,
+            created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_write_claims_created (created_at)
+        ) ENGINE=InnoDB"
+    );
+    $pdo->exec("DELETE FROM write_claims WHERE created_at < DATE_SUB(NOW(), INTERVAL 2 DAY)");
+}
+
+function db_mutex(PDO $pdo, string $name): void
+{
+    $safe = preg_replace('/[^A-Za-z0-9_]/', '', $name) ?? '';
+    if ($safe === '') {
+        throw new RuntimeException('Could not lock the books.');
+    }
+    $stmt = $pdo->prepare('SELECT GET_LOCK(?, 10)');
+    $stmt->execute(['jt_' . $safe]);
+    if ((int) $stmt->fetchColumn() !== 1) {
+        throw new RuntimeException('Another save is still finishing. Try again.');
+    }
 }
 
 function ensure_books_schema(PDO $pdo): void

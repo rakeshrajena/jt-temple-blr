@@ -41,7 +41,11 @@
   window.jtBusyDone = hide;
 
   document.addEventListener('submit', function (event) {
-    if (event.defaultPrevented || shown) {
+    if (event.defaultPrevented) {
+      return;
+    }
+    if (shown) {
+      event.preventDefault();
       return;
     }
     const form = event.target;
@@ -60,7 +64,11 @@
   });
 
   document.addEventListener('click', function (event) {
-    if (event.defaultPrevented || shown || event.button !== 0) {
+    if (event.defaultPrevented || event.button !== 0) {
+      return;
+    }
+    if (shown) {
+      event.preventDefault();
       return;
     }
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {

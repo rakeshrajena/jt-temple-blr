@@ -206,6 +206,15 @@ function ensure_demo_treasurer(PDO $pdo): void
     $stmt->execute(['treasurer', password_hash('treasurer@123', PASSWORD_DEFAULT), 'Lakshmi (Treasurer)', 'Treasurer']);
 }
 
+function approval_claim_decision(int $id, string $fromStatus, string $next, ?int $decidedBy, ?string $note): bool
+{
+    $stmt = db()->prepare(
+        'UPDATE approvals SET status = ?, decided_by = ?, decision_note = ? WHERE id = ? AND status = ?'
+    );
+    $stmt->execute([$next, $decidedBy, $note, $id, $fromStatus]);
+    return $stmt->rowCount() === 1;
+}
+
 function record_approval(string $type, int $subjectId, string $status, float $amount, int $userId): void
 {
     db_exec(

@@ -944,7 +944,7 @@ function redeem_coupon(
         $amount = round((float) $row['cost'], 2);
         $purpose = trim((string) ($row['purpose'] ?? ''));
         if ($purpose === '') {
-            $purpose = trim((string) $row['coupon_name']);
+            $purpose = 'Donation';
         }
         $type = trim((string) ($row['donation_type'] ?? ''));
         if (!in_array($type, coupon_amount_types(), true)) {

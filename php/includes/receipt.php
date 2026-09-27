@@ -20,6 +20,7 @@ function receipt_serial_value(string $number): int
 
 function next_receipt_number(PDO $pdo): string
 {
+    db_mutex($pdo, 'receipt_number');
     $statement = $pdo->prepare("SELECT receipt_number FROM donations WHERE receipt_number LIKE 'RCPT-%'");
     $statement->execute();
     $highest = 0;

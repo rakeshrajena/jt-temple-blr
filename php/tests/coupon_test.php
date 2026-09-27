@@ -165,14 +165,14 @@ try {
         $sold['error'] === null
         && is_array($donation)
         && (float) $donation['amount'] === 40.0
-        && (string) $donation['purpose'] === 'Prasad sale'
+        && (string) $donation['purpose'] === 'Donation'
         && (string) $donation['donor_name'] === 'Walk-in devotee'
         && (string) $donation['notes'] === $firstCode
         && is_array($movement)
         && (float) $movement['receipt_cash'] === 40.0
         && str_contains((string) $movement['particulars'], $firstCode)
         && is_array($ledger)
-        && (string) $ledger['head'] === 'Prasad sale'
+        && (string) $ledger['head'] === 'Donation'
         && (float) $ledger['received'] === 40.0
         && $again['error'] !== null
         && str_contains((string) $again['error'], 'already scanned and redeemed'),
@@ -253,7 +253,7 @@ try {
         && (string) $plainGift['donation_type'] === 'Cash'
         && (string) $plainGift['payment_mode'] === 'Cash'
         && (string) $plainGift['donor_name'] === 'Coupon counter'
-        && (string) $plainGift['purpose'] === 'Counter sale',
+        && (string) $plainGift['purpose'] === 'Donation',
         'a scan with no extra choices is a cash donation under Coupon counter'
     );
 

@@ -26,7 +26,7 @@ $expiryInput = static function (mixed $value): string {
 </div>
 <div class="panel">
   <h3><?= e(t('ui.record_coupon')) ?></h3>
-  <p class="sub">Opening a coupon link while signed in records it at once. No extra choice is asked. It is a Cash donation under Coupon counter, and the purpose is the batch name. Type a code here only when the devotee name or the payment mode should be different. A coupon past its expiry is invalidated and cannot be recorded. Scanning a coupon that is already in the books does not add it again.</p>
+  <p class="sub">Opening a coupon link while signed in records it at once. No extra choice is asked. It is a Cash donation under Coupon counter, and the purpose is Donation. Type a code here only when the devotee name or the payment mode should be different. A coupon past its expiry is invalidated and cannot be recorded. Scanning a coupon that is already in the books does not add it again.</p>
   <form method="POST" action="<?= e(url('food/coupons/validate')) ?>">
     <?= csrf_field() ?>
     <div class="form-grid cols-3">
@@ -79,7 +79,7 @@ $expiryInput = static function (mixed $value): string {
 </div>
 <div class="panel">
   <h3><?= e(t('ui.generate_batch')) ?></h3>
-  <p class="sub">A batch is a print run. Each coupon is stored on its own. The face value waits for approval and does not enter the books until a coupon is sold. Devotee, donation type, payment, purpose, UPI, and cheque are optional. Leave them blank and a scan is Cash under Coupon counter, with the coupon name as the purpose. Fill them in and every coupon in the batch uses those details. Choose an expiry, or leave no expiry. A Treasurer can approve up to <?= e(money(approval_limit('Treasurer'))) ?>. Above that, an Admin decides. The person who prepared the batch cannot approve it. It can be printed only after approval.</p>
+  <p class="sub">A batch is a print run. Each coupon is stored on its own. The face value waits for approval and does not enter the books until a coupon is sold. Devotee, donation type, payment, purpose, UPI, and cheque are optional. Leave them blank and a scan is Cash under Coupon counter, with Donation as the purpose. Fill them in and every coupon in the batch uses those details. Choose an expiry, or leave no expiry. A Treasurer can approve up to <?= e(money(approval_limit('Treasurer'))) ?>. Above that, an Admin decides. The person who prepared the batch cannot approve it. It can be printed only after approval.</p>
   <form method="POST" action="<?= e(url('food/coupons')) ?>" data-coupon-expiry>
     <?= csrf_field() ?>
     <div class="form-grid cols-3">
@@ -109,7 +109,7 @@ $expiryInput = static function (mixed $value): string {
           <?php endforeach; ?>
         </select>
       </div>
-      <div class="form-group"><label><?= e(t('ui.purpose')) ?></label><input type="text" name="purpose" maxlength="200"></div>
+      <div class="form-group"><label><?= e(t('ui.purpose')) ?></label><input type="text" name="purpose" maxlength="200" placeholder="Donation"></div>
       <div class="form-group"><label><?= e(t('ui.upi_reference')) ?></label><input type="text" name="upi_reference" maxlength="64"></div>
       <div class="form-group"><label><?= e(t('ui.cheque_no')) ?></label><input type="text" name="cheque_number" maxlength="30"></div>
       <div class="form-group"><label><?= e(t('ui.cheque_date')) ?></label><input type="date" name="cheque_date"></div>

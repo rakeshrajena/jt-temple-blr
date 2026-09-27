@@ -91,7 +91,9 @@ function csrf_token(): string
 
 function csrf_field(): string
 {
-    return '<input type="hidden" name="csrf" value="' . e(csrf_token()) . '">';
+    $write = bin2hex(random_bytes(16));
+    return '<input type="hidden" name="csrf" value="' . e(csrf_token()) . '">'
+        . '<input type="hidden" name="write_token" value="' . e($write) . '">';
 }
 
 function require_csrf(): void
@@ -102,6 +104,37 @@ function require_csrf(): void
         http_response_code(419);
         echo 'Invalid form token. Go back and submit the form again.';
         exit;
+    }
+    $write = $_POST['write_token'] ?? '';
+    if (is_string($write) && $write !== '' && !claim_write($write)) {
+        http_response_code(409);
+        echo 'This was already saved. Go back and refresh the page before saving again.';
+        exit;
+    }
+}
+
+function claim_write(string $token): bool
+{
+    if (preg_match('/^[a-f0-9]{32}$/', $token) !== 1) {
+        return false;
+    }
+    try {
+        $pdo = db();
+    } catch (RuntimeException $e) {
+        if (str_contains($e->getMessage(), 'install.php')) {
+            return true;
+        }
+        throw $e;
+    }
+    try {
+        $stmt = $pdo->prepare('INSERT INTO write_claims (token) VALUES (?)');
+        $stmt->execute([$token]);
+        return true;
+    } catch (PDOException $e) {
+        if ((int) ($e->errorInfo[1] ?? 0) === 1062) {
+            return false;
+        }
+        throw $e;
     }
 }
 
@@ -220,7 +253,7 @@ function app_busy_overlay(): void
         . '<div class="busy-spin" aria-hidden="true"></div>'
         . '<p id="appBusyMessage">Please wait…</p>'
         . '</div></div>'
-        . '<script src="' . e(asset('js/busy.js')) . '?v=1"></script>';
+        . '<script src="' . e(asset('js/busy.js')) . '?v=2"></script>';
 }
 
 function render(string $template, array $vars = [], bool $useLayout = true): void

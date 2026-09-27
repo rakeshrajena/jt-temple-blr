@@ -1397,25 +1397,36 @@ function action_generate_receipt(int $donationId): void
 {
     login_required();
     $pdo = db();
-    $donation = db_one('SELECT * FROM donations WHERE id = ?', [$donationId]);
-    if ($donation === null) {
-        flash('error', 'Donation not found.');
-        redirect(url('donations'));
-    }
-    $donor = db_one('SELECT * FROM donors WHERE id = ?', [(int) $donation['donor_id']]);
-    if ($donor === null) {
-        flash('error', 'Donor not found.');
-        redirect(url('donations'));
-    }
     $pdo->beginTransaction();
     try {
-        $receiptNumber = $donation['receipt_number'] ?: next_receipt_number($pdo);
+        $donation = db_one('SELECT * FROM donations WHERE id = ? FOR UPDATE', [$donationId]);
+        if ($donation === null) {
+            $pdo->rollBack();
+            flash('error', 'Donation not found.');
+            redirect(url('donations'));
+        }
+        $donor = db_one('SELECT * FROM donors WHERE id = ?', [(int) $donation['donor_id']]);
+        if ($donor === null) {
+            $pdo->rollBack();
+            flash('error', 'Donor not found.');
+            redirect(url('donations'));
+        }
+        $existing = trim((string) ($donation['receipt_number'] ?? ''));
+        $receiptNumber = $existing !== '' ? $existing : next_receipt_number($pdo);
         $donation['receipt_share_token'] = receipt_ensure_share_token($donationId);
         generate_receipt_pdf($donation, $donor, (string) $receiptNumber);
-        db_exec(
-            'UPDATE donations SET receipt_number = ?, receipt_generated = 1 WHERE id = ?',
-            [$receiptNumber, $donationId]
-        );
+        if ($existing === '') {
+            $marked = db()->prepare(
+                "UPDATE donations SET receipt_number = ?, receipt_generated = 1
+                 WHERE id = ? AND (receipt_number IS NULL OR receipt_number = '')"
+            );
+            $marked->execute([$receiptNumber, $donationId]);
+            if ($marked->rowCount() !== 1) {
+                throw new RuntimeException('Receipt number was already saved.');
+            }
+        } else {
+            db_exec('UPDATE donations SET receipt_generated = 1 WHERE id = ?', [$donationId]);
+        }
         db_exec(
             'INSERT IGNORE INTO receipts (donation_id, receipt_number, generated_by) VALUES (?,?,?)',
             [$donationId, $receiptNumber, (int) $_SESSION['user_id']]
@@ -1930,16 +1941,18 @@ function action_decide_approval(int $id): void
     $couponBatch = null;
     $pdo->beginTransaction();
     try {
-        if (in_array($decision, ['approve', 'send_back', 'reject'], true)) {
-            db_exec(
-                'UPDATE approvals SET status = ?, decided_by = ?, decision_note = ? WHERE id = ?',
-                [$next, (int) $user['id'], $note !== '' ? $note : null, $id]
-            );
-        } else {
-            db_exec(
-                'UPDATE approvals SET status = ?, decided_by = NULL, decision_note = NULL WHERE id = ?',
-                [$next, $id]
-            );
+        $deciding = in_array($decision, ['approve', 'send_back', 'reject'], true);
+        $claimed = approval_claim_decision(
+            $id,
+            (string) $row['status'],
+            $next,
+            $deciding ? (int) $user['id'] : null,
+            $deciding && $note !== '' ? $note : null
+        );
+        if (!$claimed) {
+            $pdo->rollBack();
+            flash('error', 'This was already decided. Refresh the page to see the latest status.');
+            redirect(url('approvals'));
         }
         if ($row['subject_type'] === 'receipt' && $decision === 'approve') {
             apply_receipt_cancellation((int) $row['subject_id']);
@@ -2693,17 +2706,62 @@ function action_pay(string $token): void
 function action_pay_confirm(string $token): void
 {
     $inv = find_invoice_by_token($token);
-    if ($inv === null || $inv['status'] === 'Paid') {
+    if ($inv === null) {
         http_response_code(404);
         render('pay_invalid', [], false);
         return;
     }
+    if ($inv['status'] === 'Paid') {
+        render('pay_success', ['inv' => $inv, 'ref' => (string) ($inv['payment_reference'] ?? '')], false);
+        return;
+    }
     $paidVia = one_of(post_string('payment_method', 30), ['UPI', 'Card', 'Netbanking'], 'UPI');
     $ref = 'PAY-REF-' . strtoupper(bin2hex(random_bytes(4)));
+    $saved = record_paid_invoice((int) $inv['id'], $paidVia, $ref);
+    if ($saved === 'paid') {
+        $again = find_invoice_by_token($token);
+        render('pay_success', [
+            'inv' => $again ?? $inv,
+            'ref' => (string) (($again['payment_reference'] ?? '') !== '' ? $again['payment_reference'] : $ref),
+        ], false);
+        return;
+    }
+    if ($saved !== 'saved') {
+        http_response_code(500);
+        echo 'Payment could not be recorded.';
+        return;
+    }
+    render('pay_success', ['inv' => $inv, 'ref' => $ref], false);
+}
+
+function record_paid_invoice(int $invoiceId, string $paidVia, string $ref): string
+{
     $pdo = db();
-    $pdo->beginTransaction();
+    $own = !$pdo->inTransaction();
+    if ($own) {
+        $pdo->beginTransaction();
+    }
     try {
-        $donor = db_one('SELECT id FROM donors WHERE phone = ?', [$inv['mobile']]);
+        $inv = db_one(
+            'SELECT i.*, s.name, s.mobile, s.plan_name
+             FROM subscription_invoices i
+             JOIN subscribers s ON i.subscriber_id = s.id
+             WHERE i.id = ? FOR UPDATE',
+            [$invoiceId]
+        );
+        if ($inv === null) {
+            if ($own && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return 'error';
+        }
+        if ($inv['status'] === 'Paid') {
+            if ($own && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return 'paid';
+        }
+        $donor = db_one('SELECT id FROM donors WHERE phone = ? FOR UPDATE', [$inv['mobile']]);
         if ($donor === null) {
             $donorId = db_exec(
                 'INSERT INTO donors (name, phone) VALUES (?,?)',
@@ -2726,23 +2784,29 @@ function action_pay_confirm(string $token): void
                 $donationMode === 'UPI' ? $ref : null,
             ]
         );
-        db_exec(
+        $marked = db()->prepare(
             "UPDATE subscription_invoices
              SET status = 'Paid', paid_date = ?, payment_reference = ?, paid_via = ?, linked_donation_id = ?
-             WHERE id = ? AND status <> 'Paid'",
-            [date('Y-m-d H:i:s'), $ref, $paidVia, $donationId, (int) $inv['id']]
+             WHERE id = ? AND status <> 'Paid'"
         );
-        $pdo->commit();
+        $marked->execute([date('Y-m-d H:i:s'), $ref, $paidVia, $donationId, $invoiceId]);
+        if ($marked->rowCount() !== 1) {
+            throw new RuntimeException('Invoice was already paid.');
+        }
+        if ($own) {
+            $pdo->commit();
+        }
+        return 'saved';
     } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
+        if ($own && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log('[jt_blr] pay: ' . $e->getMessage());
-        http_response_code(500);
-        echo 'Payment could not be recorded.';
-        return;
+        if ($own) {
+            error_log('[jt_blr] pay: ' . $e->getMessage());
+            return 'error';
+        }
+        throw $e;
     }
-    render('pay_success', ['inv' => $inv, 'ref' => $ref], false);
 }
 
 function find_invoice_by_token(string $token): ?array

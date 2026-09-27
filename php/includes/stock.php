@@ -295,7 +295,11 @@ function apply_approved_stock(int $requestId): void
         (string) $request['movement_date'],
         (int) $request['prepared_by']
     );
-    db_exec('UPDATE stock_requests SET applied = 1 WHERE id = ?', [$requestId]);
+    $marked = db()->prepare('UPDATE stock_requests SET applied = 1 WHERE id = ? AND applied = 0');
+    $marked->execute([$requestId]);
+    if ($marked->rowCount() !== 1) {
+        throw new StockApplyException('This stock change was already saved.');
+    }
 }
 
 /**
@@ -474,7 +478,11 @@ function apply_approved_purchase(int $purchaseId): void
         ]
     );
     record_approval('expense', $expenseId, 'Approved', (float) $purchase['amount'], (int) $purchase['prepared_by']);
-    db_exec('UPDATE purchases SET expense_id = ? WHERE id = ?', [$expenseId, $purchaseId]);
+    $claimed = db()->prepare('UPDATE purchases SET expense_id = ? WHERE id = ? AND expense_id IS NULL');
+    $claimed->execute([$expenseId, $purchaseId]);
+    if ($claimed->rowCount() !== 1) {
+        throw new StockApplyException('This purchase was already saved.');
+    }
 }
 
 /**

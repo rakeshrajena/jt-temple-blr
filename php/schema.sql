@@ -393,6 +393,12 @@ CREATE TABLE app_settings (
     setting_value  TEXT NULL
 ) ENGINE=InnoDB;
 
+CREATE TABLE write_claims (
+    token       CHAR(32) NOT NULL PRIMARY KEY,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_write_claims_created (created_at)
+) ENGINE=InnoDB;
+
 CREATE TABLE invitations (
     id           INT AUTO_INCREMENT PRIMARY KEY,
     title        VARCHAR(120) NOT NULL,

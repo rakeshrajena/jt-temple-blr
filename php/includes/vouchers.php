@@ -171,6 +171,7 @@ function choose_reconcile_match(array $candidates, string $description, string $
 
 function next_voucher_number(PDO $pdo, string $expenseDate): string
 {
+    db_mutex($pdo, 'voucher_number');
     $year = substr(financial_year_start(financial_year_label($expenseDate)), 0, 4);
     $stmt = $pdo->prepare(
         'SELECT voucher_number FROM expenses WHERE voucher_number LIKE ? ORDER BY voucher_number DESC LIMIT 1'
