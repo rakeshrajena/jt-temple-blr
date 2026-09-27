@@ -102,6 +102,37 @@ try {
     }
 }
 
+$pdo = db();
+$pdo->beginTransaction();
+try {
+    $donorId = db_exec(
+        'INSERT INTO donors (name, email) VALUES (?,?)',
+        ['Invite Sent Person', 'invite-sent@example.com']
+    );
+    $inviteId = db_exec(
+        'INSERT INTO invitations (title, subject, blocks_json) VALUES (?,?,?)',
+        ['Sent box check', 'Sent box check', '[]']
+    );
+    $otherId = db_exec(
+        'INSERT INTO invitations (title, subject, blocks_json) VALUES (?,?,?)',
+        ['Other invitation', 'Other invitation', '[]']
+    );
+    invitation_record_send($inviteId, $donorId, 'Invite Sent Person', 'invite-sent@example.com');
+    $sent = invitation_sent_rows($inviteId);
+    check(
+        count($sent) === 1
+        && (string) $sent[0]['donor_name'] === 'Invite Sent Person'
+        && (string) $sent[0]['email'] === 'invite-sent@example.com',
+        'the sent box lists who received this invitation'
+    );
+    check(invitation_sent_rows($otherId) === [], 'a sent box stays with its own invitation');
+    check(invitation_sent_donor_ids($inviteId) === [$donorId], 'a devotee already sent this invitation is marked');
+} finally {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+}
+
 if ($failed > 0) {
     fwrite(STDERR, "{$failed} failed\n");
     exit(1);

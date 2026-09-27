@@ -25,12 +25,31 @@ function ensure_invitation_schema(PDO $pdo): void
             FOREIGN KEY (created_by) REFERENCES users(id)
         ) ENGINE=InnoDB'
     );
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS invitation_sends (
+            id              INT AUTO_INCREMENT PRIMARY KEY,
+            invitation_id   INT NOT NULL,
+            donor_id        INT NULL,
+            donor_name      VARCHAR(150) NOT NULL,
+            email           VARCHAR(120) NOT NULL,
+            status          ENUM('Sent','Failed') NOT NULL DEFAULT 'Sent',
+            sent_at         DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (invitation_id) REFERENCES invitations(id) ON DELETE CASCADE,
+            FOREIGN KEY (donor_id) REFERENCES donors(id) ON DELETE SET NULL,
+            KEY idx_invitation_sends (invitation_id, sent_at)
+        ) ENGINE=InnoDB"
+    );
 }
 
 /** @return list<array<string, mixed>> */
 function invitation_rows(): array
 {
-    return db_all('SELECT id, title, subject, updated_at FROM invitations ORDER BY updated_at DESC, id DESC');
+    return db_all(
+        "SELECT i.id, i.title, i.subject, i.updated_at,
+                (SELECT COUNT(*) FROM invitation_sends s WHERE s.invitation_id = i.id AND s.status = 'Sent') AS sent_count
+         FROM invitations i
+         ORDER BY i.updated_at DESC, i.id DESC"
+    );
 }
 
 /** @return array<string, mixed>|null */
@@ -357,6 +376,39 @@ function invitation_email_donors(): array
     return $donors;
 }
 
+function invitation_record_send(int $invitationId, int $donorId, string $name, string $email): void
+{
+    db_exec(
+        "INSERT INTO invitation_sends (invitation_id, donor_id, donor_name, email, status) VALUES (?,?,?,?, 'Sent')",
+        [$invitationId, $donorId, mb_substr(trim($name), 0, 150), mb_substr(trim($email), 0, 120)]
+    );
+}
+
+/** @return list<array<string, mixed>> */
+function invitation_sent_rows(int $invitationId): array
+{
+    return db_all(
+        "SELECT donor_id, donor_name, email, sent_at
+         FROM invitation_sends
+         WHERE invitation_id = ? AND status = 'Sent'
+         ORDER BY sent_at DESC, id DESC",
+        [$invitationId]
+    );
+}
+
+/** @return list<int> */
+function invitation_sent_donor_ids(int $invitationId): array
+{
+    $ids = [];
+    foreach (invitation_sent_rows($invitationId) as $row) {
+        $id = (int) ($row['donor_id'] ?? 0);
+        if ($id > 0) {
+            $ids[$id] = $id;
+        }
+    }
+    return array_values($ids);
+}
+
 function invitation_send_error(int $count, bool $ready, bool $hasContent): ?string
 {
     if (!$hasContent) {
@@ -569,6 +621,8 @@ function action_invitation_send_page(int $id): void
         'invitation' => $row,
         'ready' => invitation_has_content($parsed['blocks']),
         'donors' => invitation_email_donors(),
+        'sent' => invitation_sent_rows($id),
+        'sentDonorIds' => invitation_sent_donor_ids($id),
         'mailReady' => smtp_is_ready(load_messaging_settings()),
     ]);
 }
@@ -621,6 +675,7 @@ function action_invitation_send(int $id): void
             $failed++;
             continue;
         }
+        invitation_record_send($id, $donorId, $name, $email);
         notify_log('EMAIL', $email, 'Sent. ' . $subject);
         $sent++;
     }

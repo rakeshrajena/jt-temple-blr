@@ -24,6 +24,7 @@
           <td><?= e((string) $invitation['updated_at']) ?></td>
           <td>
             <a class="btn btn-outline btn-sm" href="<?= e(url('invitations/' . $invitation['id'] . '/send')) ?>">Send</a>
+            <a class="btn btn-outline btn-sm" href="<?= e(url('invitations/' . $invitation['id'] . '/send')) ?>#sent-box">Sent box (<?= e((string) (int) $invitation['sent_count']) ?>)</a>
           </td>
         </tr>
       <?php endforeach; ?>

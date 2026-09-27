@@ -392,3 +392,16 @@ CREATE TABLE invitations (
     updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (created_by) REFERENCES users(id)
 ) ENGINE=InnoDB;
+
+CREATE TABLE invitation_sends (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    invitation_id   INT NOT NULL,
+    donor_id        INT NULL,
+    donor_name      VARCHAR(150) NOT NULL,
+    email           VARCHAR(120) NOT NULL,
+    status          ENUM('Sent','Failed') NOT NULL DEFAULT 'Sent',
+    sent_at         DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (invitation_id) REFERENCES invitations(id) ON DELETE CASCADE,
+    FOREIGN KEY (donor_id) REFERENCES donors(id) ON DELETE SET NULL,
+    KEY idx_invitation_sends (invitation_id, sent_at)
+) ENGINE=InnoDB;
