@@ -281,19 +281,18 @@ function reconcile_transactions(PDO $pdo, array $transactionIds): int
     $matched = 0;
     $findTxn = $pdo->prepare('SELECT * FROM bank_transactions WHERE id = ?');
     $findDonation = $pdo->prepare(
-        "SELECT id FROM donations
+        "SELECT id, donation_date AS entry_date, upi_reference, cheque_number
+         FROM donations
          WHERE reconciled_bank_txn_id IS NULL
            AND amount IS NOT NULL
-           AND ABS(amount - ?) < 0.01
-           AND donation_date BETWEEN ? AND ?
-         ORDER BY donation_date LIMIT 1"
+           AND ABS(amount - ?) < 0.01"
     );
     $findExpense = $pdo->prepare(
-        "SELECT id FROM expenses
-         WHERE reconciled_bank_txn_id IS NULL
-           AND ABS(amount - ?) < 0.01
-           AND expense_date BETWEEN ? AND ?
-         ORDER BY expense_date LIMIT 1"
+        "SELECT e.id, e.expense_date AS entry_date, e.upi_reference, e.cheque_number
+         FROM expenses e
+         JOIN approvals a ON a.subject_type = 'expense' AND a.subject_id = e.id AND a.status = 'Approved'
+         WHERE e.reconciled_bank_txn_id IS NULL
+           AND ABS(e.amount - ?) < 0.01"
     );
     $markDonation = $pdo->prepare(
         "UPDATE bank_transactions SET reconciled_status='Matched', matched_donation_id=? WHERE id=?"
@@ -310,27 +309,26 @@ function reconcile_transactions(PDO $pdo, array $transactionIds): int
         if ($txn === false) {
             continue;
         }
-        $txnDate = new DateTimeImmutable((string) $txn['txn_date']);
-        $windowStart = $txnDate->modify('-3 days')->format('Y-m-d');
-        $windowEnd = $txnDate->modify('+3 days')->format('Y-m-d');
         $amount = (float) $txn['amount'];
+        $description = (string) ($txn['description'] ?? '');
+        $txnDate = (string) $txn['txn_date'];
 
         if ($txn['txn_type'] === 'Credit') {
-            $findDonation->execute([$amount, $windowStart, $windowEnd]);
-            $match = $findDonation->fetch();
-            if ($match !== false) {
-                $markDonation->execute([(int) $match['id'], $txnId]);
-                $linkDonation->execute([$txnId, (int) $match['id']]);
+            $findDonation->execute([$amount]);
+            $matchId = choose_reconcile_match($findDonation->fetchAll(), $description, $txnDate);
+            if ($matchId !== null) {
+                $markDonation->execute([$matchId, $txnId]);
+                $linkDonation->execute([$txnId, $matchId]);
                 $matched++;
             }
             continue;
         }
 
-        $findExpense->execute([$amount, $windowStart, $windowEnd]);
-        $match = $findExpense->fetch();
-        if ($match !== false) {
-            $markExpense->execute([(int) $match['id'], $txnId]);
-            $linkExpense->execute([$txnId, (int) $match['id']]);
+        $findExpense->execute([$amount]);
+        $matchId = choose_reconcile_match($findExpense->fetchAll(), $description, $txnDate);
+        if ($matchId !== null) {
+            $markExpense->execute([$matchId, $txnId]);
+            $linkExpense->execute([$txnId, $matchId]);
             $matched++;
         }
     }

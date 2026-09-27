@@ -14,17 +14,18 @@ Two copies of the same admin app live in this repo:
 1. Start Apache and MySQL in AMPPS.
 2. Open [http://localhost/jt_blr/jt-temple-blr/php/](http://localhost/jt_blr/jt-temple-blr/php/).
 
-The first request creates the `jt_blr` database, the tables, and the demo records. Database settings are in `php/config.php` (localhost, user `root`, password `mysql`).
+The first request on this computer creates the `sjt_temple_blr` database, the tables, and the demo records. Database settings are in `php/config.php` (localhost, user `root`, password `mysql`). On the hosting server, upload the `php` folder including `storage`, keep that server’s `.env`, and open `install.php`. Tick replace when devotees are already there so `storage/install/books.jsonl` is loaded. Form choices, including puja purposes and amounts, are in `storage/selections.json` and come with the folder. The steps, and full-screen pictures of the current registers, are in [docs/USER-GUIDE.md](docs/USER-GUIDE.md). App contributors is visible to everyone who is signed in. Only an Admin can change those cards.
 
 | Username | Password | Role |
 |---|---|---|
 | admin | temple@123 | Admin |
 | ramesh | ramesh@123 | Admin |
+| treasurer | treasurer@123 | Treasurer |
 | staff1 | staff@123 | Staff |
 
-Staff can use every module except Users. Only an Admin can add or deactivate accounts.
+Staff can use every module except Users. A Treasurer can approve up to ₹10,000. Stock written off above 5 units also waits for approval. Only an Admin can add or deactivate accounts, and an Admin approves amounts above that limit.
 
-Generated receipt PDFs, coupon PDFs, uploaded bank statements, and logs stay in `php/storage/` and are not part of the git history. See [php/README.md](php/README.md) for modules, subscriptions, and layout.
+Generated receipt PDFs, coupon PDFs, uploaded bank statements, and logs stay in `php/storage/` and are not part of the git history. See [php/README.md](php/README.md) for modules, subscriptions, and layout. See [FEATURES.md](FEATURES.md) for what the PHP app already does and what is still to add.
 
 ## Python (Flask)
 

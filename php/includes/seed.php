@@ -15,6 +15,7 @@ final class Seed
             self::donations($pdo);
             self::expenses($pdo);
             self::subscriptions($pdo);
+            self::operations($pdo);
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
@@ -22,6 +23,8 @@ final class Seed
             }
             throw $e;
         }
+        backfill_voucher_numbers($pdo);
+        backfill_approvals($pdo);
     }
 
     private static function users(PDO $pdo): void
@@ -29,12 +32,18 @@ final class Seed
         $stmt = $pdo->prepare(
             'INSERT INTO users (username, password_hash, full_name, role) VALUES (?,?,?,?)'
         );
+        $existing = $pdo->prepare('SELECT id FROM users WHERE username = ?');
         $users = [
             ['admin', 'temple@123', 'Temple Administrator', 'Admin'],
             ['ramesh', 'ramesh@123', 'Ramesh Patra (Trustee)', 'Admin'],
             ['staff1', 'staff@123', 'Suresh (Store Keeper)', 'Staff'],
+            ['treasurer', 'treasurer@123', 'Lakshmi (Treasurer)', 'Treasurer'],
         ];
         foreach ($users as [$username, $password, $name, $role]) {
+            $existing->execute([$username]);
+            if ($existing->fetch() !== false) {
+                continue;
+            }
             $stmt->execute([$username, password_hash($password, PASSWORD_DEFAULT), $name, $role]);
         }
     }
@@ -295,6 +304,142 @@ final class Seed
             ]);
             $link->execute([(int) $pdo->lastInsertId(), $invoiceId]);
         }
+    }
+
+    private static function operations(PDO $pdo): void
+    {
+        $userId = (int) $pdo->query('SELECT id FROM users ORDER BY id LIMIT 1')->fetchColumn();
+        $itemId = self::idByName($pdo, 'inventory_items', 'name', 'Plastic Chairs');
+        $foodId = self::idByName($pdo, 'food_items', 'name', 'Rice');
+        $firstGift = $pdo->query('SELECT id, amount FROM donations ORDER BY id LIMIT 1')->fetch();
+        $donationId = is_array($firstGift) ? (int) $firstGift['id'] : 0;
+        $openDonationId = (int) $pdo->query(
+            'SELECT id FROM donations WHERE receipt_number IS NULL ORDER BY id LIMIT 1'
+        )->fetchColumn();
+        $annadaanDonor = self::idByName($pdo, 'donors', 'phone', '9861012345');
+        $vastraDonor = self::idByName($pdo, 'donors', 'phone', '9845123456');
+
+        $pledge = $pdo->prepare(
+            'INSERT INTO pledges (donor_id, purpose, pledged_amount, pledge_date, note, created_by) VALUES (?,?,?,?,?,?)'
+        );
+        $pledge->execute([$annadaanDonor, 'Annadaan', 25000, self::ago(40), 'Pledge for the year', $userId]);
+        $pledgeId = (int) $pdo->lastInsertId();
+        $pledge->execute([$vastraDonor, 'Vastra Seva', 10000, self::ago(21), null, $userId]);
+        if ($openDonationId > 0) {
+            $pdo->prepare('UPDATE donations SET pledge_id = ? WHERE id = ?')->execute([$pledgeId, $openDonationId]);
+        }
+
+        if ($itemId > 0) {
+            $move = $pdo->prepare(
+                'INSERT INTO inventory_movements (item_id, movement_type, quantity, note, movement_date, logged_by) VALUES (?,?,?,?,?,?)'
+            );
+            $move->execute([$itemId, 'Added', 150, 'Opening stock of chairs', self::ago(120), $userId]);
+            $move->execute([$itemId, 'Issued', 20, 'Ratha Yatra seating', self::ago(14), $userId]);
+
+            $purchase = $pdo->prepare(
+                'INSERT INTO purchases (item_id, item_name, category, unit, quantity, unit_cost, amount, location, paid_to, purchase_date, payment_mode, prepared_by)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
+            );
+            $purchase->execute([
+                $itemId, 'Plastic Chairs', 'Furniture', 'pcs', 50, 180, 9000,
+                'Store Room', 'Local Furniture Mart', self::ago(120), 'Bank Transfer', $userId,
+            ]);
+            $purchaseId = (int) $pdo->lastInsertId();
+            self::approval($pdo, 'purchase', $purchaseId, 'Approved', 9000, $userId);
+        }
+
+        if ($foodId > 0) {
+            $stock = $pdo->prepare(
+                'INSERT INTO stock_requests (store_name, item_id, item_name, movement_type, quantity, note, movement_date, prepared_by, applied)
+                 VALUES (?,?,?,?,?,?,?,?,0)'
+            );
+            $stock->execute(['food', $foodId, 'Rice', 'Lost', 2, 'Spillage during storage', self::ago(1), $userId]);
+            self::approval($pdo, 'stock', (int) $pdo->lastInsertId(), 'Waiting', 0, $userId);
+        }
+
+        $year = financial_year_label(date('Y-m-d'));
+        $pdo->prepare(
+            'INSERT INTO opening_balances (financial_year, cash_amount, bank_amount, note, set_by) VALUES (?,?,?,?,?)'
+        )->execute([$year, 25000, 180000, 'Opening balance brought forward', $userId]);
+
+        $contra = $pdo->prepare(
+            'INSERT INTO contra_entries (entry_date, direction, amount, note, entered_by) VALUES (?,?,?,?,?)'
+        );
+        $contra->execute([self::ago(6), 'Deposit', 10000, 'Cash deposited to the temple bank account', $userId]);
+        $contra->execute([self::ago(2), 'Withdraw', 2000, 'Cash drawn for daily puja', $userId]);
+
+        $pdo->prepare(
+            'INSERT INTO food_coupon_batches (coupon_name, cost, start_sl_no, end_sl_no, quantity, total_value, created_date, created_by, issued_unix)
+             VALUES (?,?,?,?,?,?,?,?,?)'
+        )->execute(['Mahaprasad coupon', 50, 1, 10, 10, 500, self::ago(0), $userId, time()]);
+
+        if ($donationId > 0) {
+            $correction = $pdo->prepare(
+                'INSERT INTO corrections (subject_type, subject_id, original_amount, corrected_amount, reason, entry_date, prepared_by)
+                 VALUES (?,?,?,?,?,?,?)'
+            );
+            $original = round((float) ($firstGift['amount'] ?? 0), 2);
+            $correction->execute([
+                'donation',
+                $donationId,
+                $original,
+                $original + 100,
+                'Counted again and found 100 rupees more.',
+                self::ago(1),
+                $userId,
+            ]);
+            self::approval($pdo, 'correction', (int) $pdo->lastInsertId(), 'Approved', 100, $userId);
+
+            $cancel = $pdo->prepare(
+                'INSERT INTO receipt_cancellations (donation_id, reason, prepared_by) VALUES (?,?,?)'
+            );
+            $cancel->execute([$openDonationId > 0 ? $openDonationId : $donationId, 'Devotee asked for the gift to be recorded again.', $userId]);
+            self::approval($pdo, 'receipt', (int) $pdo->lastInsertId(), 'Waiting', 0, $userId);
+        }
+
+        $receipts = $pdo->query(
+            'SELECT id, receipt_number, created_by FROM donations WHERE receipt_number IS NOT NULL'
+        );
+        $saveReceipt = $pdo->prepare(
+            'INSERT INTO receipts (donation_id, receipt_number, generated_by) VALUES (?,?,?)'
+        );
+        if ($receipts !== false) {
+            foreach ($receipts as $receipt) {
+                $saveReceipt->execute([(int) $receipt['id'], (string) $receipt['receipt_number'], $userId]);
+            }
+        }
+
+        $upload = $pdo->prepare(
+            'INSERT INTO bank_statement_uploads (filename, uploaded_by, total_transactions) VALUES (?,?,?)'
+        );
+        $upload->execute(['temple-bank-statement.csv', $userId, 3]);
+        $batchId = (int) $pdo->lastInsertId();
+        $bank = $pdo->prepare(
+            'INSERT INTO bank_transactions (upload_batch_id, txn_date, description, amount, txn_type, balance, reconciled_status)
+             VALUES (?,?,?,?,?,?,?)'
+        );
+        $bank->execute([$batchId, self::ago(12), 'NEFT donation', 15000, 'Credit', 195000, 'Unmatched']);
+        $bank->execute([$batchId, self::ago(8), 'Rice supplier', 8500, 'Debit', 186500, 'Unmatched']);
+        $bank->execute([$batchId, self::ago(6), 'Cash deposit', 10000, 'Credit', 196500, 'Unmatched']);
+
+        $pdo->prepare(
+            'INSERT INTO app_settings (setting_key, setting_value) VALUES (?,?)
+             ON DUPLICATE KEY UPDATE setting_key = setting_key'
+        )->execute(['brand_name', 'Shree Jagannath Temple']);
+    }
+
+    private static function idByName(PDO $pdo, string $table, string $column, string $name): int
+    {
+        $stmt = $pdo->prepare('SELECT id FROM ' . $table . ' WHERE ' . $column . ' = ? LIMIT 1');
+        $stmt->execute([$name]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    private static function approval(PDO $pdo, string $type, int $subjectId, string $status, float $amount, int $userId): void
+    {
+        $pdo->prepare(
+            'INSERT INTO approvals (subject_type, subject_id, status, amount, prepared_by) VALUES (?,?,?,?,?)'
+        )->execute([$type, $subjectId, $status, $amount, $userId]);
     }
 
     private static function ago(int $days): string

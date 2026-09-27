@@ -1,0 +1,278 @@
+{
+    "inventory_categories": [
+        "Hardware",
+        "Electronics",
+        "Furniture",
+        "Puja Items",
+        "Kitchen Equipment",
+        "Decoration",
+        "Other"
+    ],
+    "expense_categories": [
+        "Food Supplies",
+        "Maintenance",
+        "Utilities",
+        "Salaries",
+        "Festival",
+        "Decoration",
+        "Other"
+    ],
+    "units": [
+        "pcs",
+        "kg",
+        "gram",
+        "litre",
+        "packet",
+        "metre"
+    ],
+    "conditions": [
+        "New",
+        "Good",
+        "Fair",
+        "Needs Repair",
+        "Damaged",
+        "Retired"
+    ],
+    "sources": [
+        "Purchased",
+        "Donated"
+    ],
+    "payment_modes": [
+        {
+            "name": "Cash",
+            "book": "cash"
+        },
+        {
+            "name": "Bank Transfer",
+            "book": "bank"
+        },
+        {
+            "name": "UPI",
+            "book": "bank"
+        },
+        {
+            "name": "Cheque",
+            "book": "bank"
+        },
+        {
+            "name": "Card",
+            "book": "bank"
+        },
+        {
+            "name": "Netbanking",
+            "book": "bank"
+        },
+        {
+            "name": "In-Kind",
+            "book": "none"
+        }
+    ],
+    "movements": [
+        {
+            "name": "Added",
+            "direction": "in",
+            "approval": false,
+            "store": "both"
+        },
+        {
+            "name": "Issued",
+            "direction": "out",
+            "approval": false,
+            "store": "inventory"
+        },
+        {
+            "name": "Returned",
+            "direction": "in",
+            "approval": false,
+            "store": "inventory"
+        },
+        {
+            "name": "Damaged",
+            "direction": "out",
+            "approval": true,
+            "store": "inventory"
+        },
+        {
+            "name": "Lost",
+            "direction": "out",
+            "approval": true,
+            "store": "inventory"
+        },
+        {
+            "name": "Retired",
+            "direction": "out",
+            "approval": true,
+            "store": "inventory"
+        },
+        {
+            "name": "Used",
+            "direction": "out",
+            "approval": true,
+            "store": "food"
+        }
+    ],
+    "vastra_statuses": [
+        "In Store",
+        "In Use",
+        "Retired"
+    ],
+    "donation_types": [
+        {
+            "value": "Cash",
+            "label": "Cash"
+        },
+        {
+            "value": "Food",
+            "label": "Food (in-kind)"
+        },
+        {
+            "value": "Vastra",
+            "label": "Vastra \/ Cloths (in-kind)"
+        },
+        {
+            "value": "Inventory",
+            "label": "Inventory Item (in-kind)"
+        },
+        {
+            "value": "Other",
+            "label": "Other"
+        }
+    ],
+    "purposes": [
+        "General",
+        "Annadaan",
+        "Ratha Yatra",
+        "Construction",
+        "Vastra Seva"
+    ],
+    "puja_purposes": [
+        {
+            "name": "Daily \/ Regular Puja",
+            "amount": 51
+        },
+        {
+            "name": "Satyanarayan Puja",
+            "amount": 501
+        },
+        {
+            "name": "House Warming \/ Griha Pravesh",
+            "amount": 1101
+        },
+        {
+            "name": "Vehicle Puja",
+            "amount": 251
+        },
+        {
+            "name": "Annaprashana",
+            "amount": 501
+        },
+        {
+            "name": "Naming Ceremony",
+            "amount": 501
+        },
+        {
+            "name": "Marriage \/ Vivaha",
+            "amount": 2101
+        },
+        {
+            "name": "Upanayana \/ Thread Ceremony",
+            "amount": 1101
+        },
+        {
+            "name": "Mundan Ceremony",
+            "amount": 351
+        },
+        {
+            "name": "Shraddha \/ Pitru Puja",
+            "amount": 501
+        },
+        {
+            "name": "Birthday \/ Ayushya Puja",
+            "amount": 251
+        },
+        {
+            "name": "Ganesh Puja",
+            "amount": 251
+        },
+        {
+            "name": "Shiva Puja \/ Rudrabhishek",
+            "amount": 501
+        },
+        {
+            "name": "Lakshmi Puja",
+            "amount": 251
+        },
+        {
+            "name": "Durga Puja",
+            "amount": 501
+        },
+        {
+            "name": "Hanuman Puja",
+            "amount": 151
+        },
+        {
+            "name": "Navagraha Puja",
+            "amount": 1101
+        },
+        {
+            "name": "Health & Well-being",
+            "amount": 251
+        },
+        {
+            "name": "Career \/ Success",
+            "amount": 251
+        },
+        {
+            "name": "Business \/ Prosperity",
+            "amount": 501
+        },
+        {
+            "name": "Family Welfare",
+            "amount": 251
+        },
+        {
+            "name": "Festival \/ Special Puja",
+            "amount": 501
+        },
+        {
+            "name": "Manasika Jagna",
+            "amount": 1101
+        },
+        {
+            "name": "Full Day Ritual Puja",
+            "amount": 2101
+        },
+        {
+            "name": "Other",
+            "amount": 101
+        }
+    ],
+    "plans": [
+        "Mahaprasad",
+        "Flower and Bhog",
+        "Deepa Seva",
+        "Annadan Seva",
+        "Monthly Annadaan Seva",
+        "Monthly Mahaprasad Seva",
+        "Monthly Deepa Seva",
+        "Quarterly Vastra Seva",
+        "Yearly Nitya Seva"
+    ],
+    "billing_cycles": [
+        "Monthly",
+        "Quarterly",
+        "Yearly"
+    ],
+    "subscriber_statuses": [
+        "Active",
+        "Inactive",
+        "Paused",
+        "Cancelled"
+    ],
+    "deities": [
+        "Jagannath",
+        "Balabhadra",
+        "Subhadra",
+        "Sudarshan"
+    ]
+}

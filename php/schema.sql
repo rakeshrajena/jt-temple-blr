@@ -1,12 +1,12 @@
 -- Shree Jagannath Temple admin schema (MySQL 8 / PHP 8).
--- Database jt_blr is created by the installer before this file runs.
+-- The database itself must already exist. install.php creates these tables inside it.
 
 CREATE TABLE users (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     username        VARCHAR(50) NOT NULL UNIQUE,
     password_hash   VARCHAR(255) NOT NULL,
     full_name       VARCHAR(100) NOT NULL,
-    role            ENUM('Admin', 'Staff') NOT NULL DEFAULT 'Staff',
+    role            ENUM('Admin', 'Treasurer', 'Staff') NOT NULL DEFAULT 'Staff',
     is_active       TINYINT(1) NOT NULL DEFAULT 1,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -17,10 +17,11 @@ CREATE TABLE inventory_items (
     name            VARCHAR(150) NOT NULL,
     description     TEXT,
     quantity        INT NOT NULL DEFAULT 0,
+    unit_cost       DECIMAL(12,2) NOT NULL DEFAULT 0,
     unit            VARCHAR(30) DEFAULT 'pcs',
-    item_condition  ENUM('New','Good','Fair','Needs Repair','Damaged') DEFAULT 'Good',
+    item_condition  VARCHAR(30) NOT NULL DEFAULT 'Good',
     location        VARCHAR(100),
-    source          ENUM('Purchased','Donated') DEFAULT 'Purchased',
+    source          VARCHAR(30) NOT NULL DEFAULT 'Purchased',
     donation_id     INT NULL,
     added_date      DATE NOT NULL,
     added_by        INT,
@@ -40,7 +41,7 @@ CREATE TABLE food_items (
 CREATE TABLE food_usage_log (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     food_item_id    INT NOT NULL,
-    txn_type        ENUM('Added','Used') NOT NULL,
+    txn_type        VARCHAR(30) NOT NULL,
     quantity        DECIMAL(10,2) NOT NULL,
     purpose         VARCHAR(200),
     txn_date        DATE NOT NULL,
@@ -49,16 +50,72 @@ CREATE TABLE food_usage_log (
     FOREIGN KEY (logged_by) REFERENCES users(id)
 ) ENGINE=InnoDB;
 
+CREATE TABLE inventory_movements (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    item_id         INT NOT NULL,
+    movement_type   VARCHAR(30) NOT NULL,
+    quantity        INT NOT NULL,
+    note            VARCHAR(255) NULL,
+    movement_date   DATE NOT NULL,
+    logged_by       INT NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (item_id) REFERENCES inventory_items(id),
+    FOREIGN KEY (logged_by) REFERENCES users(id),
+    KEY idx_inventory_movement_item (item_id),
+    KEY idx_inventory_movement_date (movement_date)
+) ENGINE=InnoDB;
+
+CREATE TABLE stock_requests (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    store_name      ENUM('food','inventory') NOT NULL,
+    item_id         INT NOT NULL,
+    item_name       VARCHAR(150) NOT NULL,
+    movement_type   VARCHAR(30) NOT NULL,
+    quantity        DECIMAL(12,2) NOT NULL,
+    note            VARCHAR(255) NULL,
+    movement_date   DATE NOT NULL,
+    prepared_by     INT NOT NULL,
+    applied         TINYINT(1) NOT NULL DEFAULT 0,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (prepared_by) REFERENCES users(id),
+    KEY idx_stock_request_item (store_name, item_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE purchases (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    item_id         INT NULL,
+    item_name       VARCHAR(150) NOT NULL,
+    category        VARCHAR(50) NOT NULL,
+    unit            VARCHAR(30) NOT NULL DEFAULT 'pcs',
+    quantity        INT NOT NULL,
+    unit_cost       DECIMAL(12,2) NOT NULL,
+    amount          DECIMAL(12,2) NOT NULL,
+    location        VARCHAR(100) NULL,
+    paid_to         VARCHAR(150) NULL,
+    purchase_date   DATE NOT NULL,
+    payment_mode    VARCHAR(30) NOT NULL,
+    cheque_number   VARCHAR(30) NULL,
+    cheque_date     DATE NULL,
+    cheque_cleared  TINYINT(1) NOT NULL DEFAULT 0,
+    upi_reference   VARCHAR(64) NULL,
+    expense_id      INT NULL,
+    prepared_by     INT NOT NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (item_id) REFERENCES inventory_items(id),
+    FOREIGN KEY (prepared_by) REFERENCES users(id),
+    KEY idx_purchase_date (purchase_date)
+) ENGINE=InnoDB;
+
 CREATE TABLE vastra_items (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     deity_name      VARCHAR(100) NOT NULL,
     item_name       VARCHAR(150) NOT NULL,
     color           VARCHAR(50),
     quantity        INT NOT NULL DEFAULT 1,
-    source          ENUM('Purchased','Donated') DEFAULT 'Purchased',
+    source          VARCHAR(30) NULL DEFAULT 'Purchased',
     donation_id     INT NULL,
     date_added      DATE NOT NULL,
-    status          ENUM('In Store','In Use','Retired') DEFAULT 'In Store',
+    status          VARCHAR(30) NULL DEFAULT 'In Store',
     notes           TEXT
 ) ENGINE=InnoDB;
 
@@ -75,23 +132,48 @@ CREATE TABLE donors (
 CREATE TABLE donations (
     id                      INT AUTO_INCREMENT PRIMARY KEY,
     donor_id                INT NOT NULL,
-    donation_type           ENUM('Cash','Food','Vastra','Inventory','Other') NOT NULL,
+    donation_type           VARCHAR(30) NOT NULL,
     amount                  DECIMAL(12,2) DEFAULT NULL,
     linked_food_id          INT NULL,
     linked_vastra_id        INT NULL,
     linked_inventory_id     INT NULL,
     purpose                 VARCHAR(200),
     donation_date           DATE NOT NULL,
-    payment_mode            ENUM('Cash','Bank Transfer','UPI','Cheque','In-Kind','Card','Netbanking') NOT NULL,
+    payment_mode            VARCHAR(30) NOT NULL,
     receipt_number          VARCHAR(30) UNIQUE,
     receipt_generated       TINYINT(1) DEFAULT 0,
+    receipt_cancelled       TINYINT(1) NOT NULL DEFAULT 0,
+    receipt_share_token     VARCHAR(64) NULL,
+    cheque_number           VARCHAR(30) NULL,
+    cheque_date             DATE NULL,
+    cheque_cleared          TINYINT(1) NOT NULL DEFAULT 0,
+    upi_reference           VARCHAR(64) NULL,
     reconciled_bank_txn_id  INT NULL,
+    pledge_id               INT NULL,
     notes                   TEXT,
     created_by              INT,
     created_at              DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (donor_id) REFERENCES donors(id),
-    FOREIGN KEY (created_by) REFERENCES users(id)
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    UNIQUE KEY uq_receipt_share_token (receipt_share_token)
 ) ENGINE=InnoDB;
+
+CREATE TABLE pledges (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    donor_id        INT NOT NULL,
+    purpose         VARCHAR(200) NOT NULL,
+    pledged_amount  DECIMAL(12,2) NOT NULL,
+    pledge_date     DATE NOT NULL,
+    note            VARCHAR(255) NULL,
+    created_by      INT NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (donor_id) REFERENCES donors(id),
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    KEY idx_pledge_donor (donor_id),
+    KEY idx_pledge_date (pledge_date)
+) ENGINE=InnoDB;
+
+ALTER TABLE donations ADD CONSTRAINT fk_donation_pledge FOREIGN KEY (pledge_id) REFERENCES pledges(id);
 
 CREATE TABLE expenses (
     id                      INT AUTO_INCREMENT PRIMARY KEY,
@@ -100,7 +182,13 @@ CREATE TABLE expenses (
     amount                  DECIMAL(12,2) NOT NULL,
     paid_to                 VARCHAR(150),
     expense_date            DATE NOT NULL,
-    payment_mode            ENUM('Cash','Bank Transfer','UPI','Cheque') NOT NULL,
+    payment_mode            VARCHAR(30) NOT NULL,
+    voucher_number          VARCHAR(30) NULL UNIQUE,
+    cheque_number           VARCHAR(30) NULL,
+    cheque_date             DATE NULL,
+    cheque_cleared          TINYINT(1) NOT NULL DEFAULT 0,
+    upi_reference           VARCHAR(64) NULL,
+    bill_filename           VARCHAR(255) NULL,
     reconciled_bank_txn_id  INT NULL,
     receipt_ref             VARCHAR(100),
     added_by                INT,
@@ -149,12 +237,27 @@ CREATE TABLE subscribers (
     name            VARCHAR(150) NOT NULL,
     mobile          VARCHAR(15) NOT NULL UNIQUE,
     email           VARCHAR(120),
+    family_members  VARCHAR(300) NULL,
+    gotra           VARCHAR(80) NULL,
+    seva_date       DATE NULL,
     plan_name       VARCHAR(100) NOT NULL DEFAULT 'Monthly Seva',
     plan_amount     DECIMAL(10,2) NOT NULL,
-    frequency       ENUM('Monthly','Quarterly','Yearly') NOT NULL DEFAULT 'Monthly',
-    status          ENUM('Active','Paused','Cancelled') NOT NULL DEFAULT 'Active',
+    frequency       VARCHAR(20) NOT NULL DEFAULT 'Monthly',
+    status          VARCHAR(30) NOT NULL DEFAULT 'Active',
     start_date      DATE NOT NULL,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE subscriber_status_log (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    subscriber_id   INT NOT NULL,
+    from_status     VARCHAR(30) NOT NULL,
+    to_status       VARCHAR(30) NOT NULL,
+    changed_by      INT NULL,
+    changed_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_subscriber_status_log_subscriber (subscriber_id),
+    FOREIGN KEY (subscriber_id) REFERENCES subscribers(id) ON DELETE CASCADE,
+    FOREIGN KEY (changed_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE subscription_invoices (
@@ -177,6 +280,32 @@ CREATE TABLE subscription_invoices (
     FOREIGN KEY (linked_donation_id) REFERENCES donations(id)
 ) ENGINE=InnoDB;
 
+CREATE TABLE opening_balances (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    financial_year  CHAR(9) NOT NULL,
+    cash_amount     DECIMAL(12,2) NOT NULL DEFAULT 0,
+    bank_amount     DECIMAL(12,2) NOT NULL DEFAULT 0,
+    note            VARCHAR(255) NULL,
+    pending_cash    DECIMAL(12,2) NULL,
+    pending_bank    DECIMAL(12,2) NULL,
+    pending_note    VARCHAR(255) NULL,
+    set_by          INT NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_opening_year (financial_year),
+    FOREIGN KEY (set_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE contra_entries (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    entry_date      DATE NOT NULL,
+    direction       ENUM('Deposit','Withdraw') NOT NULL,
+    amount          DECIMAL(12,2) NOT NULL,
+    note            VARCHAR(255) NULL,
+    entered_by      INT NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (entered_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
 CREATE TABLE food_coupon_batches (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     coupon_name     VARCHAR(100) NOT NULL,
@@ -187,7 +316,39 @@ CREATE TABLE food_coupon_batches (
     total_value     DECIMAL(12,2) NOT NULL,
     created_date    DATE NOT NULL,
     created_by      INT,
+    issued_unix     INT UNSIGNED NULL,
+    expires_at      DATETIME NULL,
+    donor_name      VARCHAR(150) NULL,
+    donor_phone     VARCHAR(20) NULL,
+    donor_email     VARCHAR(120) NULL,
+    donor_address   VARCHAR(500) NULL,
+    donor_pan       VARCHAR(10) NULL,
+    donation_type   VARCHAR(30) NULL,
+    payment_mode    VARCHAR(30) NULL,
+    purpose         VARCHAR(200) NULL,
+    upi_reference   VARCHAR(64) NULL,
+    cheque_number   VARCHAR(30) NULL,
+    cheque_date     DATE NULL,
     FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE food_coupons (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    batch_id        INT NOT NULL,
+    serial_no       INT NOT NULL,
+    code            VARCHAR(40) NOT NULL,
+    status          ENUM('Valid','Redeemed','Expired','Invalid') NOT NULL DEFAULT 'Valid',
+    expires_at      DATETIME NULL,
+    redeemed_at     DATETIME NULL,
+    donation_id     INT NULL,
+    invalidated_at  DATETIME NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_coupon_code (code),
+    UNIQUE KEY uq_coupon_batch_serial (batch_id, serial_no),
+    KEY idx_coupon_status (status),
+    KEY idx_coupon_expires (expires_at),
+    FOREIGN KEY (batch_id) REFERENCES food_coupon_batches(id) ON DELETE CASCADE,
+    FOREIGN KEY (donation_id) REFERENCES donations(id)
 ) ENGINE=InnoDB;
 
 CREATE INDEX idx_subscribers_status ON subscribers(status);
@@ -199,3 +360,124 @@ CREATE INDEX idx_expenses_date ON expenses(expense_date);
 CREATE INDEX idx_bank_txn_date ON bank_transactions(txn_date);
 CREATE INDEX idx_bank_txn_status ON bank_transactions(reconciled_status);
 CREATE INDEX idx_food_usage_date ON food_usage_log(txn_date);
+CREATE INDEX idx_contra_date ON contra_entries(entry_date);
+
+CREATE TABLE corrections (
+    id                INT AUTO_INCREMENT PRIMARY KEY,
+    subject_type      ENUM('donation','expense') NOT NULL,
+    subject_id        INT NOT NULL,
+    original_amount   DECIMAL(12,2) NOT NULL,
+    corrected_amount  DECIMAL(12,2) NOT NULL,
+    reason            VARCHAR(500) NOT NULL,
+    entry_date        DATE NOT NULL,
+    prepared_by       INT NOT NULL,
+    created_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (prepared_by) REFERENCES users(id),
+    KEY idx_correction_subject (subject_type, subject_id),
+    KEY idx_correction_date (entry_date)
+) ENGINE=InnoDB;
+
+CREATE TABLE receipt_cancellations (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    donation_id   INT NOT NULL,
+    reason        VARCHAR(500) NOT NULL,
+    prepared_by   INT NOT NULL,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (donation_id) REFERENCES donations(id),
+    FOREIGN KEY (prepared_by) REFERENCES users(id),
+    KEY idx_receipt_cancel_donation (donation_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE donation_edits (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    donation_id     INT NOT NULL,
+    donor_name      VARCHAR(150) NOT NULL,
+    donor_phone     VARCHAR(20) NULL,
+    donor_email     VARCHAR(120) NULL,
+    donor_address   VARCHAR(500) NULL,
+    donor_pan       VARCHAR(20) NULL,
+    donation_type   VARCHAR(30) NOT NULL,
+    amount          DECIMAL(12,2) NULL,
+    purpose         VARCHAR(200) NULL,
+    donation_date   DATE NOT NULL,
+    payment_mode    VARCHAR(30) NOT NULL,
+    cheque_number   VARCHAR(30) NULL,
+    cheque_date     DATE NULL,
+    cheque_cleared  TINYINT(1) NOT NULL DEFAULT 0,
+    upi_reference   VARCHAR(64) NULL,
+    pledge_id       INT NULL,
+    reason          VARCHAR(500) NOT NULL,
+    prepared_by     INT NOT NULL,
+    treasurer_approved_by INT NULL,
+    admin_approved_by INT NULL,
+    applied         TINYINT(1) NOT NULL DEFAULT 0,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (donation_id) REFERENCES donations(id),
+    FOREIGN KEY (pledge_id) REFERENCES pledges(id),
+    FOREIGN KEY (prepared_by) REFERENCES users(id),
+    KEY idx_donation_edit (donation_id, applied)
+) ENGINE=InnoDB;
+
+CREATE TABLE approvals (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    subject_type    ENUM('expense','contra','opening','purchase','correction','receipt','stock','coupon','donation_edit') NOT NULL,
+    subject_id      INT NOT NULL,
+    status          ENUM('Draft','Waiting','Approved','Sent back','Rejected') NOT NULL DEFAULT 'Draft',
+    amount          DECIMAL(14,2) NOT NULL DEFAULT 0,
+    prepared_by     INT NOT NULL,
+    decided_by      INT NULL,
+    decision_note   VARCHAR(500) NULL,
+    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_approval_subject (subject_type, subject_id),
+    FOREIGN KEY (prepared_by) REFERENCES users(id),
+    FOREIGN KEY (decided_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE app_settings (
+    setting_key    VARCHAR(64) PRIMARY KEY,
+    setting_value  TEXT NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE write_claims (
+    token       CHAR(32) NOT NULL PRIMARY KEY,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_write_claims_created (created_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE invitations (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    title        VARCHAR(120) NOT NULL,
+    subject      VARCHAR(160) NOT NULL,
+    blocks_json  MEDIUMTEXT NOT NULL,
+    created_by   INT NULL,
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE invitation_sends (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    invitation_id   INT NOT NULL,
+    donor_id        INT NULL,
+    donor_name      VARCHAR(150) NOT NULL,
+    email           VARCHAR(120) NOT NULL,
+    status          ENUM('Sent','Failed') NOT NULL DEFAULT 'Sent',
+    sent_at         DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (invitation_id) REFERENCES invitations(id) ON DELETE CASCADE,
+    FOREIGN KEY (donor_id) REFERENCES donors(id) ON DELETE SET NULL,
+    KEY idx_invitation_sends (invitation_id, sent_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE contributors (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    name          VARCHAR(120) NOT NULL,
+    contact       VARCHAR(30) NOT NULL DEFAULT '',
+    email         VARCHAR(120) NOT NULL DEFAULT '',
+    location      VARCHAR(120) NOT NULL DEFAULT '',
+    designation   VARCHAR(80) NOT NULL DEFAULT '',
+    profile_url   VARCHAR(300) NOT NULL DEFAULT '',
+    image_file    VARCHAR(40) NULL,
+    created_by    INT NULL,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;

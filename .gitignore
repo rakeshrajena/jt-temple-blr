@@ -8,9 +8,17 @@ php/storage/coupons/*
 php/storage/uploads/*
 !php/storage/uploads/.gitkeep
 
+# Expense bill copies
+php/storage/vouchers/*
+!php/storage/vouchers/.gitkeep
+
 # Runtime logs
 php/storage/logs/*
 !php/storage/logs/.gitkeep
+
+# Books copied onto the server by install.php. Kept off git because it holds the live records.
+php/storage/install/*
+!php/storage/install/.gitkeep
 
 # Python bytecode, virtualenv, and the local SQLite database
 python/**/__pycache__/
