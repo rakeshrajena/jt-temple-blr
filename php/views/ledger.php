@@ -18,11 +18,16 @@ foreach ($heads as $head) {
 </div>
 <div class="panel">
   <h3>Ledger by head · <?= e($financialYear) ?></h3>
-  <form method="GET" action="<?= e(app_script()) ?>" style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
+  <nav class="book-nav" aria-label="Books">
+    <a href="<?= e(url('cash-book', ['from' => $from, 'to' => $to])) ?>">Cash book</a>
+    <a href="<?= e(url('day-book', ['from' => $from, 'to' => $to])) ?>">Day book</a>
+    <a class="is-on" href="<?= e(url('ledger', ['from' => $from, 'to' => $to])) ?>">Ledger</a>
+  </nav>
+  <form class="filters" method="GET" action="<?= e(app_script()) ?>">
     <input type="hidden" name="r" value="ledger">
     <div class="form-group"><label><?= e(t('common.from')) ?></label><input type="date" name="from" value="<?= e($from) ?>"></div>
     <div class="form-group"><label><?= e(t('common.to')) ?></label><input type="date" name="to" value="<?= e($to) ?>"></div>
-    <button class="btn btn-outline btn-sm" type="submit"><?= e(t('common.show')) ?></button>
+    <button class="btn btn-primary" type="submit"><?= e(t('common.show')) ?></button>
   </form>
   <p style="color:var(--ink-soft); font-size:13px; margin-top:0;">
     Each donation purpose and each expense category is a head. Received money increases it. Spending decreases it. A gift and an expense with the same name share one balance.
@@ -37,16 +42,14 @@ foreach ($heads as $head) {
       <th class="text-right"><?= e(t('ui.received')) ?></th>
       <th class="text-right"><?= e(t('ui.spent')) ?></th>
       <th class="text-right"><?= e(t('ui.balance')) ?></th>
-      <th></th>
     </tr>
     <?php foreach ($heads as $head): ?>
     <tr>
-      <td><?= e((string) $head['head']) ?></td>
+      <td><a class="row-link" href="<?= e(url('ledger', ['from' => $from, 'to' => $to, 'head' => (string) $head['head']])) ?>"><?= e((string) $head['head']) ?></a></td>
       <td class="text-right"><?= e(money($head['opening'], 2)) ?></td>
       <td class="text-right"><?= e(money($head['received'], 2)) ?></td>
       <td class="text-right"><?= e(money($head['spent'], 2)) ?></td>
       <td class="text-right"><?= e(money($head['balance'], 2)) ?></td>
-      <td><a class="btn btn-sm btn-outline" href="<?= e(url('ledger', ['from' => $from, 'to' => $to, 'head' => (string) $head['head']])) ?>">Open</a></td>
     </tr>
     <?php endforeach; ?>
   </table>
@@ -57,7 +60,7 @@ foreach ($heads as $head) {
   <h3><?= e((string) $selected['head']) ?></h3>
   <p style="color:var(--ink-soft); font-size:13px; margin-top:0;">
     Opening <?= e(money($selected['opening'], 2)) ?> · Balance <?= e(money($selected['balance'], 2)) ?>
-    <a href="<?= e(url('ledger', ['from' => $from, 'to' => $to])) ?>" style="margin-left:8px;">All heads</a>
+    <a class="text-link" href="<?= e(url('ledger', ['from' => $from, 'to' => $to])) ?>">All heads</a>
   </p>
   <?php if ($selected['lines'] === []): ?>
     <div class="empty-state">Nothing new in this period. The balance is the opening brought forward.</div>

@@ -264,6 +264,22 @@ function dispatch_request(): void
         action_set_user_password((int) $m[1]);
         return;
     }
+    if (preg_match('#^contributors/(\d+)/photo$#', $path, $m) === 1 && $method === 'GET') {
+        action_contributor_photo((int) $m[1]);
+        return;
+    }
+    if (preg_match('#^contributors/(\d+)/remove$#', $path, $m) === 1 && $method === 'POST') {
+        action_contributor_remove((int) $m[1]);
+        return;
+    }
+    if (preg_match('#^contributors/(\d+)$#', $path, $m) === 1 && $method === 'POST') {
+        action_contributor_save((int) $m[1]);
+        return;
+    }
+    if ($path === 'contributors') {
+        action_contributors($method);
+        return;
+    }
     if ($path === 'users') {
         action_users($method);
         return;
@@ -579,9 +595,9 @@ function action_food_coupons(string $method): void
             flash('error', $expiry['error']);
             redirect(url('food/coupons'));
         }
-        $single = isset($_POST['single']);
-        $name = $single ? post_string('purpose', 200) : post_string('coupon_name', 100);
-        $quantity = $single ? 1 : (int) ($_POST['quantity'] ?? 0);
+        $quantity = (int) ($_POST['quantity'] ?? 0);
+        $name = post_string('coupon_name', 100);
+        $issueNow = coupon_issues_now($quantity);
         $result = create_coupon_batch(
             $name,
             (float) ($_POST['cost'] ?? 0),
@@ -589,13 +605,13 @@ function action_food_coupons(string $method): void
             (int) $_SESSION['user_id'],
             $expiry['expires_at'],
             coupon_gift_from_post(),
-            $single
+            $issueNow
         );
         if ($result['error'] !== null) {
             flash('error', $result['error']);
             redirect(url('food/coupons'));
         }
-        flash('success', $single
+        flash('success', $issueNow
             ? sprintf('One coupon is ready to print — %s, %s. It did not wait for approval.', $name, money($result['total'], 2))
             : sprintf(
                 'Batch submitted for approval — Sl No %d to %d, total %s. It is not counted, and it cannot be printed, until someone else approves it.',
@@ -3084,6 +3100,46 @@ function action_settings(string $method): void
         'settings' => $settings,
         'selectionCatalog' => selection_catalog(),
     ]);
+}
+
+function action_contributors(string $method): void
+{
+    login_required();
+    if ($method === 'POST') {
+        admin_required();
+        $error = save_contributor(null, $_FILES['photo'] ?? null);
+        flash($error !== null ? 'error' : 'success', $error ?? t('contributors.saved'));
+        redirect(url('contributors'));
+    }
+    render('contributors', [
+        'title' => t('page.contributors'),
+        'pageTitle' => t('page.contributors'),
+        'active' => 'contributors',
+        'contributors' => contributor_list(),
+        'isAdmin' => (($_SESSION['role'] ?? '') === 'Admin'),
+    ]);
+}
+
+function action_contributor_save(int $id): void
+{
+    admin_required();
+    $error = save_contributor($id, $_FILES['photo'] ?? null);
+    flash($error !== null ? 'error' : 'success', $error ?? t('contributors.saved'));
+    redirect(url('contributors'));
+}
+
+function action_contributor_remove(int $id): void
+{
+    admin_required();
+    $removed = delete_contributor($id);
+    flash($removed ? 'success' : 'error', $removed ? t('contributors.removed') : t('contributors.missing'));
+    redirect(url('contributors'));
+}
+
+function action_contributor_photo(int $id): void
+{
+    login_required();
+    serve_contributor_photo($id);
 }
 
 function action_users(string $method): void

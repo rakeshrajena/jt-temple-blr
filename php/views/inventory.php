@@ -8,7 +8,14 @@
 /** @var list<array<string,mixed>> $history */
 /** @var list<array<string,mixed>> $pending */
 ?>
-<div class="panel">
+<div class="reveal-group">
+<div class="action-bar">
+  <button class="btn btn-outline" type="button" data-reveal="reveal-stock-hand"><?= e(t('ui.on_hand')) ?></button>
+  <button class="btn btn-outline" type="button" data-reveal="reveal-stock-buy"><?= e(t('ui.buy_stock')) ?></button>
+  <button class="btn btn-outline" type="button" data-reveal="reveal-stock-move"><?= e(t('ui.record_movement')) ?></button>
+  <button class="btn btn-outline" type="button" data-reveal="reveal-stock-place"><?= e(t('ui.condition_location')) ?></button>
+</div>
+<div class="panel reveal-panel" id="reveal-stock-hand" hidden>
   <h3><?= e(t('ui.on_hand')) ?></h3>
   <p class="sub">This records quantity that is already in the store. It does not write a payment. Use the purchase form when money leaves the cash book.</p>
   <form method="POST" action="<?= e(url('inventory')) ?>">
@@ -58,7 +65,7 @@
     <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.add_item')) ?></button></div>
   </form>
 </div>
-<div class="panel">
+<div class="panel reveal-panel" id="reveal-stock-buy" hidden>
   <h3><?= e(t('ui.buy_stock')) ?></h3>
   <p class="sub">The purchase waits for approval. Stock and the cash book change together only after it is approved.</p>
   <form method="POST" action="<?= e(url('inventory')) ?>">
@@ -115,8 +122,7 @@
     <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.submit_purchase')) ?></button></div>
   </form>
 </div>
-<div class="panel-row">
-  <div class="panel">
+  <div class="panel reveal-panel" id="reveal-stock-move" hidden>
     <h3><?= e(t('ui.record_movement')) ?></h3>
     <p class="sub">Issue and return are recorded immediately. Damage, loss, and retired quantities above <?= e((string) $writeOffLimit) ?> wait for approval.</p>
     <form method="POST" action="<?= e(url('inventory')) ?>">
@@ -146,7 +152,7 @@
       <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.record_movement_btn')) ?></button></div>
     </form>
   </div>
-  <div class="panel">
+  <div class="panel reveal-panel" id="reveal-stock-place" hidden>
     <h3><?= e(t('ui.condition_location')) ?></h3>
     <p class="sub">Repair sets Needs Repair. A new location moves the item. Retired writes off the quantity still on hand.</p>
     <form method="POST" action="<?= e(url('inventory')) ?>">

@@ -13,8 +13,7 @@
 <body>
   <div class="pay-wrap">
     <div class="pay-card">
-      <div style="font-size:40px;">⚠️</div>
-      <h1 style="color:var(--red); font-size:19px; margin:10px 0 6px;"><?= e(t('pay.invalid_title')) ?></h1>
+      <h1 style="color:var(--red); font-size:19px; margin:0 0 6px;"><?= e(t('pay.invalid_title')) ?></h1>
       <p style="color:var(--ink-soft); font-size:13.5px;"><?= e(t('pay.invalid_body')) ?></p>
     </div>
   </div>

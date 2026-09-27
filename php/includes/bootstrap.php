@@ -28,6 +28,7 @@ require APP_ROOT . '/includes/selections.php';
 require APP_ROOT . '/includes/suggest.php';
 require APP_ROOT . '/includes/accounts.php';
 require APP_ROOT . '/includes/invitations.php';
+require APP_ROOT . '/includes/contributors.php';
 require APP_ROOT . '/includes/actions.php';
 
 date_default_timezone_set(TIMEZONE);

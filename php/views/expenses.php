@@ -1,5 +1,9 @@
 <?php /** @var list<array<string,mixed>> $expenses */ /** @var list<string> $categories */ /** @var string $today */ ?>
-<div class="panel">
+<div class="reveal-group">
+<div class="action-bar">
+  <button class="btn btn-outline" type="button" data-reveal="reveal-expense"><?= e(t('ui.record_expense')) ?></button>
+</div>
+<div class="panel reveal-panel" id="reveal-expense" hidden>
   <h3><?= e(t('ui.record_expense')) ?></h3>
   <form method="POST" action="<?= e(url('expenses')) ?>" enctype="multipart/form-data">
     <?= csrf_field() ?>
@@ -32,6 +36,7 @@
       <button class="btn btn-outline" type="submit" name="intent" value="draft"><?= e(t('ui.save_draft')) ?></button>
     </div>
   </form>
+</div>
 </div>
 <div class="panel">
   <h3><?= e(t('ui.all_expenses')) ?> (<?= count($expenses) ?>)</h3>

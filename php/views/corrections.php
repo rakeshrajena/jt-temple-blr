@@ -12,7 +12,11 @@ $badge = static function (string $status): string {
     };
 };
 ?>
-<div class="panel">
+<div class="reveal-group">
+<div class="action-bar">
+  <button class="btn btn-outline" type="button" data-reveal="reveal-correct"><?= e(t('ui.correct_line')) ?></button>
+</div>
+<div class="panel reveal-panel" id="reveal-correct" hidden>
   <h3><?= e(t('ui.correct_line')) ?></h3>
   <p class="sub">The original donation or expense stays in the book. The correction is a second line, and it changes the balance only after someone else approves it.</p>
   <?php if ($targets === []): ?>
@@ -52,6 +56,7 @@ $badge = static function (string $status): string {
     <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.submit_approval')) ?></button></div>
   </form>
   <?php endif; ?>
+</div>
 </div>
 <div class="panel">
   <h3>Corrections</h3>

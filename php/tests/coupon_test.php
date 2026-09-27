@@ -16,6 +16,8 @@ function check(bool $ok, string $name): void
     echo "FAIL {$name}\n";
 }
 
+check(coupon_issues_now(1) === true, 'a quantity of one is issued at once');
+check(coupon_issues_now(2) === false, 'a quantity above one waits for approval');
 check(coupon_request_error('', 10, 2) !== null, 'a coupon batch needs a name');
 check(coupon_request_error('Lunch', 0, 2) !== null, 'a coupon cost must be above zero');
 check(coupon_request_error('Lunch', 10, 401) !== null, 'a batch cannot exceed 400 coupons');

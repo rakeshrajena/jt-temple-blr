@@ -18,8 +18,8 @@ $pledges = $statement['pledges'];
     <?php if ($statement['pan'] !== ''): ?> · PAN <?= e($statement['pan']) ?><?php endif; ?>
     <?php if ($statement['address'] !== ''): ?><br><?= e($statement['address']) ?><?php endif; ?>
   </p>
-  <div class="no-print" style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
-    <form method="GET" action="<?= e(app_script()) ?>" style="display:flex; gap:8px; align-items:end; flex-wrap:wrap;">
+  <div class="page-actions no-print">
+    <form class="filters" method="GET" action="<?= e(app_script()) ?>">
       <input type="hidden" name="r" value="donors/<?= e((string) $statement['donor_id']) ?>">
       <div class="form-group"><label><?= e(t('common.from')) ?></label><input type="date" name="from" value="<?= e($statement['from']) ?>"></div>
       <div class="form-group"><label><?= e(t('common.to')) ?></label><input type="date" name="to" value="<?= e($statement['to']) ?>"></div>
@@ -28,6 +28,11 @@ $pledges = $statement['pledges'];
     <a class="btn btn-outline btn-sm" href="<?= e(url('donors', ['from' => $statement['from'], 'to' => $statement['to']])) ?>"><?= e(t('ui.all_devotees')) ?></a>
     <button class="btn btn-outline btn-sm" type="button" onclick="window.print()"><?= e(t('ui.print_statement')) ?></button>
   </div>
+  <div class="reveal-group no-print">
+  <div class="action-bar">
+    <button class="btn btn-outline btn-sm" type="button" data-reveal="reveal-devotee"><?= e(t('common.details')) ?></button>
+  </div>
+  <div class="reveal-panel" id="reveal-devotee" hidden>
   <form method="POST" action="<?= e(url('donors/' . (int) $statement['donor_id'] . '/save')) ?>" class="no-print" style="margin-bottom:16px;">
     <?= csrf_field() ?>
     <h3><?= e(t('common.details')) ?></h3>
@@ -40,6 +45,8 @@ $pledges = $statement['pledges'];
     </div>
     <div class="form-actions"><button class="btn btn-gold btn-sm" type="submit"><?= e(t('ui.save_details')) ?></button></div>
   </form>
+  </div>
+  </div>
   <?php if ($deleteReason === null): ?>
   <form method="POST" action="<?= e(url('donors/' . (int) $statement['donor_id'] . '/delete')) ?>" class="no-print" id="deleteDevotee" style="margin-bottom:16px;">
     <?= csrf_field() ?>
@@ -90,25 +97,33 @@ $pledges = $statement['pledges'];
         <td><?= (float) $pledge['outstanding'] > 0 ? e(money($pledge['outstanding'])) : 'Received in full' ?></td>
         <td class="no-print">
           <?php if ((float) $pledge['outstanding'] > 0): ?>
-          <form method="POST" action="<?= e(url('donors/' . (int) $statement['donor_id'] . '/receive')) ?>">
-            <?= csrf_field() ?>
-            <input type="hidden" name="pledge_id" value="<?= e((string) $pledge['id']) ?>">
-            <input type="number" step="0.01" min="0.01" name="amount" placeholder="Received" required style="width:110px;">
-            <input type="date" name="donation_date" value="<?= e($today) ?>" required>
-            <select name="payment_mode">
-              <?php foreach (money_payment_modes() as $mode): ?><option><?= e($mode) ?></option><?php endforeach; ?>
-            </select>
-            <input type="text" name="upi_reference" maxlength="64" placeholder="UPI id" style="width:120px;">
-            <input type="text" name="cheque_number" maxlength="30" placeholder="Cheque no." style="width:110px;">
-            <input type="date" name="cheque_date">
-            <button class="btn btn-sm btn-primary" type="submit"><?= e(t('ui.receive')) ?></button>
-          </form>
+          <details class="row-fold">
+            <summary class="btn btn-sm btn-primary"><?= e(t('ui.receive')) ?></summary>
+            <form class="cell-form" method="POST" action="<?= e(url('donors/' . (int) $statement['donor_id'] . '/receive')) ?>">
+              <?= csrf_field() ?>
+              <input type="hidden" name="pledge_id" value="<?= e((string) $pledge['id']) ?>">
+              <input type="number" step="0.01" min="0.01" name="amount" placeholder="Received" required aria-label="Received">
+              <input type="date" name="donation_date" value="<?= e($today) ?>" required aria-label="<?= e(t('common.date')) ?>">
+              <select name="payment_mode" aria-label="<?= e(t('ui.payment_mode')) ?>">
+                <?php foreach (money_payment_modes() as $mode): ?><option><?= e($mode) ?></option><?php endforeach; ?>
+              </select>
+              <input type="text" name="upi_reference" maxlength="64" placeholder="UPI id" aria-label="<?= e(t('ui.upi_reference')) ?>">
+              <input type="text" name="cheque_number" maxlength="30" placeholder="Cheque no." aria-label="<?= e(t('ui.cheque_no')) ?>">
+              <input type="date" name="cheque_date" aria-label="<?= e(t('ui.cheque_date')) ?>">
+              <button class="btn btn-sm btn-primary" type="submit"><?= e(t('ui.receive')) ?></button>
+            </form>
+          </details>
           <?php endif; ?>
         </td>
       </tr>
     <?php endforeach; ?>
   </table>
   <?php endif; ?>
+  <div class="reveal-group no-print">
+  <div class="action-bar">
+    <button class="btn btn-outline" type="button" data-reveal="reveal-pledge"><?= e(t('ui.record_pledge')) ?></button>
+  </div>
+  <div class="reveal-panel" id="reveal-pledge" hidden>
   <form method="POST" action="<?= e(url('donors/' . (int) $statement['donor_id'] . '/pledge')) ?>" class="no-print" style="margin-top:16px;">
     <?= csrf_field() ?>
     <h3><?= e(t('ui.record_pledge')) ?></h3>
@@ -120,6 +135,8 @@ $pledges = $statement['pledges'];
     </div>
     <div class="form-actions"><button class="btn btn-outline" type="submit"><?= e(t('ui.save_pledge')) ?></button></div>
   </form>
+  </div>
+  </div>
 </div>
 <script>
 (function () {

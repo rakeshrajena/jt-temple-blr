@@ -81,7 +81,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $ready) {
   <ol>
     <li>Missing tables and columns are added, including donation edits. An edit from the last 24 hours follows the Treasurer limit. An older edit needs both a Treasurer and an Admin.</li>
     <li>The saved books are loaded only when this database has no devotees, or when you tick replace. Those gifts have no receipt yet. After sign-in, use Generate receipt on each one that should have a PDF.</li>
-    <li>Coupons are under Temple. One coupon prints at once and does not wait for approval. A larger batch still does.</li>
+    <li>Coupons are under Temple. One form generates them. Quantity 1 prints at once and does not wait for approval. A larger quantity still does. The amount follows the coupon name. Choosing a purpose does not change it.</li>
+    <li>App contributors is a new list. Everyone signed in can read the cards. Only an Admin can add, update, or remove a person. The list starts empty.</li>
     <li>Puja purposes and their amounts travel in <code>storage/selections.json</code> with this folder. They are form choices, not rows in the database. Uploading this folder replaces that file on the server.</li>
   </ol>
   <?php if ($error !== null): ?>

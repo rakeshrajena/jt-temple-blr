@@ -189,6 +189,11 @@ function coupon_gift_from_post(): array
     ];
 }
 
+function coupon_issues_now(int $quantity): bool
+{
+    return $quantity === 1;
+}
+
 function coupon_request_error(string $name, float $cost, int $quantity): ?string
 {
     if (trim($name) === '') {

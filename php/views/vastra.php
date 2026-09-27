@@ -1,5 +1,9 @@
 <?php /** @var list<array<string,mixed>> $items */ ?>
-<div class="panel">
+<div class="reveal-group">
+<div class="action-bar">
+  <button class="btn btn-outline" type="button" data-reveal="reveal-vastra"><?= e(t('ui.add_vastra')) ?></button>
+</div>
+<div class="panel reveal-panel" id="reveal-vastra" hidden>
   <h3><?= e(t('ui.add_vastra')) ?></h3>
   <form method="POST" action="<?= e(url('vastra')) ?>">
     <?= csrf_field() ?>
@@ -41,6 +45,7 @@
     <script type="application/json" id="suggest-vastra"><?= json_encode(suggest_vastra_names(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) ?></script>
     <script type="application/json" id="suggest-colors"><?= json_encode(suggest_vastra_colors(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) ?></script>
   </form>
+</div>
 </div>
 <div class="panel">
   <h3>Vastra Inventory (<?= count($items) ?> entries)</h3>

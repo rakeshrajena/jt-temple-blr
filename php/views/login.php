@@ -9,7 +9,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><?= e(t('page.login')) ?> — <?= e(app_display_name()) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=30">
+  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=39">
 </head>
 <body>
   <div class="login-split">
@@ -25,7 +25,10 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
           <li><?= e(t('login.point_subscription')) ?></li>
         </ul>
       </div>
-      <p class="place"><?= e(t('login.place')) ?></p>
+      <div>
+        <p class="place"><?= e(t('login.place')) ?></p>
+        <p class="login-copy"><?= e(t('shell.copyright', ['name' => app_display_name(), 'year' => date('Y')])) ?></p>
+      </div>
     </section>
     <section class="login-panel">
       <div class="login-card">

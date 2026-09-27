@@ -10,7 +10,11 @@
     <div class="label"><?= e(t('ui.users_active')) ?></div>
   </div>
 </div>
-<div class="panel">
+<div class="reveal-group">
+<div class="action-bar">
+  <button class="btn btn-outline" type="button" data-reveal="reveal-user"><?= e(t('ui.add_user')) ?></button>
+</div>
+<div class="panel reveal-panel" id="reveal-user" hidden>
   <h3><?= e(t('ui.add_user')) ?></h3>
   <?php if ($activeCount >= $maxUsers): ?>
   <div class="flash flash-error"><?= e(t('ui.user_limit', ['max' => (string) $maxUsers])) ?></div>
@@ -30,6 +34,7 @@
   </form>
   <?php endif; ?>
 </div>
+</div>
 <div class="panel">
   <h3><?= e(t('ui.all_users')) ?></h3>
   <p class="sub"><?= e(t('password.own_hint')) ?></p>
@@ -47,12 +52,15 @@
         <?php if ($isSelf): ?>
         <a class="btn btn-sm btn-outline" href="<?= e(url('account/password')) ?>"><?= e(t('page.password')) ?></a>
         <?php else: ?>
-        <form class="row-actions" method="POST" action="<?= e(url('users/' . $u['id'] . '/password')) ?>">
-          <?= csrf_field() ?>
-          <input type="password" name="new_password" required minlength="6" maxlength="200" autocomplete="new-password" placeholder="<?= e(t('password.new')) ?>" aria-label="<?= e(t('password.new')) ?>">
-          <input type="password" name="confirm_password" required minlength="6" maxlength="200" autocomplete="new-password" placeholder="<?= e(t('password.confirm')) ?>" aria-label="<?= e(t('password.confirm')) ?>">
-          <button class="btn btn-sm btn-primary" type="submit"><?= e(t('password.set')) ?></button>
-        </form>
+        <details class="row-fold">
+          <summary class="btn btn-sm btn-outline"><?= e(t('password.set')) ?></summary>
+          <form class="cell-form" method="POST" action="<?= e(url('users/' . $u['id'] . '/password')) ?>">
+            <?= csrf_field() ?>
+            <input type="password" name="new_password" required minlength="6" maxlength="200" autocomplete="new-password" placeholder="<?= e(t('password.new')) ?>" aria-label="<?= e(t('password.new')) ?>">
+            <input type="password" name="confirm_password" required minlength="6" maxlength="200" autocomplete="new-password" placeholder="<?= e(t('password.confirm')) ?>" aria-label="<?= e(t('password.confirm')) ?>">
+            <button class="btn btn-sm btn-primary" type="submit"><?= e(t('password.set')) ?></button>
+          </form>
+        </details>
         <?php endif; ?>
       </td>
       <td>

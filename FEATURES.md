@@ -12,6 +12,8 @@ Nothing in the “To add” section is built yet.
 - Staff can use every module except Users.
 - An Admin adds or deactivates accounts. At most 10 active users. The last active Admin cannot be deactivated.
 - An Admin opens Settings to save the outgoing mail server and the WhatsApp Web message. The mail password is kept and is not shown again.
+- App contributors is a card list in Administration: name, photo, contact, email, location, designation, and a public profile link. Everyone who is signed in can read the cards. Only an Admin can add, update, or remove a person.
+- Every screen shows ©, the temple name, and the current year. On the registers that line is centered.
 
 ### Dashboard and overview
 
@@ -26,7 +28,7 @@ Nothing in the “To add” section is built yet.
 - A purchase raises stock and writes the payment in the cash book in one step, only after approval. The rate on hand becomes the weighted average of the old stock and the new purchase.
 - Condition and location can be changed after the item is added. Needs Repair marks a repair. A new location moves it. Retired writes off the quantity still on hand, and that write-off waits when it is above 5 units.
 - Food stock with a minimum level, a low-stock flag, and a log of stock added or used. Kitchen use of 5 units or less is a normal log. Above that it waits for approval.
-- One coupon can be generated at once, without approval, and printed immediately. Its purpose is chosen from the Puja purpose list in Settings, and the amount for that purpose fills in. An Admin can change those amounts or remove a purpose. The list is stored in `php/storage/selections.json`.
+- Coupons use one generate form. Quantity 1 is issued at once, without approval, and can be printed immediately. A quantity above 1 waits for approval. The coupon name and the purpose are chosen from the Puja purpose list in Settings. Choosing a coupon name fills the amount. Choosing a purpose does not. An Admin can change those amounts or remove a purpose. The list is stored in `php/storage/selections.json`.
 - Food coupon batches with one stored coupon per serial, a printable PDF, and an optional expiry. The face value waits for approval and does not enter the books. The QR code is a link to that coupon. A phone scan checks it first, then records the donation if it is still valid. Signing in is required, and the sign-in page returns to that coupon. Typing a sold coupon does the same and posts that income to the cash or bank book. A coupon past its expiry is invalidated automatically. Removing a batch deletes its unused coupons. A sold coupon stays in the books. A JSON API can validate, invalidate, or read a code.
 - Deity vastra by deity, colour, quantity, source, and status: In Store, In Use, or Retired.
 

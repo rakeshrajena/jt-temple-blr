@@ -5,7 +5,11 @@
 /** @var list<array<string,mixed>> $openDonations */
 /** @var list<array<string,mixed>> $openExpenses */
 ?>
-<div class="panel">
+<div class="reveal-group">
+<div class="action-bar">
+  <button class="btn btn-outline" type="button" data-reveal="reveal-bank"><?= e(t('ui.upload_bank')) ?></button>
+</div>
+<div class="panel reveal-panel" id="reveal-bank" hidden>
   <h3><?= e(t('ui.upload_bank')) ?></h3>
   <p style="color:var(--ink-soft); font-size:13px; margin-top:-6px;">
     Accepts CSV or Excel with Date, Description, Amount (or separate Credit/Debit columns), and optionally Balance.
@@ -18,6 +22,7 @@
     </div>
     <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.upload_reconcile')) ?></button></div>
   </form>
+</div>
 </div>
 <div class="kpi-grid">
   <div class="kpi-card good"><div class="value"><?= count($matched) ?></div><div class="label">Matched Transactions</div></div>
@@ -36,7 +41,7 @@
       <td><?= e(money($u['amount'], 2)) ?></td>
       <td><?php if ($u['txn_type'] === 'Credit'): ?><span class="badge badge-green">Credit</span><?php else: ?><span class="badge badge-red">Debit</span><?php endif; ?></td>
       <td>
-        <form method="POST" action="<?= e(url('bank/manual_match')) ?>" style="display:flex; gap:6px; flex-wrap:wrap;">
+        <form class="toolbar" method="POST" action="<?= e(url('bank/manual_match')) ?>">
           <?= csrf_field() ?>
           <input type="hidden" name="txn_id" value="<?= e((string) $u['id']) ?>">
           <?php if ($u['txn_type'] === 'Credit'): ?>

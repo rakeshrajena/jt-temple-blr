@@ -4,7 +4,11 @@
 /** @var list<array{id: int, label: string, donor_name: string}> $pledges */
 /** @var string $today */
 ?>
-<div class="panel">
+<div class="reveal-group">
+<div class="action-bar">
+  <button class="btn btn-outline" type="button" data-reveal="reveal-donation"><?= e(t('ui.record_donation')) ?></button>
+</div>
+<div class="panel reveal-panel" id="reveal-donation" hidden>
   <h3><?= e(t('ui.record_donation')) ?></h3>
   <form method="POST" action="<?= e(url('donations')) ?>">
     <?= csrf_field() ?>
@@ -110,8 +114,9 @@
     <div class="form-actions"><button class="btn btn-primary" type="submit"><?= e(t('ui.record_donation_btn')) ?></button></div>
   </form>
 </div>
+</div>
 <div class="panel">
-  <h3><?= e(t('ui.all_donations')) ?> (<?= count($donations) ?>) <a href="<?= e(url('receipts')) ?>" class="btn btn-sm btn-outline" style="margin-left:8px;"><?= e(t('ui.manage_receipts')) ?></a></h3>
+  <h3><?= e(t('ui.all_donations')) ?> (<?= count($donations) ?>) <a href="<?= e(url('receipts')) ?>" class="btn btn-sm btn-outline"><?= e(t('ui.manage_receipts')) ?></a></h3>
   <?php if ($donations): ?>
   <table class="data-table">
     <tr><th><?= e(t('common.date')) ?></th><th><?= e(t('common.donor')) ?></th><th><?= e(t('common.type')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('common.purpose')) ?></th><th><?= e(t('common.payment')) ?></th><th><?= e(t('common.receipt')) ?></th><th></th></tr>

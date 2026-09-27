@@ -452,3 +452,17 @@ CREATE TABLE invitation_sends (
     FOREIGN KEY (donor_id) REFERENCES donors(id) ON DELETE SET NULL,
     KEY idx_invitation_sends (invitation_id, sent_at)
 ) ENGINE=InnoDB;
+
+CREATE TABLE contributors (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    name          VARCHAR(120) NOT NULL,
+    contact       VARCHAR(30) NOT NULL DEFAULT '',
+    email         VARCHAR(120) NOT NULL DEFAULT '',
+    location      VARCHAR(120) NOT NULL DEFAULT '',
+    designation   VARCHAR(80) NOT NULL DEFAULT '',
+    profile_url   VARCHAR(300) NOT NULL DEFAULT '',
+    image_file    VARCHAR(40) NULL,
+    created_by    INT NULL,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;

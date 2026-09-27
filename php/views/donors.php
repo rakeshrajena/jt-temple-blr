@@ -10,7 +10,7 @@
   <h3>Devotees · <?= e($financialYear) ?></h3>
   <p class="sub">Add a devotee, or open a name to update details, gifts, and pledges. Select several names, then Bulk email or Bulk WhatsApp. A message box opens so the note can be written before Send or Cancel. A devotee who already has a gift or a pledge stays on record. A pledge is not in the cash book.</p>
   <p class="no-print"><a class="btn btn-gold btn-sm" href="<?= e(url('donors/new')) ?>">Add devotee</a></p>
-  <form method="GET" action="<?= e(app_script()) ?>" style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
+  <form class="filters" method="GET" action="<?= e(app_script()) ?>">
     <input type="hidden" name="r" value="donors">
     <div class="form-group"><label><?= e(t('ui.search_name')) ?></label><input type="text" name="q" value="<?= e($query) ?>"></div>
     <div class="form-group"><label><?= e(t('common.from')) ?></label><input type="date" name="from" value="<?= e($from) ?>"></div>
@@ -20,7 +20,7 @@
   <?php if ($donors === []): ?>
     <p>No devotees match.</p>
   <?php else: ?>
-  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+  <div class="toolbar">
     <button class="btn btn-gold btn-sm" type="button" id="bulkEmail" disabled>Bulk email (<span id="bulkEmailCount">0</span>)</button>
     <button class="btn btn-outline btn-sm" type="button" id="bulkWhatsapp" disabled>Bulk WhatsApp (<span id="bulkWhatsappCount">0</span>)</button>
   </div>

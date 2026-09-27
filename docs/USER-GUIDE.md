@@ -8,6 +8,8 @@ The pictures are full screens of the live register, taken at desktop width. Name
 
 Open the app and sign in with the username and password an Admin gave you. The language switch on the sign-in card changes labels to English, Hindi, or Odia. Devotee names, amounts, and saved choices stay as they were typed.
 
+Every screen ends with a copyright line: ©, the temple name, and the current year. On the registers that line is centered. The year moves forward on its own.
+
 ![Sign-in screen, with the temple name on the left and the sign-in card on the right](images/01-sign-in.png)
 
 ## The three roles
@@ -27,14 +29,16 @@ Everyone who is signed in can open the temple registers and the books. The diffe
 | Add or deactivate sign-in accounts | No | No | Yes |
 | Temple name, logo, watermark, mail, WhatsApp text, approval limits, and form choices | No | No | Yes |
 | Change on-screen language labels | No | No | Yes |
+| Read App contributors | Yes | Yes | Yes |
+| Add, update, or remove a contributor | No | No | Yes |
 
-A Treasurer signed in as Lakshmi sees the same registers, without Users, Settings, or Localization.
+A Treasurer sees the same registers, without Users, Settings, or Localization. App contributors is in the menu. Only an Admin can change those cards.
 
 ![Approvals as the Treasurer. The queue shows the limits saved in Settings. Users, Settings, and Localization are not in the menu.](images/24-treasurer-approvals.png)
 
 A Staff account sees the same registers. Staff can prepare work. Staff cannot approve it.
 
-![Dashboard as Staff. The totals are the same books. The Administration menu includes Donors and Invitations.](images/23-staff-dashboard.png)
+![Dashboard as Staff. The totals are the same books. The Administration menu includes Donors, Invitations, and App contributors.](images/23-staff-dashboard.png)
 
 The person who prepared an item cannot approve that same item. Ask the other role to decide.
 
@@ -74,7 +78,7 @@ Overview is one printable snapshot: recent gifts, stock, vastra, the subscriptio
 
 Inventory is equipment and stores that are not food and not vastra: vessels, chairs, lamps, lights, and so on. Each row has a category, quantity, unit cost, condition, location, and whether it was purchased or donated.
 
-![Inventory list and the form to add an item](images/04-inventory.png)
+![Inventory. Add, buy, and a movement each open from a button. The list stays on the page.](images/04-inventory.png)
 
 What you can do:
 
@@ -98,7 +102,7 @@ Food stock is rice, dal, ghee, and the rest of the kitchen, with a minimum level
 
 Open Coupons under Temple. The same page is also linked from Food stock.
 
-One coupon is generated at once and can be printed immediately. It does not wait for approval. Type the purpose and pick a suggestion. The amount fills from the puja list in Settings and can be changed before you generate. A batch of more than one still waits for approval.
+Generate coupons is one form. It has the coupon name, the cost, the quantity, the devotee, the payment, the purpose, and the expiry. Quantity 1 is ready to print at once and does not wait for approval. A quantity above 1 waits for approval. Pick a coupon name from the list and the amount fills from Settings. A name that is not in the list keeps the amount you type. Choosing a purpose does not change the amount. You can change the amount before you generate.
 
 A coupon batch is a print run for prasad, puja, or another temple service. Each coupon in the batch is stored on its own. The face value, cost times quantity, waits for approval. That face value does not enter the books.
 
@@ -118,7 +122,7 @@ A signed-in person can call these addresses on `index.php`:
 
 Send JSON, or ordinary form fields. A program that is not using the browser session sends `Authorization: Bearer` and the coupon API token from the server `.env` file. The token is at least 16 characters. Without that token, only a signed-in session can call the API.
 
-![Food Coupon Generator, with one approved batch of 200 coupons and the print button](images/06-food-coupons.png)
+![Food Coupon Generator. Generate coupons is one form. This screen shows one approved batch and the print button.](images/06-food-coupons.png)
 
 **Example.** Staff creates "Lunch Mahaprasad" at ₹50 each, quantity 100, with no expiry. Face value is ₹5,000, so a Treasurer can approve it. After approval, Print PDF builds the sheet. When one coupon is scanned or typed in, ₹50 is added as a donation and enters the cash book. The other 99 stay valid until they are sold or invalidated. If the quantity is later changed to 250, the face value becomes ₹12,500 and the batch goes back to Waiting for an Admin.
 
@@ -142,7 +146,7 @@ Generate receipt stays available after a receipt exists, unless that receipt was
 
 A cheque stores its number, date, and whether it has cleared. A UPI payment stores the transaction id. Those references are what the bank match looks for.
 
-![The donation form and the list of gifts, including receipt links and Generate receipt](images/08-donations.png)
+![Donations. Record a gift opens from a button. The list shows receipt links and Generate receipt.](images/08-donations.png)
 
 **Example.** Sujata gives ₹2,100 in cash for Annadaan. Enter her phone so she is not created twice, choose Cash, purpose Annadaan, and save. The gift is in the books immediately. If the receipt column says Not generated, use Generate receipt. The new number looks like `RCPT-` followed by the time and a 4-digit serial. Open the green number to see the PDF, which carries the temple name, the logo, and the watermark set under Settings.
 
@@ -182,6 +186,8 @@ Invitations is a card you design on screen. Add a heading, words, a picture, or 
 
 Send opens the devotees who have an email address, and shows the address. Tick people one by one, or tick everyone. Send invitation sends the card in one click. Every action in the app, including this send, shows the temple logo and a short message for that action until the page confirms it is done. Nothing else can be clicked while that message is up. Up to 100 people can be included at once. Someone without an email address is not on that list. The Sent box on that same invitation lists who has already received it, with the address and the time. Outgoing mail has to be saved under Settings before a message can leave.
 
+![Invitations, with the card list and the design button](images/26-invitations.png)
+
 ## Subscriptions
 
 Subscriptions are recurring seva: a plan, an amount, and a frequency. Generate an invoice, then send it. The message includes a payment link. When mail is saved under Settings, Send also emails that message. WhatsApp Web opens with the message filled in. There is no WhatsApp API. The devotee still confirms payment on the link.
@@ -198,7 +204,7 @@ An expense has a category, who was paid, a date, a payment mode, and a voucher n
 
 A new expense waits for approval before it enters the books. A UPI expense stores the transaction id. A cheque stores its number, date, and whether it has cleared.
 
-![Expense form and the expense list with voucher numbers](images/11-expenses.png)
+![Expenses. Record an expense opens from a button. The list shows the voucher numbers.](images/11-expenses.png)
 
 **Example.** Staff records ₹3,200 paid in cash to the electrician for sanctum lighting. It waits. A Treasurer who did not enter it can approve it when it is within the Treasurer limit in Settings (₹10,000 until an Admin changes it). The salary payment of ₹42,000 is above that starting limit, so only an Admin can approve it. Until then it is not in the cash book.
 
@@ -278,6 +284,16 @@ Reports print donations, expenses, inventory, food, vastra, and bank reconciliat
 
 **Example.** For the trustee meeting, open the donation report, set the month, and print. The temple name and logo from Settings appear on the printed header.
 
+## App contributors
+
+App contributors sits in Administration, above Users. Everyone who is signed in can open the page and read the cards. Only an Admin can add a person, change a card, or remove one.
+
+A card can show a photo, the name, a designation, a phone number, an email address, a location, and a public profile link. The name is required. The other fields can be left blank. The photo must be a JPG, PNG, GIF, or WebP image of 2 MB or less. The profile link, when it is filled in, must start with http:// or https://.
+
+![App contributors. The list stays empty until an Admin adds the first person.](images/25-contributors.png)
+
+**Example.** An Admin adds the temple priest with a photo, a designation, and a phone number. A Treasurer who opens the same page sees the card and cannot change it.
+
 ## Users
 
 Users is Admin only. An Admin adds an account and chooses Admin, Treasurer, or Staff. Passwords are stored hashed. At most 10 accounts can be active. The last active Admin cannot be deactivated.
@@ -292,7 +308,7 @@ Settings is Admin only. One card holds the temple name and the place (for exampl
 
 The same page holds the outgoing mail server, the WhatsApp message, and the choice lists used on the forms. The mail password is kept and is not shown again. A name already in a list cannot be added twice. Names the forms rely on stay and cannot be removed.
 
-Puja purpose is the choice list for coupons. Each row is a purpose and the amount that fills in when that purpose is chosen. An Admin can change an amount, add a purpose, or remove any purpose this temple does not offer. At least one purpose must remain. Those choices are stored in `storage/selections.json` on the server, not in the devotee records.
+Puja purpose is the choice list for coupons. Each row is a name and an amount. The coupon name and the purpose both offer those names. Choosing a coupon name fills the amount. Choosing a purpose does not change the amount. A coupon name that is not in the list keeps the amount you type. An Admin can change an amount, add a purpose, or remove any purpose this temple does not offer. At least one purpose must remain. Those choices are stored in `storage/selections.json` on the server, not in the devotee records.
 
 The temple name, place, logo, and watermark levels are stored in that server's database. Saving them on one computer does not change the other server until the books are loaded there. After a new server is set up, open Settings there and save them once if they are not already in the loaded books, then print the receipt and the coupon again.
 
@@ -314,7 +330,7 @@ Localization is Admin only. It changes labels, headings, and buttons for English
 
 **Treasurer.** Open Approvals. Approve the kitchen use and the electrician's bill when both are within the Treasurer limit and someone else prepared them. Leave the salary line for an Admin while it is above that limit. If the year is opening, submit the opening cash and bank, and ask an Admin to approve it.
 
-**Admin.** Approve anything above the Treasurer and Staff limits, including a large coupon batch. Set those limits on Settings. Save the temple name, logo, and watermarks if they are not yet on this server. Add or deactivate accounts when people join or leave. Download a zip of receipts when the office needs a bundle. A donation edit older than 24 hours also needs this Admin together with a Treasurer.
+**Admin.** Approve anything above the Treasurer and Staff limits, including a large coupon batch. Set those limits on Settings. Save the temple name, logo, and watermarks if they are not yet on this server. Add or deactivate accounts when people join or leave. Add the people who should appear on App contributors. Download a zip of receipts when the office needs a bundle. A donation edit older than 24 hours also needs this Admin together with a Treasurer.
 
 ## Putting this copy on the hosting server
 
@@ -323,4 +339,4 @@ Localization is Admin only. It changes labels, headings, and buttons for English
 3. Form choices travel in `php/storage/selections.json`. That includes every puja purpose and its amount. Uploading this folder replaces the choice file already on the server. Those choices are not inside the database, so the replace tick on `install.php` does not load them.
 4. On the server, open `install.php`. It adds the latest tables and columns, including donation edits. Enter the setup key from that server’s `.env`. If devotees are already there, tick **Replace the devotees and books already in this database with the saved copy**. Leave the box unticked only when the server’s own devotees must stay; the new tables are still added.
 5. Sign in, then delete `INSTALL_TOKEN` from the server `.env` so the setup page cannot be used again.
-6. Open Donations and use Generate receipt for each gift that should have one. Open Coupons under Temple for a single coupon, which prints at once, or for a batch, which still waits for approval. An edit of a gift older than 24 hours waits until both a Treasurer and an Admin approve it.
+6. Open Donations and use Generate receipt for each gift that should have one. Open Coupons under Temple. Quantity 1 prints at once. A larger quantity waits for approval. The amount follows the coupon name. An edit of a gift older than 24 hours waits until both a Treasurer and an Admin approve it. App contributors is empty until an Admin adds the first person.

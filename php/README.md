@@ -43,7 +43,7 @@ Change these in `config.php` if the server credentials differ.
 | Dashboard | Totals for donations, expenses, stock alerts, and subscriptions |
 | Inventory | Quantity, rate, value, condition, and location. Issue, return, damage, loss, and retired. A purchase posts stock and the payment together after approval |
 | Food stock | Add items, log stock in and out, low-stock flags. Kitchen use above 5 units waits for approval |
-| Coupons | Under Temple, and also linked from Food stock. One coupon prints at once and does not wait for approval. A larger batch waits. The purpose list and each amount are the Puja purpose choices in Settings |
+| Coupons | Under Temple, and also linked from Food stock. One generate form covers a single coupon and a batch. Quantity 1 prints at once and does not wait for approval. A larger quantity waits. The coupon name and the purpose use the Puja purpose choices in Settings. Choosing a coupon name fills that amount. Choosing a purpose does not. |
 | Deity vastra | Cloths by deity, marked In Store, In Use, or Retired |
 | Donations | Cash and in-kind gifts. In-kind food, vastra, and inventory update those registers. Receipts are PDF. Generate receipt stays available and overwrites the same number. An edit waits for approval: one person within 24 hours, both a Treasurer and an Admin after that |
 | Donors | One page per devotee: gifts, receipt numbers, PAN, and pledge versus amount received. The page prints as the yearly statement |
@@ -56,6 +56,7 @@ Change these in `config.php` if the server credentials differ.
 | Ledger | One balance per donation purpose and expense category: money received, money spent, and what remains |
 | Bank reconciliation | Upload a CSV or Excel statement. Credits match donations and debits match expenses when the amount is the same and the date is within 3 days. Anything left over can be linked by hand |
 | Reports | Donations, expenses, inventory, food, vastra, and reconciliation. Each report prints from the browser |
+| App contributors | Cards for the people behind the app. Everyone signed in can read them. Only an Admin can add, update, or remove a person |
 | Users | Admin-only accounts |
 | Settings | Admin-only temple name, place, logo, approval limits, form choices, outgoing mail, and the WhatsApp Web message. Puja purpose stores a name and an amount for coupons. WhatsApp opens in the browser; there is no WhatsApp API |
 

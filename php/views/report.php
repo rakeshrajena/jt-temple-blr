@@ -18,7 +18,7 @@ $filterable = $reportType === 'donations' || $reportType === 'expenses';
 <head>
   <meta charset="UTF-8">
   <title><?= e($title) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=23">
+  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=32">
 </head>
 <body style="background:#fff;">
 <div class="report-sheet">
@@ -27,20 +27,17 @@ $filterable = $reportType === 'donations' || $reportType === 'expenses';
     <h1><?= e(app_display_name()) ?>, <?= e(app_place()) ?></h1>
     <p><?= e($title) ?> — Generated on <?= e($generatedOn) ?></p>
   </div>
-  <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:12px; flex-wrap:wrap;">
-    <a href="<?= e(url('reports')) ?>" class="btn btn-outline btn-sm">← Back to Reports</a>
-    <div>
-      <?php if ($filterable): ?>
-      <form method="GET" action="<?= e(app_script()) ?>" style="display:inline-flex; gap:8px; align-items:center;">
-        <input type="hidden" name="r" value="reports/<?= e($reportType) ?>">
-        <input type="date" name="start" value="<?= e((string) $start) ?>" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
-        <span>to</span>
-        <input type="date" name="end" value="<?= e((string) $end) ?>" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
-        <button class="btn btn-sm btn-outline" type="submit"><?= e(t('common.filter')) ?></button>
-      </form>
-      <?php endif; ?>
-      <button class="btn btn-sm btn-primary" onclick="window.print()">🖨️ Print</button>
-    </div>
+  <div class="page-actions no-print">
+    <a href="<?= e(url('reports')) ?>" class="btn btn-outline btn-sm">Back to Reports</a>
+    <?php if ($filterable): ?>
+    <form class="filters" method="GET" action="<?= e(app_script()) ?>">
+      <input type="hidden" name="r" value="reports/<?= e($reportType) ?>">
+      <div class="form-group"><label><?= e(t('common.from')) ?></label><input type="date" name="start" value="<?= e((string) $start) ?>"></div>
+      <div class="form-group"><label><?= e(t('common.to')) ?></label><input type="date" name="end" value="<?= e((string) $end) ?>"></div>
+      <button class="btn btn-outline" type="submit"><?= e(t('common.filter')) ?></button>
+    </form>
+    <?php endif; ?>
+    <button class="btn btn-primary" type="button" onclick="window.print()">Print</button>
   </div>
   <div class="report-meta">
     <?= count($data) ?> <?= e($reportType === 'donations' ? 'donation(s)' : ($reportType === 'expenses' ? 'expense(s)' : ($reportType === 'reconciliation' ? 'transaction(s)' : 'item(s)'))) ?>

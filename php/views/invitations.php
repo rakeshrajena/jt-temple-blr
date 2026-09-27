@@ -4,6 +4,11 @@
 <div class="panel">
   <h3>Invitations</h3>
   <p class="sub">Design a card with words, a picture, or a video link. Then send it in one click to devotees who have an email address.</p>
+  <div class="reveal-group">
+  <div class="action-bar">
+    <button class="btn btn-outline" type="button" data-reveal="reveal-invite">Design invitation</button>
+  </div>
+  <div class="reveal-panel" id="reveal-invite" hidden>
   <form method="POST" action="<?= e(url('invitations')) ?>" class="invite-create">
     <?= csrf_field() ?>
     <div class="form-group">
@@ -12,6 +17,8 @@
     </div>
     <button class="btn btn-gold btn-sm" type="submit">Design invitation</button>
   </form>
+  </div>
+  </div>
   <?php if ($invitations === []): ?>
     <p>No invitations yet.</p>
   <?php else: ?>

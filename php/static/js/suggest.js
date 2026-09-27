@@ -93,6 +93,42 @@
     var rows = [];
     var timer = 0;
     var request = 0;
+    var pricedName = '';
+
+    function exactRow(query) {
+      if (remote) {
+        return null;
+      }
+      var needle = norm(String(query || '').trim());
+      if (needle === '') {
+        return null;
+      }
+      var found = null;
+      source.some(function (row) {
+        if (norm(row.name) === needle) {
+          found = row;
+          return true;
+        }
+        return false;
+      });
+      return found;
+    }
+
+    function applyKnownPrice() {
+      var row = exactRow(input.value);
+      if (!row) {
+        pricedName = '';
+        return;
+      }
+      var key = norm(row.name);
+      if (pricedName === key) {
+        return;
+      }
+      pricedName = key;
+      Object.keys(fills).forEach(function (field) {
+        setField(form, field, row[fills[field]]);
+      });
+    }
 
     function allowed(row) {
       if (!filterField || filterField.value === '') {
@@ -198,6 +234,7 @@
       if (idField && row.id) {
         idField.value = String(row.id);
       }
+      pricedName = norm(row.name);
       close();
     }
 
@@ -211,6 +248,7 @@
       if (idField) {
         idField.value = '0';
       }
+      applyKnownPrice();
       show(input.value);
     });
     input.addEventListener('focus', function () {

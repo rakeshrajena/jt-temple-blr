@@ -18,12 +18,12 @@
   <?php else: ?>
   <form method="POST" id="receiptForm" action="<?= e(url('receipts/cancel')) ?>">
     <?= csrf_field() ?>
-    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+    <div class="toolbar">
       <?php if ($isAdmin): ?>
       <button class="btn btn-gold btn-sm" type="submit" formaction="<?= e(url('receipts/download')) ?>" name="scope" value="selected" id="downloadSelected" disabled>Download selected (<span id="selCount">0</span>)</button>
       <button class="btn btn-outline btn-sm" type="submit" formaction="<?= e(url('receipts/download')) ?>" name="scope" value="all">Download all (<?= (int) $onDisk ?>)</button>
       <?php endif; ?>
-      <input type="text" name="reason" maxlength="500" placeholder="Reason for cancellation" style="min-width:220px;">
+      <input type="text" name="reason" maxlength="500" placeholder="Reason for cancellation">
       <button class="btn btn-outline btn-sm" type="submit" id="cancelSelected" disabled><?= e(t('ui.request_cancel')) ?></button>
       <button class="btn btn-gold btn-sm" type="button" id="bulkEmail" disabled>Bulk email (<span id="bulkEmailCount">0</span>)</button>
       <button class="btn btn-outline btn-sm" type="button" id="bulkWhatsapp" disabled>Bulk WhatsApp (<span id="bulkWhatsappCount">0</span>)</button>

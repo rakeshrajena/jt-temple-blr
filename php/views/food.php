@@ -6,13 +6,17 @@
 ?>
 <div class="panel panel-banner">
   <div>
-    <h3 style="margin-bottom:2px;">🎟️ Food Coupon Generator</h3>
-    <p style="color:var(--ink-soft); font-size:13px; margin:0;">Generate cost-tracked prasad/meal coupons in bulk, with sequential serial numbers and a print-ready PDF.</p>
+    <h3>Coupons</h3>
+    <p class="sub">Print a batch or record a sold coupon. The same page is under Temple.</p>
   </div>
-  <a href="<?= e(url('food/coupons')) ?>" class="btn btn-gold"><?= e(t('ui.manage_coupons')) ?> →</a>
+  <a href="<?= e(url('food/coupons')) ?>" class="btn btn-gold"><?= e(t('ui.manage_coupons')) ?></a>
 </div>
-<div class="panel-row">
-  <div class="panel">
+<div class="reveal-group">
+<div class="action-bar">
+  <button class="btn btn-outline" type="button" data-reveal="reveal-food-add"><?= e(t('ui.add_food')) ?></button>
+  <button class="btn btn-outline" type="button" data-reveal="reveal-food-log"><?= e(t('ui.log_movement')) ?></button>
+</div>
+  <div class="panel reveal-panel" id="reveal-food-add" hidden>
     <h3><?= e(t('ui.add_food')) ?></h3>
     <form method="POST" action="<?= e(url('food')) ?>">
       <?= csrf_field() ?>
@@ -44,7 +48,7 @@
       }, $items), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) ?></script>
     </form>
   </div>
-  <div class="panel">
+  <div class="panel reveal-panel" id="reveal-food-log" hidden>
     <h3><?= e(t('ui.log_movement')) ?></h3>
     <p class="sub">Kitchen use of <?= e((string) $writeOffLimit) ?> or less is recorded immediately. Above that, it waits for approval and the quantity stays until then.</p>
     <form method="POST" action="<?= e(url('food')) ?>">

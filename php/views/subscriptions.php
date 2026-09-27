@@ -11,15 +11,18 @@
   <div class="kpi-card warn"><div class="value"><?= e(money($pendingAmount)) ?></div><div class="label">Pending / Overdue Amount</div></div>
   <div class="kpi-card"><div class="value"><?= count($subs) ?></div><div class="label">Total Subscribers</div></div>
 </div>
-<div class="panel" style="border-left: 4px solid var(--amber);">
-  <h3 style="color:var(--amber);">ℹ️ How this works</h3>
-  <p style="color:var(--ink-soft); font-size:13px; margin:0;">
+<div class="panel note-panel">
+  <h3>How this works</h3>
+  <p class="sub">
     <strong>Generate Invoice</strong> creates a billing record. <strong>Send</strong> writes the message to the log. If outgoing mail is saved in Settings, it is also emailed. <strong>WhatsApp</strong> opens WhatsApp Web with the message filled in. Nothing is sent through a WhatsApp API. The devotee opens the payment link, pays, and the invoice
     updates to <strong>Paid</strong> here — with the payment copied into Donations.
   </p>
 </div>
-<div class="panel-row">
-  <div class="panel">
+<div class="reveal-group">
+<div class="action-bar">
+  <button class="btn btn-outline" type="button" data-reveal="reveal-subscriber"><?= e(t('ui.add_subscriber')) ?></button>
+</div>
+  <div class="panel reveal-panel" id="reveal-subscriber" hidden>
     <h3><?= e(t('ui.add_subscriber')) ?></h3>
     <form method="POST" action="<?= e(url('subscriptions')) ?>">
       <?= csrf_field() ?>
@@ -76,7 +79,7 @@
   <h3>All Invoices (<?= count($invoices) ?>)</h3>
   <form method="POST" action="<?= e(url('subscriptions/bulk_send')) ?>" id="bulkSendForm">
     <?= csrf_field() ?>
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap;">
+    <div class="toolbar">
       <button class="btn btn-gold btn-sm" type="submit" id="bulkSendBtn" disabled>📲 Send Selected (<span id="selCount">0</span>)</button>
       <span style="color:var(--ink-soft); font-size:12.5px;">Select invoices below, or use the header checkbox to select all unpaid invoices.</span>
     </div>

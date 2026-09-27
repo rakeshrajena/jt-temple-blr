@@ -72,7 +72,7 @@ function selection_catalog(): array
         ],
         'puja_purposes' => [
             'label' => 'Puja purpose',
-            'modules' => 'Coupons. Typing a purpose offers these names, and choosing one fills the coupon amount. One coupon does not wait for approval.',
+            'modules' => 'Coupons. The coupon name and the purpose offer these names. Choosing a coupon name fills the amount. Choosing a purpose does not. Quantity 1 does not wait for approval.',
             'kind' => 'priced',
             'required' => [],
         ],

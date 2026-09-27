@@ -18,12 +18,16 @@ $lines = $book['lines'];
 <?php endif; ?>
 <div class="panel">
   <h3>Cash book · <?= e($book['financial_year']) ?></h3>
-  <form method="GET" action="<?= e(app_script()) ?>" style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
+  <nav class="book-nav" aria-label="Books">
+    <a class="is-on" href="<?= e(url('cash-book', ['from' => $book['from'], 'to' => $book['to']])) ?>">Cash book</a>
+    <a href="<?= e(url('day-book', ['from' => $book['from'], 'to' => $book['to']])) ?>">Day book</a>
+    <a href="<?= e(url('ledger', ['from' => $book['from'], 'to' => $book['to']])) ?>">Ledger</a>
+  </nav>
+  <form class="filters" method="GET" action="<?= e(app_script()) ?>">
     <input type="hidden" name="r" value="cash-book">
     <div class="form-group"><label><?= e(t('common.from')) ?></label><input type="date" name="from" value="<?= e($book['from']) ?>"></div>
     <div class="form-group"><label><?= e(t('common.to')) ?></label><input type="date" name="to" value="<?= e($book['to']) ?>"></div>
-    <button class="btn btn-outline btn-sm" type="submit"><?= e(t('common.show')) ?></button>
-    <a class="btn btn-outline btn-sm" href="<?= e(url('day-book', ['from' => $book['from'], 'to' => $book['to']])) ?>">Day book</a>
+    <button class="btn btn-primary" type="submit"><?= e(t('common.show')) ?></button>
   </form>
   <p style="color:var(--ink-soft); font-size:13px; margin-top:0;">
     Receipts and payments between these dates. The opening balance includes the year opening<?php if ($yearOpening['note'] !== ''): ?> (<?= e($yearOpening['note']) ?>)<?php endif; ?> plus anything earlier in <?= e($book['financial_year']) ?>.
@@ -62,8 +66,14 @@ $lines = $book['lines'];
     </tr>
   </table>
 </div>
-<div class="panel-row">
-  <div class="panel">
+<div class="reveal-group">
+<div class="action-bar book-actions">
+  <button class="btn btn-outline" type="button" data-reveal="reveal-contra">Cash deposited or withdrawn</button>
+  <?php if ($canSetOpening): ?>
+  <button class="btn btn-outline" type="button" data-reveal="reveal-opening">Opening balance</button>
+  <?php endif; ?>
+</div>
+  <div class="panel reveal-panel" id="reveal-contra" hidden>
     <h3>Cash deposited or withdrawn</h3>
     <form method="POST" action="<?= e(url('cash-book/contra')) ?>">
       <?= csrf_field() ?>
@@ -85,7 +95,7 @@ $lines = $book['lines'];
     </form>
   </div>
   <?php if ($canSetOpening): ?>
-  <div class="panel">
+  <div class="panel reveal-panel" id="reveal-opening" hidden>
     <h3>Opening balance for <?= e($book['financial_year']) ?></h3>
     <p class="sub">A change stays pending until another person approves it. These boxes show the last approved figures.</p>
     <form method="POST" action="<?= e(url('cash-book/opening')) ?>">
