@@ -54,6 +54,43 @@ check(
     $jena !== null && preg_match('/^[a-f0-9]{32}$/', (string) $jena['receipt_share_token']) === 1,
     'an existing receipt has a public link token'
 );
+$public = $jena === null ? null : receipt_public_row((string) $jena['receipt_share_token']);
+check(
+    is_array($public)
+    && (string) $public['receipt_number'] === 'RCPT-2026-0010'
+    && !array_key_exists('pan_number', $public)
+    && !array_key_exists('phone', $public),
+    'the public gift page names the receipt and leaves out the phone and PAN'
+);
+check(receipt_public_row(str_repeat('ab', 16)) === null, 'an unknown receipt link shows no gift');
+check(
+    str_contains(receipt_public_thanks(), 'donation and devotion toward Lord Jagannath'),
+    'the public gift page thanks the devotee'
+);
+$qrPath = APP_ROOT . '/storage/receipts/RCPT-QR-CHECK.pdf';
+if (is_file($qrPath)) {
+    check(false, 'the QR sample does not replace a real receipt');
+} else {
+    generate_receipt_pdf([
+        'donation_date' => '2026-09-27',
+        'donation_type' => 'Cash',
+        'amount' => 100,
+        'purpose' => 'General',
+        'payment_mode' => 'Cash',
+        'receipt_share_token' => str_repeat('cd', 16),
+    ], ['name' => 'Sample Devotee', 'phone' => '', 'pan_number' => ''], 'RCPT-QR-CHECK');
+    $qrPdf = (string) file_get_contents($qrPath);
+    $mark = receipt_namaste_mark();
+    check(substr_count($qrPdf, ' re f') > 40, 'the receipt PDF draws a QR code for the public page');
+    check(
+        str_contains($qrPdf, 'Mahaprasad and temple seva')
+        && str_contains($qrPdf, 'Lord Jagannath.')
+        && is_array($mark)
+        && str_contains($qrPdf, '/Width ' . $mark['width']),
+        'the receipt PDF places the thank-you beside the QR code'
+    );
+    unlink($qrPath);
+}
 $url = whatsapp_web_url('8328800931', $message, '91');
 check(
     $url !== null && str_starts_with($url, 'https://web.whatsapp.com/send?phone=918328800931&text='),

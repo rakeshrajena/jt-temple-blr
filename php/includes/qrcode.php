@@ -2,17 +2,20 @@
 declare(strict_types=1);
 
 /**
- * QR Code, byte mode, error correction M, versions 1–3.
+ * QR Code, byte mode, error correction M, versions 1–9.
  * Row 0 is the top. Each row is '1' for a dark module and '0' for a light one.
  *
  * @return list<string>
  */
 function qr_matrix(string $text): array
 {
-    if ($text === '' || strlen($text) > 42) {
+    if ($text === '') {
         return [];
     }
-    $version = strlen($text) <= 14 ? 1 : (strlen($text) <= 26 ? 2 : 3);
+    $version = qr_version_for_length(strlen($text));
+    if ($version === 0) {
+        return [];
+    }
     $spec = qr_version_spec($version);
     $size = 17 + (4 * $version);
     $grid = [];
@@ -43,14 +46,16 @@ function qr_matrix(string $text): array
     foreach (qr_format_positions($size) as [$row, $col]) {
         $reserved[$row][$col] = true;
     }
+    qr_reserve_version($reserved, $version);
 
-    $bits = qr_data_bits($text, $spec['data'], $spec['ecc'], $spec['remainder']);
+    $bits = qr_data_bits($text, $spec);
     $best = null;
     $bestScore = PHP_INT_MAX;
     for ($mask = 0; $mask < 8; $mask++) {
         $candidate = $grid;
         qr_place_data($candidate, $reserved, $bits, $mask);
         qr_place_format($candidate, $mask);
+        qr_place_version($candidate, $version);
         $score = qr_penalty($candidate);
         if ($score < $bestScore) {
             $bestScore = $score;
@@ -79,17 +84,45 @@ function qr_format_bits(int $mask): int
     return (($mask << 10) | ($value & 0x3FF)) ^ 0x5412;
 }
 
+function qr_version_for_length(int $length): int
+{
+    $limits = [1 => 14, 2 => 26, 3 => 42, 4 => 62, 5 => 84, 6 => 106, 7 => 122, 8 => 152, 9 => 180];
+    foreach ($limits as $version => $max) {
+        if ($length <= $max) {
+            return $version;
+        }
+    }
+    return 0;
+}
+
 /**
- * @return array{data:int,ecc:int,align:list<int>,remainder:int}
+ * Byte mode, error correction M. blocks lists the data-codeword count of each block.
+ *
+ * @return array{data:int,ecc:int,blocks:list<int>,align:list<int>,remainder:int}
  */
 function qr_version_spec(int $version): array
 {
     return match ($version) {
-        1 => ['data' => 16, 'ecc' => 10, 'align' => [], 'remainder' => 0],
-        2 => ['data' => 28, 'ecc' => 16, 'align' => [6, 18], 'remainder' => 7],
-        3 => ['data' => 44, 'ecc' => 26, 'align' => [6, 22], 'remainder' => 7],
+        1 => ['data' => 16, 'ecc' => 10, 'blocks' => [16], 'align' => [], 'remainder' => 0],
+        2 => ['data' => 28, 'ecc' => 16, 'blocks' => [28], 'align' => [6, 18], 'remainder' => 7],
+        3 => ['data' => 44, 'ecc' => 26, 'blocks' => [44], 'align' => [6, 22], 'remainder' => 7],
+        4 => ['data' => 64, 'ecc' => 18, 'blocks' => [32, 32], 'align' => [6, 26], 'remainder' => 7],
+        5 => ['data' => 86, 'ecc' => 24, 'blocks' => [43, 43], 'align' => [6, 30], 'remainder' => 7],
+        6 => ['data' => 108, 'ecc' => 16, 'blocks' => [27, 27, 27, 27], 'align' => [6, 34], 'remainder' => 7],
+        7 => ['data' => 124, 'ecc' => 18, 'blocks' => [31, 31, 31, 31], 'align' => [6, 22, 38], 'remainder' => 0],
+        8 => ['data' => 154, 'ecc' => 22, 'blocks' => [38, 38, 39, 39], 'align' => [6, 24, 42], 'remainder' => 0],
+        9 => ['data' => 182, 'ecc' => 22, 'blocks' => [36, 36, 36, 37, 37], 'align' => [6, 26, 46], 'remainder' => 0],
         default => throw new InvalidArgumentException('That QR version is not supported.'),
     };
+}
+
+function qr_version_bits(int $version): int
+{
+    $remainder = $version;
+    for ($i = 0; $i < 12; $i++) {
+        $remainder = ($remainder << 1) ^ ((($remainder >> 11) & 1) * 0x1F25);
+    }
+    return ($version << 12) | ($remainder & 0xFFF);
 }
 
 /** @param list<int> $data */
@@ -236,14 +269,15 @@ function qr_format_positions(int $size): array
     return $positions;
 }
 
-function qr_data_bits(string $text, int $dataCodewords, int $eccCount, int $remainder): string
+/** @param array{data:int,ecc:int,blocks:list<int>,remainder:int} $spec */
+function qr_data_bits(string $text, array $spec): string
 {
     $bits = '0100' . sprintf('%08b', strlen($text));
     $length = strlen($text);
     for ($i = 0; $i < $length; $i++) {
         $bits .= sprintf('%08b', ord($text[$i]));
     }
-    $capacity = $dataCodewords * 8;
+    $capacity = $spec['data'] * 8;
     $terminator = min(4, max(0, $capacity - strlen($bits)));
     $bits .= str_repeat('0', $terminator);
     if (strlen($bits) % 8 !== 0) {
@@ -255,15 +289,65 @@ function qr_data_bits(string $text, int $dataCodewords, int $eccCount, int $rema
         $bits .= $pad[$padIndex % 2];
         $padIndex++;
     }
+    $bits = substr($bits, 0, $capacity);
     $codewords = [];
-    for ($i = 0; $i < $dataCodewords; $i++) {
+    for ($i = 0; $i < $spec['data']; $i++) {
         $codewords[] = bindec(substr($bits, $i * 8, 8));
     }
-    $stream = '';
-    foreach (array_merge($codewords, qr_ecc($codewords, $eccCount)) as $byte) {
-        $stream .= sprintf('%08b', $byte);
+    $blocks = [];
+    $offset = 0;
+    foreach ($spec['blocks'] as $blockLength) {
+        $block = array_slice($codewords, $offset, $blockLength);
+        $offset += $blockLength;
+        $blocks[] = ['data' => $block, 'ecc' => qr_ecc($block, $spec['ecc'])];
     }
-    return $stream . str_repeat('0', $remainder);
+    $stream = '';
+    $maxData = max($spec['blocks']);
+    for ($i = 0; $i < $maxData; $i++) {
+        foreach ($blocks as $block) {
+            if ($i < count($block['data'])) {
+                $stream .= sprintf('%08b', $block['data'][$i]);
+            }
+        }
+    }
+    for ($i = 0; $i < $spec['ecc']; $i++) {
+        foreach ($blocks as $block) {
+            $stream .= sprintf('%08b', $block['ecc'][$i]);
+        }
+    }
+    return $stream . str_repeat('0', $spec['remainder']);
+}
+
+/** @param list<list<bool>> $reserved */
+function qr_reserve_version(array &$reserved, int $version): void
+{
+    if ($version < 7) {
+        return;
+    }
+    $size = count($reserved);
+    for ($i = 0; $i < 18; $i++) {
+        $a = $size - 11 + ($i % 3);
+        $b = intdiv($i, 3);
+        $reserved[$a][$b] = true;
+        $reserved[$b][$a] = true;
+    }
+}
+
+/** @param list<list<int>> $grid */
+function qr_place_version(array &$grid, int $version): void
+{
+    if ($version < 7) {
+        return;
+    }
+    $bits = qr_version_bits($version);
+    $size = count($grid);
+    for ($i = 0; $i < 18; $i++) {
+        $bit = ($bits >> $i) & 1;
+        $a = $size - 11 + ($i % 3);
+        $b = intdiv($i, 3);
+        $grid[$a][$b] = $bit;
+        $grid[$b][$a] = $bit;
+    }
 }
 
 /**

@@ -107,6 +107,15 @@ try {
         && $openEnded['expires_at'] === null,
         'expiry must be in the future, and no expiry is allowed'
     );
+    $scanLink = coupon_scan_url('CU-1758920820-0007');
+    check(
+        str_contains($scanLink, 'r=coupons%2Fscan')
+        && str_contains($scanLink, 'code=CU-1758920820-0007')
+        && str_starts_with($scanLink, 'http'),
+        'the QR target is a link that carries the coupon code'
+    );
+    $linkedPreview = coupon_scan_preview($scanLink);
+    check($linkedPreview['error'] !== null && $linkedPreview['code'] === null, 'a scan link is checked before anything is recorded');
     check(coupon_api_token_matches('too-short') === false, 'a short coupon API token never matches');
     check(coupon_api_token_matches('this-token-is-long-enough') === false, 'a coupon API token matches only the configured value');
 
@@ -132,6 +141,12 @@ try {
     db_exec(
         "UPDATE approvals SET status = 'Approved' WHERE subject_type = 'coupon' AND subject_id = ?",
         [$saleId]
+    );
+    $ready = coupon_scan_preview(coupon_scan_url($firstCode));
+    $beforeScan = (int) db_value('SELECT COUNT(*) FROM donations WHERE notes = ?', [$firstCode]);
+    check(
+        $ready['error'] === null && $ready['code'] === $firstCode && $beforeScan === 0,
+        'a scan link for a valid coupon is accepted and does not add income until it is recorded'
     );
     $sold = redeem_coupon($firstCode, $adminId, 'Walk-in devotee', 'Cash');
     $donation = db_one(

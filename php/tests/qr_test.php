@@ -76,8 +76,14 @@ for ($mask = 0; $mask < 8; $mask++) {
     }
 }
 check($known && $format === $second, 'both QR format copies name the same mask');
+check(qr_version_bits(7) === 0x07C94, 'version 7 uses the standard QR version bits');
 check(qr_matrix('') === [], 'an empty serial is not encoded');
-check(qr_matrix(str_repeat('A', 43)) === [], 'a serial longer than the symbol is refused');
+$longer = qr_matrix(str_repeat('A', 43));
+check(count($longer) === 33 && strlen($longer[0]) === 33, 'a 43-character link fits in a version 4 QR code');
+$link = 'https://temple.example/index.php?r=coupons/scan&code=CU-1758920820-0007';
+$linked = qr_matrix($link);
+check(count($linked) >= 37 && count($linked) === strlen($linked[0]), 'a coupon scan link fits in one QR code');
+check(qr_matrix(str_repeat('A', 181)) === [], 'a link longer than version 9 is refused');
 
 $path = APP_ROOT . '/storage/coupons/batch_987653.pdf';
 if (is_file($path)) {

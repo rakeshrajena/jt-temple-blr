@@ -187,7 +187,9 @@ if (scanButton && 'BarcodeDetector' in window) {
         var timer = window.setInterval(function () {
           detector.detect(video).then(function (codes) {
             if (!codes.length) return;
-            input.value = codes[0].rawValue || '';
+            var raw = codes[0].rawValue || '';
+            var found = raw.match(/CU-\d{9,12}-\d{4,6}/);
+            input.value = found ? found[0] : raw;
             window.clearInterval(timer);
             stream.getTracks().forEach(function (track) { track.stop(); });
             video.remove();

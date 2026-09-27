@@ -110,17 +110,52 @@ function generate_receipt_pdf(array $donation, array $donor, string $receiptNumb
     $pdf->setStroke(0.867, 0.867, 0.867);
     $pdf->setLineWidth(0.6);
     $pdf->line(40, $y, $pageW - 40, $y);
-    $y -= 20;
-
-    $pdf->setFill(...$grey);
-    $note = 'Thank you for your generous contribution towards Mahaprasad and temple seva. This receipt is issued for your records.';
-    foreach ($pdf->wrap($note, 8.5, 340) as $line) {
-        $pdf->text(40, $y, $line, 8.5, 'F3');
-        $y -= 12;
-    }
-    $y -= 24;
+    $y -= 28;
     $pdf->setFill(...$dark);
     $pdf->text(40, $y, 'Authorized Signatory: ______________________', 9, 'F1');
+
+    $token = (string) ($donation['receipt_share_token'] ?? '');
+    $link = receipt_public_url($token);
+    $symbol = $link === '' ? [] : qr_matrix($link);
+    $qrSize = 78.0;
+    $qrX = $pageW - 40 - $qrSize;
+    $qrY = 46.0;
+    if ($symbol !== []) {
+        $pdf->setFill(1, 1, 1);
+        $pdf->rect($qrX - 4, $qrY - 4, $qrSize + 8, $qrSize + 8, false, true);
+        $pdf->matrix($qrX, $qrY, $qrSize, $symbol);
+        $pdf->setFill(...$grey);
+        $caption = 'Scan to view this gift';
+        $pdf->text($qrX + ($qrSize - $pdf->textWidth($caption, 7)) / 2, $qrY + $qrSize + 8, $caption, 7, 'F1');
+    }
+
+    $note = receipt_closing_note();
+    $mark = receipt_namaste_mark();
+    $markSize = 10.0;
+    $column = $symbol === [] ? 340.0 : ($qrX - 14.0 - 40.0);
+    $textMax = $mark === null ? $column : max(80.0, $column - $markSize - 3.0);
+    $lines = $pdf->wrap($note, 8.5, $textMax);
+    $lineGap = 11.0;
+    $count = count($lines);
+    $startY = $symbol === []
+        ? $y - 22.0
+        : $qrY + ($qrSize / 2) + ((($count - 1) * $lineGap) / 2);
+    $pdf->setFill(...$grey);
+    $last = $count - 1;
+    foreach ($lines as $index => $line) {
+        $lineY = $startY - ($index * $lineGap);
+        $pdf->text(40, $lineY, $line, 8.5, 'F3');
+        if ($index === $last && $mark !== null) {
+            $pdf->drawImage(
+                $pdf->addImage($mark),
+                40 + $pdf->textWidth($line, 8.5) + 3,
+                $lineY - 1.5,
+                $markSize,
+                $markSize,
+                1
+            );
+        }
+    }
 
     $path = APP_ROOT . '/storage/receipts/' . $receiptNumber . '.pdf';
     $pdf->save($path);
@@ -147,12 +182,64 @@ function receipt_share_message(array $row, string $link = ''): string
     return $text . ' — ' . app_display_name();
 }
 
+function receipt_public_thanks(): string
+{
+    return 'Thank you for your donation and devotion toward Lord Jagannath.';
+}
+
+function receipt_closing_note(): string
+{
+    return 'Thank you for your generous contribution towards Mahaprasad and temple seva. This receipt is issued for your records. '
+        . receipt_public_thanks();
+}
+
+/** @return array{width:int,height:int,jpeg:?string,rgb:string,alpha:?string,colorSpace:string}|null */
+function receipt_namaste_mark(): ?array
+{
+    $path = APP_ROOT . '/static/namaste.png';
+    return is_file($path) ? brand_decode_png($path) : null;
+}
+
 function receipt_public_url(string $token): string
 {
     if (preg_match('/^[a-f0-9]{32}$/', $token) !== 1) {
         return '';
     }
-    return absolute_url('receipts/open/' . $token);
+    return app_public_origin() . app_web_script() . '?' . http_build_query(['r' => 'receipts/open/' . $token]);
+}
+
+function receipt_ensure_share_token(int $donationId): string
+{
+    $existing = db_value('SELECT receipt_share_token FROM donations WHERE id = ?', [$donationId]);
+    if (is_string($existing) && preg_match('/^[a-f0-9]{32}$/', $existing) === 1) {
+        return $existing;
+    }
+    $token = bin2hex(random_bytes(16));
+    db_exec(
+        'UPDATE donations SET receipt_share_token = ? WHERE id = ? AND (receipt_share_token IS NULL OR receipt_share_token = \'\')',
+        [$token, $donationId]
+    );
+    $saved = db_value('SELECT receipt_share_token FROM donations WHERE id = ?', [$donationId]);
+    return is_string($saved) && $saved !== '' ? $saved : $token;
+}
+
+/** @return array<string, mixed>|null */
+function receipt_public_row(string $token): ?array
+{
+    if (preg_match('/^[a-f0-9]{32}$/', $token) !== 1) {
+        return null;
+    }
+    return db_one(
+        "SELECT d.receipt_number, d.donation_date, d.amount, d.donation_type, d.purpose,
+                d.payment_mode, d.receipt_cancelled, don.name AS donor_name
+         FROM donations d
+         JOIN donors don ON don.id = d.donor_id
+         WHERE d.receipt_share_token = ?
+           AND d.receipt_generated = 1
+           AND d.receipt_number IS NOT NULL
+           AND d.receipt_number <> ''",
+        [$token]
+    );
 }
 
 function receipt_email_body(array $row, string $link = ''): string
@@ -189,6 +276,33 @@ function ensure_receipt_share_schema(PDO $pdo): void
             [bin2hex(random_bytes(16)), (int) $row['id']]
         );
     }
+    rebuild_public_receipt_pdfs();
+}
+
+function rebuild_public_receipt_pdfs(): void
+{
+    $flag = db_one("SELECT setting_value FROM app_settings WHERE setting_key = 'receipt_public_qr'");
+    if ($flag !== null && (string) $flag['setting_value'] === '4') {
+        return;
+    }
+    $rows = db_all(
+        "SELECT d.*, don.name, don.phone, don.email, don.address, don.pan_number
+         FROM donations d
+         JOIN donors don ON d.donor_id = don.id
+         WHERE d.receipt_generated = 1 AND d.receipt_number IS NOT NULL AND d.receipt_number <> ''"
+    );
+    foreach ($rows as $row) {
+        $path = APP_ROOT . '/storage/receipts/' . $row['receipt_number'] . '.pdf';
+        if (!is_file($path)) {
+            continue;
+        }
+        try {
+            generate_receipt_pdf($row, $row, (string) $row['receipt_number']);
+        } catch (Throwable $e) {
+            error_log('[jt_blr] receipt qr: ' . $e->getMessage());
+        }
+    }
+    brand_upsert('receipt_public_qr', '4');
 }
 
 function receipt_email_block_reason(string $email, bool $pdfReady, bool $smtpReady): ?string

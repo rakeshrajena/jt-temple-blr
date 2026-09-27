@@ -101,7 +101,7 @@ Income is recorded when a coupon is sold. Scan the QR code, type the code, or se
 
 A batch can expire at a date and time, or it can have no expiry. Once the expiry time has passed, the coupon is invalidated on its own and cannot be recorded as income. Invalidating a coupon by hand also adds no income.
 
-A Treasurer can approve up to ₹10,000. Above that, an Admin decides. The person who prepared the batch cannot approve it. Print the PDF only after approval. Each coupon carries the serial `CU-` plus the time and a 4-digit number, and a QR code of that serial. If the batch expires, the sheet also prints that time.
+A Treasurer can approve up to ₹10,000. Above that, an Admin decides. The person who prepared the batch cannot approve it. Print the PDF only after approval. Each coupon carries the serial `CU-` plus the time and a 4-digit number. The QR code is a link to that same coupon. Scanning it on a phone opens the register. If you are already signed in, the coupon is checked and, only when it is still valid, recorded as income. If you are not signed in, the sign-in page opens first, and the same check and recording happen after you sign in. A coupon that is waiting, already sold, invalidated, or past its expiry is not added. Print the batch again after this change so the sheet uses the link. If the QR should open the live site rather than this computer, set `APP_URL` in the server `.env` file to that site address, with no path, and print again. If the batch expires, the sheet also prints that time.
 
 The name, cost, quantity, and expiry can be edited. A cost or quantity change sends the batch back for approval. An unapproved batch can be removed by anyone who can open the page. Only an Admin can remove a batch after it is approved. Removing a batch deletes its unused coupons. A batch that already has a sold coupon stays, because that donation is already in the books.
 
@@ -140,6 +140,8 @@ A cheque stores its number, date, and whether it has cleared. A UPI payment stor
 ## Receipts
 
 Receipts lists every PDF that has been generated. Anyone signed in can open one. Email sends that PDF from the mail account saved in Settings. WhatsApp opens the devotee's chat with the receipt link. On a phone, the same button can also attach the PDF when the device can share a file.
+
+The receipt PDF has a QR code. A devotee can scan it with a phone. The phone opens a page with the gift details: receipt number, date, name, amount, purpose, and payment. No sign-in is required. The page is not the PDF. That page closes with a thank-you and a namaste. On the receipt PDF, the same thank-you sits to the left of the QR code. A cancelled receipt still opens and is marked cancelled. The page does not show the phone number, email, address, or PAN.
 
 Cancelling a receipt keeps the number and the file. It waits for approval. After approval the list shows it as cancelled. The money stays in the books. Deleting the file is not how a receipt is undone.
 

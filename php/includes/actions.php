@@ -64,6 +64,10 @@ function dispatch_request(): void
         action_food_coupons($method);
         return;
     }
+    if ($path === 'coupons/scan' && ($method === 'GET' || $method === 'POST')) {
+        action_coupon_scan($method);
+        return;
+    }
     if ($path === 'food/coupons/validate' && $method === 'POST') {
         action_validate_coupon();
         return;
@@ -619,6 +623,65 @@ function action_food_coupons(string $method): void
         'totalCouponQty' => $totalQty,
         'couponIncome' => $couponIncome,
         'role' => (string) ($_SESSION['role'] ?? ''),
+    ]);
+}
+
+function action_coupon_scan(string $method): void
+{
+    login_required();
+    $raw = $method === 'POST'
+        ? (string) ($_POST['code'] ?? '')
+        : (isset($_GET['code']) && is_string($_GET['code']) ? $_GET['code'] : '');
+    $preview = coupon_scan_preview($raw);
+    if ($preview['error'] !== null || $method === 'GET') {
+        render('coupon_scan', [
+            'title' => 'Coupon',
+            'pageTitle' => 'Coupon',
+            'active' => 'food',
+            'preview' => $preview,
+            'saved' => false,
+        ]);
+        return;
+    }
+    try {
+        $result = redeem_coupon($raw, (int) $_SESSION['user_id'], '', 'Cash');
+    } catch (Throwable $e) {
+        error_log('[jt_blr] coupon scan: ' . $e->getMessage());
+        $preview['error'] = 'The coupon could not be recorded.';
+        render('coupon_scan', [
+            'title' => 'Coupon',
+            'pageTitle' => 'Coupon',
+            'active' => 'food',
+            'preview' => $preview,
+            'saved' => false,
+        ]);
+        return;
+    }
+    if ($result['error'] !== null) {
+        $preview['error'] = $result['error'];
+        $preview['code'] = $result['code'] ?? $preview['code'];
+        $preview['status'] = $result['status'] ?? $preview['status'];
+        render('coupon_scan', [
+            'title' => 'Coupon',
+            'pageTitle' => 'Coupon',
+            'active' => 'food',
+            'preview' => $preview,
+            'saved' => false,
+        ]);
+        return;
+    }
+    render('coupon_scan', [
+        'title' => 'Coupon',
+        'pageTitle' => 'Coupon',
+        'active' => 'food',
+        'preview' => [
+            'error' => null,
+            'code' => $result['code'],
+            'amount' => $result['amount'],
+            'purpose' => $result['purpose'],
+            'status' => 'Redeemed',
+        ],
+        'saved' => true,
     ]);
 }
 
@@ -1329,6 +1392,7 @@ function action_generate_receipt(int $donationId): void
     $pdo->beginTransaction();
     try {
         $receiptNumber = $donation['receipt_number'] ?: next_receipt_number($pdo);
+        $donation['receipt_share_token'] = receipt_ensure_share_token($donationId);
         generate_receipt_pdf($donation, $donor, (string) $receiptNumber);
         db_exec(
             'UPDATE donations SET receipt_number = ?, receipt_generated = 1 WHERE id = ?',
@@ -1352,26 +1416,19 @@ function action_generate_receipt(int $donationId): void
 
 function action_open_receipt(string $token): void
 {
-    if (preg_match('/^[a-f0-9]{32}$/', $token) !== 1) {
+    $row = receipt_public_row($token);
+    if ($row === null) {
         http_response_code(404);
-        echo 'Not found.';
+        render('receipt_public', [
+            'title' => 'Gift',
+            'gift' => null,
+        ], false);
         return;
     }
-    $row = db_one(
-        "SELECT receipt_number FROM donations
-         WHERE receipt_share_token = ?
-           AND receipt_generated = 1
-           AND receipt_number IS NOT NULL
-           AND receipt_number <> ''",
-        [$token]
-    );
-    $number = $row === null ? '' : (string) $row['receipt_number'];
-    if ($number === '' || !receipt_file_exists($number)) {
-        http_response_code(404);
-        echo 'Not found.';
-        return;
-    }
-    send_pdf(receipt_path($number), $number . '.pdf', false);
+    render('receipt_public', [
+        'title' => 'Gift',
+        'gift' => $row,
+    ], false);
 }
 
 function action_serve_receipt(string $filename): void

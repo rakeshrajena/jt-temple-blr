@@ -211,6 +211,51 @@ function coupon_code(int $issuedUnix, int $serial): string
     return sprintf('CU-%d-%04d', $issuedUnix, $serial);
 }
 
+function coupon_code_from_input(string $raw): string
+{
+    $raw = trim($raw);
+    if (preg_match('/(CU-\d{9,12}-\d{4,6})/', $raw, $match) === 1) {
+        return $match[1];
+    }
+    return $raw;
+}
+
+function app_public_origin(): string
+{
+    $configured = rtrim(env_value('APP_URL'), '/');
+    if (preg_match('#^https?://[A-Za-z0-9._:-]+$#', $configured) === 1) {
+        return $configured;
+    }
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    $host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+    if (preg_match('/^[A-Za-z0-9._:-]+$/', $host) !== 1) {
+        $host = 'localhost';
+    }
+    return ($https ? 'https' : 'http') . '://' . $host;
+}
+
+function app_web_script(): string
+{
+    if (PHP_SAPI !== 'cli') {
+        return app_script();
+    }
+    $root = str_replace('\\', '/', APP_ROOT);
+    $local = '/jt_blr/jt-temple-blr/php';
+    if (str_ends_with($root, $local)) {
+        return $local . '/index.php';
+    }
+    return '/index.php';
+}
+
+function coupon_scan_url(string $code): string
+{
+    return app_public_origin() . app_web_script() . '?' . http_build_query([
+        'r' => 'coupons/scan',
+        'code' => $code,
+    ]);
+}
+
 function coupon_issued_unix(int $batchId): int
 {
     $row = db_one('SELECT issued_unix, created_date FROM food_coupon_batches WHERE id = ?', [$batchId]);
@@ -535,7 +580,7 @@ function redeem_coupon(
         'payment_mode' => null,
         'status' => null,
     ];
-    $code = trim($code);
+    $code = coupon_code_from_input($code);
     if (!coupon_code_is_valid($code)) {
         $failed['error'] = 'Enter the coupon code from the QR code.';
         return $failed;
@@ -646,7 +691,7 @@ function redeem_coupon(
  */
 function invalidate_coupon(string $code): array
 {
-    $code = trim($code);
+    $code = coupon_code_from_input($code);
     if (!coupon_code_is_valid($code)) {
         return ['error' => 'Enter the coupon code from the QR code.', 'code' => null, 'status' => null];
     }
@@ -707,9 +752,44 @@ function invalidate_coupon(string $code): array
 /**
  * @return array{error: ?string, coupon: ?array<string, mixed>}
  */
+/**
+ * Read-only check used by the scan link. It does not record a donation.
+ *
+ * @return array{error:?string,code:?string,amount:?float,purpose:?string,status:?string}
+ */
+function coupon_scan_preview(string $code): array
+{
+    $empty = ['error' => null, 'code' => null, 'amount' => null, 'purpose' => null, 'status' => null];
+    $code = coupon_code_from_input($code);
+    if (!coupon_code_is_valid($code)) {
+        $empty['error'] = 'Enter the coupon code from the QR code.';
+        return $empty;
+    }
+    expire_due_coupons();
+    $row = db_one(
+        "SELECT c.id, c.code, c.status, c.expires_at, b.coupon_name, b.cost, a.status AS approval_status
+         FROM food_coupons c
+         JOIN food_coupon_batches b ON b.id = c.batch_id
+         LEFT JOIN approvals a ON a.subject_type = 'coupon' AND a.subject_id = b.id
+         WHERE c.code = ?",
+        [$code]
+    );
+    if ($row === null) {
+        $empty['error'] = 'That coupon was not found.';
+        return $empty;
+    }
+    return [
+        'error' => coupon_use_error($row),
+        'code' => $code,
+        'amount' => round((float) $row['cost'], 2),
+        'purpose' => trim((string) $row['coupon_name']),
+        'status' => (string) $row['status'],
+    ];
+}
+
 function coupon_status(string $code): array
 {
-    $code = trim($code);
+    $code = coupon_code_from_input($code);
     if (!coupon_code_is_valid($code)) {
         return ['error' => 'Enter the coupon code from the QR code.', 'coupon' => null];
     }
@@ -853,7 +933,7 @@ function draw_coupon(
     }
     $pdf->setFill(...$navy);
 
-    $perfX = $x + ($w * 0.78);
+    $perfX = $x + ($w * 0.62);
     $pdf->setDash(1.2, 2.2);
     $pdf->line($perfX, $y + 8, $perfX, $y + $h - 8);
     $pdf->setDash();
@@ -896,7 +976,7 @@ function draw_coupon(
         $till = $pdf->fitText('Till ' . $expiresLabel, 6, max(20.0, $perfX - $x - 16), true);
         $pdf->text($x + 8, $y + 12, $till, 6, 'F1');
     }
-    $symbol = qr_matrix($serialCode);
+    $symbol = qr_matrix(coupon_scan_url($serialCode));
     $modules = count($symbol);
     $available = ($x + $w - 4) - ($perfX + 4);
     if ($modules > 0 && $available > 8) {
