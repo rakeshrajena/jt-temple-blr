@@ -32,6 +32,19 @@ python/receipts/*
 !python/uploads/.gitkeep
 !python/receipts/.gitkeep
 
+# Booking app (booking/) — secrets and runtime data
+booking/.env
+booking/.env.*
+booking/storage/*.sqlite*
+booking/storage/logs/*
+booking/storage/sessions/*
+booking/storage/cache/*
+booking/storage/uploads/*
+booking/storage/backups/*
+booking/storage/install/*
+!booking/storage/**/.htaccess
+!booking/storage/**/.gitignore
+
 # Local secrets
 .env
 .env.*
