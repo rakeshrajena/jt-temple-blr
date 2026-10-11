@@ -1,0 +1,509 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>SJT Booking Preview</title>
+<style>
+/* Layout: a phone-first single column for the devotee screens; a wider two-column board for admin screens.
+   Tokens follow the booking app's own temple palette (maroon, saffron, turmeric on cream). */
+:root {
+  --maroon: #7a1d1d; --maroon-dark: #521010; --saffron: #d9701a; --turmeric: #f2bd2c;
+  --bg: #fbf5e9; --paper: #fffdf8; --field: #ffffff; --ink: #2a1b12; --muted: #5f4a3c; --line: #e3d3bb; --field-line: #b9a68e;
+  --tint: #fff6ea; --callout: #fff3d8; --callout-line: #f0d38f; --head-fg: #ffffff; --head-sub: #ffe3a6;
+  --ok: #1d6b38; --ok-bg: #e7f4ea; --warn: #7f5200; --warn-bg: #fff3d6; --bad: #a3221e; --bad-bg: #fbe7e5; --info: #1d4b78; --info-bg: #e6eff8;
+  --focus: #1b5fb5; --qr-bg: #ffffff;
+  --serif: Georgia, "Noto Serif", "Times New Roman", serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --maroon: #e8a49a; --maroon-dark: #f3c2b9; --saffron: #f0a050; --turmeric: #f2c650;
+  --bg: #1d1512; --paper: #271c18; --field: #2f231e; --ink: #f2e6da; --muted: #c4ad9c; --line: #4a382f; --field-line: #6d5546;
+  --tint: #33241d; --callout: #3a2b17; --callout-line: #6b5422; --head-fg: #fff3e6; --head-sub: #f2c650;
+  --ok: #8fd6a4; --ok-bg: #1f3a27; --warn: #f2c650; --warn-bg: #3d3014; --bad: #f2a29b; --bad-bg: #44201d; --info: #9cc3ec; --info-bg: #1c2f44;
+  --focus: #7fb0ff; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --maroon: #e8a49a; --maroon-dark: #f3c2b9; --saffron: #f0a050; --turmeric: #f2c650;
+  --bg: #1d1512; --paper: #271c18; --field: #2f231e; --ink: #f2e6da; --muted: #c4ad9c; --line: #4a382f; --field-line: #6d5546;
+  --tint: #33241d; --callout: #3a2b17; --callout-line: #6b5422; --head-fg: #fff3e6; --head-sub: #f2c650;
+  --ok: #8fd6a4; --ok-bg: #1f3a27; --warn: #f2c650; --warn-bg: #3d3014; --bad: #f2a29b; --bad-bg: #44201d; --info: #9cc3ec; --info-bg: #1c2f44;
+  --focus: #7fb0ff; color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 17px/1.55 var(--sans); }
+h1, h2, h3 { font-family: var(--serif); color: var(--maroon-dark); line-height: 1.25; margin: 0 0 .5em; text-wrap: balance; }
+h1 { font-size: 1.6rem; } h2 { font-size: 1.3rem; } h3 { font-size: 1.1rem; }
+p { margin: 0 0 .8em; }
+a { color: var(--maroon); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.muted { color: var(--muted); } .small { font-size: .88rem; }
+
+.demo-bar { background: var(--callout); border-bottom: 1px solid var(--callout-line); padding-block: 10px; padding-inline: 16px; }
+.demo-inner { max-width: 1020px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: .9rem; }
+.demo-inner strong { color: var(--warn); }
+.jump { display: flex; flex-wrap: wrap; gap: 6px; }
+.jump button { font: 600 .82rem var(--sans); padding: 5px 10px; border-radius: 999px; border: 1px solid var(--callout-line); background: var(--paper); color: var(--ink); cursor: pointer; }
+.jump button[aria-pressed="true"] { background: var(--maroon); color: var(--paper); border-color: var(--maroon); }
+
+.site-header { background: #7a1d1d; border-bottom: 5px solid #f2bd2c; padding-inline: 16px; }
+.header-inner { max-width: 1020px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding-block: 10px; }
+.brand { display: flex; gap: 10px; align-items: center; color: var(--head-fg); background: none; border: 0; cursor: pointer; text-align: left; padding: 0; }
+.brand-logo { width: 42px; height: 42px; border-radius: 50%; background: #fff6e3; display: grid; place-items: center; flex: none; }
+.brand-name { font: 700 1.02rem/1.2 var(--serif); display: block; }
+.brand-sub { font-size: .78rem; color: var(--head-sub); }
+.nav { display: flex; gap: 6px; }
+.nav button { color: var(--head-fg); background: transparent; border: 1px solid rgba(255,255,255,.4); border-radius: 999px; padding: 7px 13px; font: 500 .92rem var(--sans); cursor: pointer; }
+
+main { max-width: 1020px; margin: 0 auto; padding-block: 20px 40px; padding-inline: 16px; }
+.narrow { max-width: 760px; margin: 0 auto; }
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .4em; min-height: 48px; padding: .6rem 1.2rem; border-radius: 10px; font: 600 1rem/1.2 var(--sans); cursor: pointer; border: 2px solid var(--maroon); background: var(--paper); color: var(--maroon); }
+.btn-primary { background: var(--maroon); color: var(--paper); }
+.btn-lg { min-height: 56px; font-size: 1.08rem; padding-inline: 1.5rem; }
+.btn-sm { min-height: 36px; font-size: .88rem; padding: .3rem .8rem; }
+.btn-icon { min-width: 48px; padding: 0; font-size: 1.4rem; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.step-nav { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+.step-nav .btn-primary { margin-left: auto; }
+
+.badge { display: inline-block; padding: .15em .65em; border-radius: 999px; font-size: .84rem; font-weight: 600; }
+.b-ok { background: var(--ok-bg); color: var(--ok); } .b-warn { background: var(--warn-bg); color: var(--warn); }
+.b-bad { background: var(--bad-bg); color: var(--bad); } .b-info { background: var(--info-bg); color: var(--info); }
+.tag { font-size: .78rem; background: var(--tint); color: var(--muted); border-radius: 6px; padding: .1em .5em; margin-left: .4em; border: 1px solid var(--line); }
+.alert { border-radius: 10px; padding: 12px 16px; border: 1px solid; }
+.a-ok { background: var(--ok-bg); border-color: var(--ok); color: var(--ink); }
+.a-warn { background: var(--warn-bg); border-color: var(--callout-line); color: var(--ink); }
+.a-bad { background: var(--bad-bg); border-color: var(--bad); color: var(--ink); }
+.a-info { background: var(--info-bg); border-color: var(--info); color: var(--ink); }
+.callout { background: var(--callout); border-left: 5px solid var(--turmeric); border-radius: 8px; padding: 12px 16px; }
+
+.hero { text-align: center; padding-block: 10px; }
+.kicker { font: 700 1rem var(--serif); color: var(--saffron); letter-spacing: .06em; margin-bottom: .2em; }
+.hero h1 { font-size: 1.9rem; }
+.hero .actions { justify-content: center; }
+.svc-list { display: grid; gap: 12px; }
+.svc { display: flex; justify-content: space-between; gap: 14px; align-items: center; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.svc > div { min-width: 0; }
+.svc h3 { margin-bottom: .15em; }
+.svc p { margin: 0; color: var(--muted); font-size: .94rem; }
+.price { font-weight: 700; color: var(--maroon-dark); }
+
+.progress ol { list-style: none; display: flex; padding: 0; margin: 0 0 18px; }
+.progress li { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; font-size: .78rem; color: var(--muted); text-align: center; }
+.progress li::before { content: ""; position: absolute; top: 16px; left: -50%; width: 100%; height: 3px; background: var(--line); }
+.progress li:first-child::before { display: none; }
+.progress li.done::before, .progress li.cur::before { background: var(--saffron); }
+.dot { position: relative; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--paper); border: 2px solid var(--line); font-weight: 700; }
+.done .dot { background: var(--saffron); border-color: var(--saffron); color: var(--paper); }
+.cur .dot { background: var(--maroon); border-color: var(--maroon); color: var(--paper); }
+.cur { color: var(--maroon-dark) !important; font-weight: 700; }
+@media (max-width: 560px) { .progress .lbl { display: none; } }
+
+.opts { display: grid; gap: 12px; }
+@media (min-width: 720px) { .opts { grid-template-columns: 1fr 1fr; } }
+.opt { display: flex; gap: 12px; align-items: flex-start; padding: 15px; border: 2px solid var(--line); border-radius: 12px; background: var(--field); cursor: pointer; }
+.opt.on { border-color: var(--maroon); background: var(--tint); }
+.opt.food { border-style: dashed; }
+.opt-t { font-weight: 700; color: var(--maroon-dark); display: block; }
+.opt-d { color: var(--muted); font-size: .9rem; display: block; margin-block: 2px; }
+input[type=checkbox] { width: 24px; height: 24px; flex: none; accent-color: var(--maroon); margin-top: 2px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-weight: 600; }
+.req { color: var(--bad); font-size: .82rem; font-weight: 400; } .opt-l { color: var(--muted); font-size: .82rem; font-weight: 400; }
+input:not([type=checkbox]), select, textarea { width: 100%; min-height: 50px; padding: .6rem .8rem; font: 1rem var(--sans); color: var(--ink); background: var(--field); border: 2px solid var(--field-line); border-radius: 10px; }
+textarea { min-height: 80px; }
+.err { color: var(--bad); font-weight: 600; font-size: .92rem; margin: 0; }
+.grid2 { display: grid; gap: 16px; }
+@media (min-width: 720px) { .grid2 { grid-template-columns: 1fr 1fr; } }
+.panel { border-top: 2px dashed var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 14px; }
+
+.coupon { border: 2px solid var(--line); border-radius: 12px; padding: 14px; background: var(--field); display: flex; flex-direction: column; gap: 10px; }
+.coupon.on { border-color: var(--saffron); background: var(--tint); }
+.coupon-head { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+.qty { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding-left: 36px; }
+.stepper { display: flex; gap: 6px; align-items: center; }
+.stepper input { width: 80px; text-align: center; font-weight: 700; font-size: 1.15rem; }
+.line-total { font-weight: 700; color: var(--maroon-dark); font-variant-numeric: tabular-nums; }
+.estimate { background: var(--callout); border: 1px solid var(--callout-line); border-radius: 12px; padding: 14px 16px; }
+.estimate dl { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0 0 8px; font-variant-numeric: tabular-nums; }
+.estimate dd { margin: 0; text-align: right; font-weight: 600; }
+
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 9px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+thead th { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.num { text-align: right; white-space: nowrap; }
+tfoot th { text-align: right; font-weight: 600; }
+tr.grand th, tr.grand td { font-size: 1.15rem; font-weight: 800; color: var(--maroon-dark); border-top: 2px solid var(--maroon); border-bottom: 0; }
+.sub { display: block; font-size: .86rem; color: var(--muted); }
+dl.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+dl.kv dt { color: var(--muted); } dl.kv dd { margin: 0; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+
+.bno-l { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0; }
+.bno { font: 800 1.8rem/1.2 var(--mono); color: var(--maroon-dark); margin: 2px 0 6px; overflow-wrap: anywhere; }
+.amount { font: 800 2.1rem/1.1 var(--sans); color: var(--maroon-dark); margin: 0; font-variant-numeric: tabular-nums; }
+.pay-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.qr-layout { display: grid; gap: 20px; align-items: start; }
+@media (min-width: 760px) { .qr-layout { grid-template-columns: 300px 1fr; } }
+.qr-box { margin: 0; border: 3px solid var(--maroon); border-radius: 16px; padding: 14px; text-align: center; background: var(--paper); }
+.qr-box img { width: 100%; max-width: 240px; background: var(--qr-bg); border-radius: 6px; image-rendering: pixelated; }
+.qr-amt { font-size: 1.5rem; font-weight: 800; color: var(--maroon-dark); display: block; }
+.statuses { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.statuses dt { font-size: .8rem; color: var(--muted); } .statuses dd { margin: 2px 0 0; }
+.status-card { border-top: 8px solid var(--info); }
+.status-card.ok { border-top-color: var(--ok); } .status-card.warn { border-top-color: var(--turmeric); }
+
+.invoice { background: #ffffff; color: #222222; border-radius: 6px; padding: 26px; border: 1px solid var(--line); font-size: .92rem; }
+.invoice h2 { color: #7a1d1d; }
+.inv-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.inv-temple { border-left: 5px solid #7a1d1d; padding-left: 10px; }
+.inv-title { font: 700 1.6rem var(--sans); letter-spacing: 3px; color: #7a1d1d; text-align: right; }
+.stamp { margin-block: 14px; padding: 6px; text-align: center; font-weight: 700; letter-spacing: 2px; border: 2px solid #d39a2a; color: #8a5a00; background: #fff6df; }
+.stamp.paid { border-color: #1d6b38; color: #1d6b38; background: #eef8f0; }
+.invoice th, .invoice td { border-bottom-color: #e3d3bb; color: #222222; }
+.invoice thead th { background: #7a1d1d; color: #ffffff; }
+.invoice tr.grand th, .invoice tr.grand td { color: #7a1d1d; border-top-color: #7a1d1d; }
+.invoice .sub { color: #555555; }
+
+.admin-head { background: #521010; color: #fff3e6; padding-inline: 16px; }
+.admin-head .header-inner { padding-block: 8px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tile { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.tile .n { font: 800 1.9rem var(--sans); color: var(--maroon-dark); display: block; font-variant-numeric: tabular-nums; }
+.tile.warn { border-left: 5px solid var(--turmeric); } .tile.bad { border-left: 5px solid var(--bad); }
+.cols { display: grid; gap: 16px; }
+@media (min-width: 900px) { .cols { grid-template-columns: 1fr 1fr; } }
+.cols > * { min-width: 0; }
+.linkbtn { background: none; border: 0; color: var(--maroon); font: inherit; text-decoration: underline; cursor: pointer; padding: 0; }
+details.action { border: 1px solid var(--line); border-radius: 8px; background: var(--field); }
+details.action summary { padding: 10px 12px; font-weight: 700; color: var(--maroon); cursor: pointer; }
+details.action .inner { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+.wa-opt { border-color: var(--ok); background: var(--ok-bg); margin-top: 8px; }
+.wa-opt input { accent-color: var(--ok); }
+.wa-bubble { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: .9rem/1.45 var(--sans); background: var(--ok-bg); color: var(--ink); border-radius: 4px 14px 14px 14px; padding: 12px 14px; border: 1px solid var(--line); }
+.btn-wa { background: var(--ok); border-color: var(--ok); color: var(--paper); text-decoration: none; }
+@media (prefers-reduced-motion: no-preference) { .screen { animation: fade .18s ease-out; } @keyframes fade { from { opacity: .4; } to { opacity: 1; } } }
+</style>
+
+<div class="demo-bar">
+  <div class="demo-inner">
+    <span><strong>Preview with sample data.</strong> Bookings are not saved. WhatsApp messages open ready to send, and you press send. The payment QR is real: money paid goes to shreejagannathtrust@rbl.</span>
+    <div class="jump" id="jump" aria-label="Jump to a screen"></div>
+  </div>
+</div>
+<header class="site-header" id="pub-head">
+  <div class="header-inner">
+    <button class="brand" data-go="home" type="button">
+      <span class="brand-logo"><svg viewBox="0 0 64 64" width="34" height="34" aria-hidden="true"><path d="M33 6v9" stroke="#7a1d1d" stroke-width="1.6"/><path d="M33 6l9 2.5-9 2.5z" fill="#d9701a"/><circle cx="32" cy="17" r="3" fill="none" stroke="#b8860b" stroke-width="1.4"/><path d="M32 20c-5 0-9 8-10.5 18L20 52h24l-1.5-14C41 28 37 20 32 20z" fill="#7a1d1d"/><path d="M26 30h12M24.6 36h14.8M23.6 42h16.8M22.8 47h18.4" stroke="#f2bd2c" stroke-width="1.3"/><rect x="15" y="52" width="34" height="4" rx="1" fill="#521010"/><path d="M29 52v-5a3 3 0 0 1 6 0v5z" fill="#f2bd2c"/></svg></span>
+      <span><span class="brand-name">Shree Jagannatha Temple Bengaluru</span><span class="brand-sub">Online Seva &amp; Prasadam Booking</span></span>
+    </button>
+    <nav class="nav"><button type="button" data-go="book1">Book</button><button type="button" data-go="lookup">Find my booking</button></nav>
+  </div>
+</header>
+<header class="admin-head" id="adm-head" hidden>
+  <div class="header-inner"><strong>Temple Booking Admin</strong><span class="small">Temple Admin (senior admin) · <button class="linkbtn" style="color:inherit" data-go="home" type="button">Public site</button></span></div>
+</header>
+<main id="app"></main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  var UPI_ID = 'shreejagannathtrust@rbl', UPI_NAME = 'Shree Jagannath Trust';
+  function upiUri() { return 'upi://pay?pa=' + UPI_ID + '&pn=' + encodeURIComponent(UPI_NAME) + '&am=' + (total() / 100).toFixed(2) + '&cu=INR&tn=' + encodeURIComponent(S.booking || ''); }
+  function qrImg() { try { var q = qrcode(0, 'M'); q.addData(upiUri()); q.make(); return q.createDataURL(6, 2); } catch (e) { return ''; } }
+  var SERVICES = [
+    { id: 1, name: 'Special Puja', price: 50100, desc: "Special puja offered to Lord Jagannatha on your behalf, with sankalpa in your family's name.", approval: false, participants: 20, slots: ['Morning (7:00 AM – 9:00 AM)', 'Evening (5:30 PM – 7:00 PM)'], fields: [['Name(s) for sankalpa', true], ['Gotra', false]] },
+    { id: 2, name: 'Vehicle Puja', price: 25100, desc: 'Puja and blessing for a new or existing vehicle. Bring the vehicle at the chosen time.', approval: false, participants: 0, slots: ['Morning (8:00 AM – 10:00 AM)', 'Evening (4:00 PM – 6:00 PM)'], fields: [['Vehicle registration number', true]] },
+    { id: 3, name: 'Shraddha Karma', price: 110100, desc: 'Shraddha rites for departed ancestors, performed by the temple priests.', approval: true, participants: 15, slots: ['Morning (7:00 AM – 10:00 AM)'], fields: [['Name of the departed', true]] },
+    { id: 4, name: 'Brata Ghara / Upanayana Ceremony', price: 210100, desc: 'Sacred thread ceremony. The temple office will contact you to confirm arrangements.', approval: true, participants: 200, slots: ['Morning (6:00 AM – 12:00 PM)'], fields: [['Name of the boy (batu)', true]] },
+    { id: 5, name: 'Bhaghar / Marriage-related Ceremony', price: 500100, desc: 'Bhaghar, marriage and related ceremonies at the temple.', approval: true, participants: 300, slots: ['Morning muhurta', 'Evening muhurta'], fields: [["Bride's name", true], ["Groom's name", true]] },
+    { id: 6, name: 'Other Temple Services', price: 0, desc: 'Describe what you need; the temple office confirms the charges before you pay.', approval: true, participants: 100, slots: ['Morning', 'Afternoon', 'Evening'], fields: [['Describe the service you need', true]] },
+    { id: 7, name: 'Food-Only Booking (Prasadam Coupons)', price: 0, desc: 'Book food / prasadam coupons only, without any puja or ceremony.', foodOnly: true, participants: 0, slots: ['Lunch prasadam (12:30 PM – 2:00 PM)', 'Dinner prasadam (7:30 PM – 9:00 PM)'], fields: [] }
+  ];
+  var COUPONS = [
+    { id: 1, name: 'Niyamita Bhoga Thali', price: 15100, unit: 'thali', contents: 'Anna, Daali, Mixed Veg, Khatta' },
+    { id: 2, name: 'Special Bhoga Thali', price: 19100, unit: 'thali', contents: 'Anna, Daali, Mixed Veg, Khatta, ek Bhajji, Kheeri' },
+    { id: 3, name: 'Khichuri Bhoga Thali', price: 15100, unit: 'thali', contents: 'Khichuri, Bhaja, Khatta' },
+    { id: 4, name: 'Extra Kheeri', price: 5000, unit: 'serving', contents: 'Additional serving of Kheeri' }
+  ];
+  var tomorrow = new Date(Date.now() + 6 * 864e5).toISOString().slice(0, 10);
+
+  // Sample booking so every screen has something to show.
+  var S = {
+    screen: 'home', sel: [1, 2], addFood: true, qty: { 1: 4, 2: 2 },
+    name: 'Lakshmi Devi Mohapatra', mobile: '98450 12345', email: '', date: tomorrow, slot: { 1: 0, 2: 0 },
+    fields: { 1: ['Mohapatra family', ''], 2: ['KA05XY9999'] }, participants: { 1: 4 }, instructions: '',
+    waOptIn: true, adminWa: loadAdmin(), booking: null, seq: 122, errors: [], payment: 'pending', status: 'pending', utr: '', bookedAt: new Date()
+  };
+
+  function loadAdmin() { try { return localStorage.getItem('sjtAdminWa') || ''; } catch (e) { return ''; } }
+  function saveAdmin(v) { try { localStorage.setItem('sjtAdminWa', v); } catch (e) {} }
+  // 10-digit Indian mobile (optionally +91 / 0) -> "919845012345", else null
+  function waNumber(v) { var d = String(v || '').replace(/\D/g, ''); if (d.length === 11 && d[0] === '0') d = d.slice(1); if (d.length === 12 && d.slice(0, 2) === '91') d = d.slice(2); return /^[6-9]\d{9}$/.test(d) ? '91' + d : null; }
+  function fmtWa(n) { return n ? '+91 ' + n.slice(2, 7) + ' ' + n.slice(7) : ''; }
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var esc = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  function rs(p) { var r = Math.floor(p / 100), s = String(r); if (s.length > 3) s = s.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + s.slice(-3); return '₹' + s; }
+  function fdate(d) { var t = new Date(d + 'T00:00:00'); return isNaN(t) ? d : t.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); }
+  function svc(id) { return SERVICES.filter(function (s) { return s.id === id; })[0]; }
+  function foodOnly() { return S.sel.some(function (id) { return svc(id).foodOnly; }); }
+
+  function items() {
+    var out = [];
+    S.sel.forEach(function (id) {
+      var s = svc(id), sub = [];
+      if (s.slots.length) sub.push('Time: ' + s.slots[S.slot[id] || 0]);
+      if (s.participants && S.participants[id]) sub.push('Participants: ' + S.participants[id]);
+      (s.fields || []).forEach(function (f, i) { var v = (S.fields[id] || [])[i]; if (v) sub.push(f[0] + ': ' + v); });
+      out.push({ name: s.name, rate: s.foodOnly ? 0 : s.price, qty: 1, amt: s.foodOnly ? 0 : s.price, sub: sub });
+    });
+    if (foodOnly() || S.addFood) COUPONS.forEach(function (c) { var q = S.qty[c.id] || 0; if (q > 0) out.push({ name: c.name, rate: c.price, qty: q, amt: c.price * q, sub: ['Contents: ' + c.contents, 'Rate: ' + rs(c.price) + ' per ' + c.unit], food: true }); });
+    return out;
+  }
+  function total() { return items().reduce(function (a, i) { return a + i.amt; }, 0); }
+  function foodTotal() { return items().filter(function (i) { return i.food; }).reduce(function (a, i) { return a + i.amt; }, 0); }
+
+  function progress(step) {
+    var labels = ['Choose service', 'Your details', 'Prasadam', 'Review', 'Pay', 'Done'];
+    return '<nav class="progress" aria-label="Booking progress"><ol>' + labels.map(function (l, i) {
+      var n = i + 1, c = n < step ? 'done' : n === step ? 'cur' : '';
+      return '<li class="' + c + '"' + (n === step ? ' aria-current="step"' : '') + '><span class="dot">' + (n < step ? '✓' : n) + '</span><span class="lbl">' + l + '</span></li>';
+    }).join('') + '</ol></nav>';
+  }
+  function itemsTable(inv) {
+    var rows = items().map(function (i) {
+      return '<tr><td><strong>' + esc(i.name) + '</strong>' + i.sub.map(function (s) { return '<span class="sub">' + esc(s) + '</span>'; }).join('') + '</td><td class="num">' + rs(i.rate) + '</td><td class="num">' + i.qty + '</td><td class="num">' + rs(i.amt) + '</td></tr>';
+    }).join('');
+    return '<div class="tbl-wrap"><table><thead><tr><th>Item</th><th class="num">Rate</th><th class="num">Qty</th><th class="num">Amount</th></tr></thead><tbody>' + rows +
+      '</tbody><tfoot><tr><th colspan="3">Subtotal</th><td class="num">' + rs(total()) + '</td></tr>' + (inv ? '<tr><th colspan="3">Additional charges</th><td class="num">₹0</td></tr>' : '') +
+      '<tr class="grand"><th colspan="3">Total payable</th><td class="num">' + rs(total()) + '</td></tr></tfoot></table></div>';
+  }
+  function badges() {
+    var bt = S.status === 'confirmed' ? ['b-ok', 'Confirmed'] : ['b-warn', 'Request received (not yet confirmed)'];
+    var pt = { pending: ['b-warn', 'Payment pending'], awaiting: ['b-warn', 'Awaiting verification'], paid: ['b-ok', 'Paid (verified)'] }[S.payment];
+    return '<dl class="statuses"><div><dt>Booking</dt><dd><span class="badge ' + bt[0] + '">' + bt[1] + '</span></dd></div><div><dt>Payment</dt><dd><span class="badge ' + pt[0] + '">' + pt[1] + '</span></dd></div></dl>';
+  }
+  function ensureBooking() { if (!S.booking) { S.seq++; S.booking = 'SJT-2026-' + String(S.seq).padStart(6, '0'); } }
+
+  var screens = {
+    home: function () {
+      return '<section class="hero"><p class="kicker">॥ Jai Jagannath ॥</p><h1>Book a puja, ceremony or prasadam</h1><p class="muted">Choose a seva, pick a date and time, add food coupons if you wish, and pay by UPI. You get a booking number straight away.</p><div class="actions"><button class="btn btn-primary btn-lg" data-go="book1" type="button">Start booking</button><button class="btn btn-lg" data-go="lookup" type="button">Find my booking</button></div></section>' +
+        '<section class="stack"><h2>Services you can book</h2><div class="svc-list">' + SERVICES.filter(function (s) { return !s.foodOnly; }).map(function (s) {
+          return '<div class="svc"><div><h3>' + esc(s.name) + '</h3><p>' + esc(s.desc) + '</p><p>' + (s.price ? '<span class="price">' + rs(s.price) + '</span>' : '<span class="price">Charges confirmed by temple</span>') + (s.approval ? '<span class="tag">Needs temple approval</span>' : '') + '</p></div><button class="btn btn-sm" type="button" data-pick="' + s.id + '">Book</button></div>';
+        }).join('') + '</div>' +
+        '<div class="callout"><h2>Madhyanha Prasad</h2><p class="muted">As per availability on that day. Add prasadam to any booking, or book it on its own.</p><ul style="margin:0 0 12px;padding-left:1.2em">' + COUPONS.map(function (c) { return '<li><strong>' + esc(c.name) + '</strong> — ' + rs(c.price) + ' per ' + c.unit + ' <span class="muted">(' + esc(c.contents) + ')</span></li>'; }).join('') + '</ul><button class="btn btn-primary" type="button" data-pick="7">Book prasadam only</button></div></section>';
+    },
+    book1: function () {
+      return progress(1) + '<section class="card stack"><h1>1. Choose a service</h1><p class="muted">Tick one or more services. To book only food coupons, choose Food-Only Booking.</p>' + err() + '<div class="opts">' + SERVICES.map(function (s) {
+        var on = S.sel.indexOf(s.id) >= 0;
+        return '<label class="opt' + (on ? ' on' : '') + (s.foodOnly ? ' food' : '') + '"><input type="checkbox" data-svc="' + s.id + '"' + (on ? ' checked' : '') + '><span><span class="opt-t">' + esc(s.name) + '</span><span class="opt-d">' + esc(s.desc) + '</span>' +
+          (s.foodOnly ? 'Price depends on food coupons' : s.price ? '<span class="price">' + rs(s.price) + '</span>' : 'Charges confirmed by the temple office') + (s.approval ? '<span class="tag">Needs approval</span>' : '') + '</span></label>';
+      }).join('') + '</div><div class="step-nav"><button class="btn btn-primary btn-lg" type="button" data-next="book2">Next: your details</button></div></section>';
+    },
+    book2: function () {
+      var panels = S.sel.map(function (id) {
+        var s = svc(id);
+        return '<div class="panel"><h3>' + esc(s.name) + '</h3><div class="field"><label for="slot' + id + '">' + (s.foodOnly ? 'Meal time' : 'Preferred time') + ' <span class="req">(required)</span></label><select id="slot' + id + '" data-slot="' + id + '">' +
+          s.slots.map(function (l, i) { return '<option value="' + i + '"' + ((S.slot[id] || 0) === i ? ' selected' : '') + '>' + esc(l) + '</option>'; }).join('') + '</select><span class="small muted">Places left are shown here for the chosen date.</span></div>' +
+          (s.participants ? '<div class="field" style="max-width:280px"><label for="p' + id + '">Number of participants <span class="req">(required)</span></label><input id="p' + id + '" type="number" min="1" max="' + s.participants + '" value="' + esc(S.participants[id] || 1) + '" data-part="' + id + '"></div>' : '') +
+          (s.fields || []).map(function (f, i) { return '<div class="field"><label for="f' + id + '_' + i + '">' + esc(f[0]) + ' ' + (f[1] ? '<span class="req">(required)</span>' : '<span class="opt-l">(optional)</span>') + '</label><input id="f' + id + '_' + i + '" data-field="' + id + ':' + i + '" value="' + esc((S.fields[id] || [])[i] || '') + '"></div>'; }).join('') + '</div>';
+      }).join('');
+      return progress(2) + '<section class="card stack"><h2>2. Your details</h2>' + err() + '<div class="grid2">' +
+        inp('name', 'Full name', true, 'text') + inp('mobile', 'Mobile number (WhatsApp)', true, 'tel', 'Required. Your booking number and updates are sent to this number on WhatsApp.') + '<div id="waOpt">' + waOptHtml() + '</div>' + inp('email', 'Email', false, 'email') + inp('date', 'Preferred date', true, 'date') + '</div>' + panels +
+        '<div class="field"><label for="instr">Special instructions <span class="opt-l">(optional)</span></label><textarea id="instr" data-bind="instructions">' + esc(S.instructions) + '</textarea></div>' +
+        '<div class="step-nav"><button class="btn" type="button" data-go="book1">Back</button><button class="btn btn-primary btn-lg" type="button" data-next="book3">Next: prasadam</button></div></section>';
+    },
+    book3: function () {
+      var fo = foodOnly(), show = fo || S.addFood;
+      var est = items().map(function (i) { return '<dt>' + esc(i.name) + (i.food ? ' × ' + i.qty : '') + '</dt><dd>' + (i.amt || i.food ? rs(i.amt) : 'to be confirmed') + '</dd>'; }).join('');
+      return progress(3) + '<section class="card stack"><h2>3. Food / Prasadam</h2>' + err() +
+        (fo ? '<p class="muted">Food-Only Booking: choose at least one item and enter the quantity.</p>' : '<label class="opt' + (S.addFood ? ' on' : '') + '"><input type="checkbox" id="addFood"' + (S.addFood ? ' checked' : '') + '><span><strong>Add Food / Prasadam</strong> <span class="opt-l">(optional)</span></span></label>') +
+        (show ? '<div><h3 style="margin-bottom:2px">Madhyanha Prasad</h3><p class="small muted" style="margin:0">As per availability on that day.</p></div>' : '') +
+        (show ? COUPONS.map(function (c) {
+          var q = S.qty[c.id] || 0;
+          return '<div class="coupon' + (q ? ' on' : '') + '"><label class="coupon-head"><input type="checkbox" data-cchk="' + c.id + '"' + (q ? ' checked' : '') + '><span><strong>' + esc(c.name) + '</strong> — ' + rs(c.price) + ' per ' + c.unit + '<span class="sub">(' + esc(c.contents) + ')</span></span></label>' +
+            '<div class="qty"><span class="small">Quantity (' + c.unit + 's)</span><div class="stepper"><button class="btn btn-icon" type="button" data-dec="' + c.id + '" aria-label="One less">−</button><input id="q' + c.id + '" type="number" min="0" max="200" value="' + (q || '') + '" data-qty="' + c.id + '" aria-label="Persons for ' + esc(c.name) + '"><button class="btn btn-icon" type="button" data-inc="' + c.id + '" aria-label="One more">+</button></div><span class="line-total">' + (q ? rs(c.price) + ' × ' + q + ' = ' + rs(c.price * q) : '') + '</span></div></div>';
+        }).join('') : '') +
+        '<div class="estimate"><h3>Price estimate</h3><dl>' + est + '</dl><p style="margin:0">Estimated total: <strong>' + rs(total()) + '</strong></p></div>' +
+        '<div class="step-nav"><button class="btn" type="button" data-go="book2">Back</button><button class="btn btn-primary btn-lg" type="button" data-next="review">Review booking</button></div></section>';
+    },
+    review: function () {
+      var ft = foodTotal(), appr = S.sel.some(function (id) { return svc(id).approval; });
+      return progress(4) + '<section class="card stack"><h1>4. Review your booking</h1><p class="muted">Please check everything. Prices are calculated by the temple\'s booking system.</p>' + err() +
+        '<div class="grid2"><dl class="kv"><dt>Name</dt><dd>' + esc(S.name) + '</dd><dt>Mobile</dt><dd>+91 ' + esc(S.mobile) + '</dd></dl><dl class="kv"><dt>Date</dt><dd>' + fdate(S.date) + '</dd></dl></div>' +
+        itemsTable(false) + (ft ? '<p class="small muted">Food charges: ' + rs(ft) + '</p>' : '') +
+        '<div class="callout">After you submit, you get a booking number' + (total() ? ' and a UPI QR code to pay ' + rs(total()) : '') + '. Your booking is <strong>confirmed only after</strong> the temple verifies your payment' + (appr ? ' and approves the ceremony' : '') + '.</div>' +
+        '<label class="opt"><input type="checkbox" id="agree"><span>I confirm the details above are correct.</span></label>' +
+        '<div class="step-nav"><button class="btn" type="button" data-go="book1">Edit booking</button><button class="btn btn-primary btn-lg" type="button" id="submitBooking">Submit booking</button></div></section>';
+    },
+    pay: function () {
+      ensureBooking();
+      var canPay = S.payment === 'pending';
+      return progress(5) + '<div class="stack">' + (canPay ? '<div class="alert a-ok"><strong>Booking request received.</strong> Your booking number is <strong>' + S.booking + '</strong>. Please complete the payment below. This is not yet a confirmed booking.</div>' : '') +
+        '<section class="card stack"><div class="pay-head"><div><p class="bno-l">Booking number</p><p class="bno">' + S.booking + '</p><button class="btn btn-sm" type="button" data-copy="' + S.booking + '">Copy booking number</button></div><div><p class="bno-l">Amount to pay</p><p class="amount">' + rs(total()) + '</p></div></div>' + badges() +
+        (canPay ? '<div class="qr-layout"><figure class="qr-box"><img src="' + qrImg() + '" alt="UPI QR code to pay ' + rs(total()) + ' to ' + UPI_ID + ' for booking ' + S.booking + '" width="240" height="240"><figcaption><span class="qr-amt">' + rs(total()) + '</span>Booking ' + S.booking + '<span class="sub">UPI ID: <strong>' + UPI_ID + '</strong></span></figcaption></figure>' +
+          '<div class="stack"><h3>How to pay</h3><ol style="margin:0;padding-left:1.3em"><li>Scan the QR with any UPI app. The amount and booking number are filled in for you.</li><li>After paying, copy the <strong>UPI reference number (UTR)</strong>, usually 12 digits.</li><li>Enter it below and press <strong>Submit payment reference</strong>.</li></ol><div class="actions"><a class="btn btn-primary" href="' + esc(upiUri()) + '">Pay with a UPI app on this phone</a><button class="btn" type="button" data-copy="' + UPI_ID + '">Copy UPI ID</button></div><p class="small muted">If the button does nothing, scan the QR or pay to <strong>' + UPI_ID + '</strong> and enter booking number ' + S.booking + ' in the remarks.</p></div></div>' +
+          '<form class="card stack" id="utrForm" style="background:var(--tint)"><h3>Submit your payment reference</h3>' + err() + '<div class="field"><label for="utr">UPI reference number (UTR) <span class="req">(required)</span></label><input id="utr" inputmode="numeric" placeholder="e.g. 427812345678" value="' + esc(S.utr) + '"></div><p class="small muted">Submitting the reference does not confirm the booking by itself. The temple office checks every payment against its bank account.</p><button class="btn btn-primary btn-lg" type="submit">Submit payment reference</button></form>'
+          : '<div class="alert a-info">We have received your payment reference <strong>' + esc(S.utr) + '</strong>. The temple office will verify it soon.</div>') +
+        '</section>' + waCard() + '<section class="card stack"><div class="pay-head"><h3>Invoice SJTB/2026-27/000' + S.seq + '</h3><button class="btn btn-sm" type="button" data-go="invoice">View invoice</button></div>' + itemsTable(false) + '</section></div>';
+    },
+    status: function () {
+      ensureBooking();
+      var h = S.status === 'confirmed' ? ['ok', 'Booking confirmed', 'Your booking is confirmed. Please quote your booking number at the temple counter.']
+        : S.payment === 'awaiting' ? ['info', 'Payment submitted — awaiting verification', 'We have received your payment reference. The temple office will verify it and confirm your booking.']
+        : ['warn', 'Booking request received — payment pending', 'This is a booking request, not yet a confirmed booking. Please complete the payment.'];
+      return progress(S.payment === 'pending' ? 5 : 6) + '<div class="stack">' + (S.payment === 'awaiting' ? '<div class="alert a-ok"><strong>Thank you.</strong> Your payment reference has been submitted. You will be informed on WhatsApp.</div>' : '') +
+        '<section class="card status-card ' + h[0] + ' stack"><div><p class="bno-l">Booking number</p><p class="bno">' + S.booking + '</p></div><h1>' + h[1] + '</h1><p class="muted">' + h[2] + '</p>' + badges() + (S.utr ? '<p class="small">Payment reference: <strong>' + esc(S.utr) + '</strong></p>' : '') +
+        '<div class="actions">' + (S.payment === 'pending' ? '<button class="btn btn-primary btn-lg" type="button" data-go="pay">Pay ' + rs(total()) + ' now</button>' : '') + '<button class="btn" type="button" data-go="invoice">View invoice</button><button class="btn" type="button" data-go="invoice">Download PDF</button></div></section>' +
+        waCard() + '<section class="card stack"><h2>Booking details</h2><dl class="kv"><dt>Devotee</dt><dd>' + esc(S.name) + '</dd><dt>Mobile</dt><dd>+91 ' + esc(S.mobile) + '</dd><dt>Date</dt><dd>' + fdate(S.date) + '</dd><dt>Invoice no.</dt><dd>SJTB/2026-27/000' + S.seq + '</dd></dl>' + itemsTable(false) + '</section></div>';
+    },
+    invoice: function () {
+      ensureBooking();
+      var paid = S.payment === 'paid';
+      return '<div class="stack"><div><button class="linkbtn" type="button" data-go="status">← Back to booking</button></div><article class="invoice stack"><div class="inv-head"><div class="inv-temple"><h2 style="margin:0">Shree Jagannatha Temple Bengaluru</h2><div>Bengaluru, Karnataka</div><div>Phone: (temple office number)</div><div>sjtbengaluru.org</div></div>' +
+        '<div><div class="inv-title">INVOICE</div><dl class="kv small"><dt>Invoice no.</dt><dd>SJTB/2026-27/000' + S.seq + '</dd><dt>Booking no.</dt><dd>' + S.booking + '</dd><dt>Service date</dt><dd>' + fdate(S.date) + '</dd></dl></div></div>' +
+        '<div class="stamp' + (paid ? ' paid' : '') + '">' + (paid ? 'PAID' : S.payment === 'awaiting' ? 'PAYMENT UNDER VERIFICATION' : 'PAYMENT PENDING') + '</div>' +
+        '<div class="inv-head"><div><strong>Billed to</strong><div>' + esc(S.name) + '</div><div>Mobile: +91 ' + esc(S.mobile) + '</div></div><div><strong>Status</strong><div>Payment: ' + (paid ? 'Paid (verified)' : S.payment === 'awaiting' ? 'Awaiting verification' : 'Payment pending') + '</div>' + (S.utr ? '<div>Payment ref.: ' + esc(S.utr) + '</div>' : '') + '</div></div>' +
+        itemsTable(true) + '<p class="small" style="color:#555">This is a computer-generated invoice. The live system also offers the same invoice as a downloadable PDF.</p></article></div>';
+    },
+    lookup: function () {
+      return '<section class="card stack narrow"><h1>Find my booking</h1><p>Enter your booking number (for example <strong>SJT-2026-000123</strong>) and the mobile number used for the booking.</p><form id="lookupForm" class="stack">' + err() +
+        '<div class="field"><label for="lno">Booking number</label><input id="lno" value="' + esc(S.booking || 'SJT-2026-000123') + '"></div><div class="field"><label for="lmob">Mobile number</label><input id="lmob" type="tel" value="' + esc(S.mobile) + '"></div><button class="btn btn-primary btn-lg" type="submit">Find booking</button></form></section>';
+    },
+    admin: function () {
+      ensureBooking();
+      var verify = S.payment === 'awaiting' ? 1 : 0;
+      return '<div class="stack"><h1>Dashboard</h1><div class="alert a-warn"><strong>Before going live:</strong> verify the temple UPI ID · connect WhatsApp · confirm service prices.</div>' +
+        '<div class="tiles"><div class="tile warn"><span class="n">' + verify + '</span>Payments to verify</div><div class="tile warn"><span class="n">2</span>Awaiting approval</div><div class="tile"><span class="n">5</span>Services today</div><div class="tile"><span class="n">9</span>New bookings today</div><div class="tile bad"><span class="n">1</span>Failed WhatsApp messages</div></div>' +
+        '<section class="card stack"><h2>Summary</h2><div class="tbl-wrap"><table><thead><tr><th>Period</th><th class="num">Bookings</th><th class="num">Booked value</th><th class="num">Verified revenue</th><th class="num">Food items</th></tr></thead><tbody>' +
+        '<tr><th>Today</th><td class="num">9</td><td class="num">₹14,906</td><td class="num">₹8,253</td><td class="num">31</td></tr><tr><th>This week</th><td class="num">41</td><td class="num">₹72,341</td><td class="num">₹58,910</td><td class="num">146</td></tr><tr><th>This month</th><td class="num">118</td><td class="num">₹2,04,778</td><td class="num">₹1,86,102</td><td class="num">402</td></tr></tbody></table></div><p class="small muted">Sample figures for the preview.</p></section>' +
+        '<section class="card stack"><h2>Latest bookings</h2><div class="tbl-wrap"><table><thead><tr><th>Booking</th><th>Devotee</th><th class="num">Total</th><th>Payment</th></tr></thead><tbody>' +
+        '<tr><td><button class="linkbtn" type="button" data-go="adminBooking">' + S.booking + '</button><span class="sub">' + esc(S.sel.map(function (id) { return svc(id).name; }).join(', ')) + '</span></td><td>' + esc(S.name) + '</td><td class="num">' + rs(total()) + '</td><td>' + badgePay() + '</td></tr>' +
+        '<tr><td>SJT-2026-000121<span class="sub">Shraddha Karma</span></td><td>Sunil Das</td><td class="num">₹1,101</td><td><span class="badge b-ok">Paid (verified)</span></td></tr>' +
+        '<tr><td>SJT-2026-000120<span class="sub">Food-Only Booking</span></td><td>Ravi Kumar</td><td class="num">₹700</td><td><span class="badge b-warn">Payment pending</span></td></tr></tbody></table></div></section></div>';
+    },
+    adminBooking: function () {
+      ensureBooking();
+      var awaiting = S.payment === 'awaiting';
+      return '<div class="stack"><div><button class="linkbtn" type="button" data-go="admin">← Dashboard</button></div><h1 style="font-family:var(--mono)">' + S.booking + '</h1>' + badges() +
+        '<div class="cols"><section class="card stack"><h2>Devotee &amp; service</h2><dl class="kv"><dt>Name</dt><dd>' + esc(S.name) + '</dd><dt>Mobile</dt><dd>+91 ' + esc(S.mobile) + '</dd><dt>Service date</dt><dd>' + fdate(S.date) + '</dd></dl>' + itemsTable(true) + '</section>' +
+        '<section class="card stack"><h2>Actions</h2>' + (S.payment !== 'paid' ? '<details class="action" open><summary>' + (awaiting ? 'Verify submitted payment' : 'Record payment received') + '</summary><div class="inner">' +
+          (awaiting ? '<p>Devotee submitted UTR <strong>' + esc(S.utr) + '</strong>.</p>' : '') + '<div class="callout small">Check the temple bank statement. Mark as paid <strong>only</strong> if a credit with this reference and amount is visible.</div>' +
+          '<div class="field"><label for="vref">Reference / UTR</label><input id="vref" value="' + esc(S.utr || '') + '"></div><div class="field"><label for="vamt">Amount received (₹)</label><input id="vamt" value="' + (total() / 100).toFixed(2) + '"></div><button class="btn btn-primary" type="button" id="verify">Confirm payment verified</button></div></details>'
+          : '<div class="alert a-ok">Payment verified. The devotee was notified on WhatsApp and the booking is confirmed.</div>') +
+        '<details class="action"><summary>Reschedule</summary><div class="inner"><p class="small">Choose a new date and time; capacity is checked and the devotee is notified.</p></div></details><details class="action"><summary>Cancel booking</summary><div class="inner"><p class="small">A reason is required and sent to the devotee.</p></div></details><details class="action"><summary>Add internal note</summary><div class="inner"><p class="small">Visible only to staff, kept in the history.</p></div></details></section></div>' +
+        '<section class="card stack"><h2>History</h2><div class="tbl-wrap"><table><thead><tr><th>Who</th><th>What</th><th>Details</th></tr></thead><tbody>' + (S.payment === 'paid' ? '<tr><td>admin:temple</td><td>payment.verified</td><td>reference ' + esc(S.utr) + ', amount ' + rs(total()) + '</td></tr>' : '') + (S.utr ? '<tr><td>devotee</td><td>payment.submitted</td><td>reference ' + esc(S.utr) + '</td></tr>' : '') + '<tr><td>devotee</td><td>booking.created</td><td>total ' + rs(total()) + '</td></tr></tbody></table></div></section></div>';
+    }
+  };
+  function badgePay() { return { pending: '<span class="badge b-warn">Payment pending</span>', awaiting: '<span class="badge b-warn">Awaiting verification</span>', paid: '<span class="badge b-ok">Paid (verified)</span>' }[S.payment]; }
+  function inp(key, label, req, type, hint) {
+    return '<div class="field"><label for="i_' + key + '">' + label + ' ' + (req ? '<span class="req">(required)</span>' : '<span class="opt-l">(optional)</span>') + '</label><input id="i_' + key + '" type="' + type + '" data-bind="' + key + '" value="' + esc(S[key]) + '">' + (hint ? '<span class="small muted">' + hint + '</span>' : '') + '</div>';
+  }
+  function waOptHtml() {
+    var n = waNumber(S.mobile);
+    if (!n) return S.mobile.trim() ? '<p class="small muted">Enter a 10-digit mobile number to receive the booking on WhatsApp.</p>' : '';
+    return '<label class="opt wa-opt"><input type="checkbox" id="waOptIn"' + (S.waOptIn ? ' checked' : '') + '><span><strong>Send my booking details to WhatsApp ' + fmtWa(n) + '</strong><span class="opt-d">Booking number, services, date, amount and payment details. The temple office is also informed of your booking.</span></span></label>';
+  }
+  function bookingSummary() {
+    var svcs = S.sel.map(function (id) { return svc(id).name; }).join(', ');
+    var when = fdate(S.date) + ', ' + S.sel.map(function (id) { return svc(id).slots[S.slot[id] || 0]; }).filter(function (v, i, a) { return a.indexOf(v) === i; }).join('; ');
+    var food = items().filter(function (i) { return i.food; }).map(function (i) { return i.name + ' × ' + i.qty; }).join(', ') || 'None';
+    return { svcs: svcs, when: when, food: food };
+  }
+  function statusText() { return S.status === 'confirmed' ? 'Confirmed' : S.payment === 'awaiting' ? 'Payment submitted, awaiting verification' : S.payment === 'paid' ? 'Paid' : 'Booking request received, payment pending'; }
+  function msgDevotee() {
+    var b = bookingSummary();
+    return '🙏 Jai Jagannath, ' + S.name + '.\n\nYour booking request ' + S.booking + ' at Shree Jagannatha Temple Bengaluru has been received.\n\nServices: ' + b.svcs +
+      '\nDate and time: ' + b.when + '\nFood / prasadam: ' + b.food + '\nTotal amount: ' + rs(total()) + '\nStatus: ' + statusText() +
+      '\n\nPay by UPI to ' + UPI_ID + ' (note: ' + S.booking + ') and share the UTR.\nPlease quote your booking number in all communication.';
+  }
+  function msgAdmin() {
+    var b = bookingSummary();
+    return (S.utr ? 'Payment reference submitted for booking ' + S.booking + '. UTR: ' + S.utr + '\n\n' : '') + 'New temple booking ' + S.booking + '\n\nDevotee: ' + S.name + ' (' + fmtWa(waNumber(S.mobile)) + ')\nServices: ' + b.svcs +
+      '\nDate and time: ' + b.when + '\nFood / prasadam: ' + b.food + '\nTotal: ' + rs(total()) + '\nStatus: ' + statusText() + '\n\nPlease check the bank statement before marking it paid.';
+  }
+  function waLink(num, text) { return 'https://wa.me/' + num + '?text=' + encodeURIComponent(text); }
+  function adminLinkHtml() {
+    var n = waNumber(S.adminWa);
+    return n ? '<a id="adminWaLink" class="btn btn-wa" href="' + esc(waLink(n, msgAdmin())) + '" target="_blank" rel="noopener">Send to temple admin ' + fmtWa(n) + '</a>'
+             : '<span id="adminWaLink" class="small muted">Enter the admin\'s WhatsApp number to enable this button.</span>';
+  }
+  function waCard() {
+    var dev = waNumber(S.mobile);
+    return '<section class="card stack"><div class="pay-head"><h2>WhatsApp notifications</h2><span class="badge b-info">Automatic in the live system</span></div>' +
+      '<p class="small muted">In the live system both messages are sent automatically through the WhatsApp Business API as soon as the booking is saved. This preview cannot send by itself, so each button opens WhatsApp with the message ready; press send there.</p>' +
+      '<div class="cols"><div class="stack"><h3>To the devotee' + (dev ? ' · ' + fmtWa(dev) : '') + '</h3><pre class="wa-bubble">' + esc(msgDevotee()) + '</pre>' +
+        (S.waOptIn && dev ? '<a class="btn btn-wa" href="' + esc(waLink(dev, msgDevotee())) + '" target="_blank" rel="noopener">Send to devotee on WhatsApp</a>' : '<p class="small muted">WhatsApp updates were switched off for this booking.</p>') + '</div>' +
+      '<div class="stack"><h3>To the temple admin</h3><pre class="wa-bubble">' + esc(msgAdmin()) + '</pre>' +
+        '<div class="field"><label for="adminWa">Admin WhatsApp number</label><input id="adminWa" type="tel" placeholder="98450 00000" value="' + esc(S.adminWa) + '"><span class="small muted">Remembered in this browser only.</span></div>' + adminLinkHtml() + '</div></div></section>';
+  }
+  function err() { var e = S.errors; return e.length ? '<div class="alert a-bad" role="alert">' + e.map(esc).join('<br>') + '</div>' : ''; }
+
+  var JUMPS = [['home', 'Home'], ['book1', '1 Service'], ['book2', '2 Details'], ['book3', '3 Prasadam'], ['review', '4 Review'], ['pay', '5 Pay'], ['status', '6 Done'], ['invoice', 'Invoice'], ['lookup', 'Find booking'], ['admin', 'Admin'], ['adminBooking', 'Admin: verify']];
+  function render(focus) {
+    var admin = S.screen.indexOf('admin') === 0;
+    $('#pub-head').hidden = admin; $('#adm-head').hidden = !admin;
+    $('#app').innerHTML = '<div class="screen ' + (['book1', 'book2', 'book3', 'review', 'pay', 'status', 'invoice', 'lookup'].indexOf(S.screen) >= 0 ? 'narrow' : '') + '">' + screens[S.screen]() + '</div>';
+    $('#jump').innerHTML = JUMPS.map(function (j) { return '<button type="button" data-go="' + j[0] + '" aria-pressed="' + (S.screen === j[0]) + '">' + j[1] + '</button>'; }).join('');
+    if (focus) window.scrollTo({ top: 0 });
+  }
+  function go(s) { S.screen = s; S.errors = []; render(true); }
+
+  function validate(step) {
+    var e = [];
+    if (step === 'book2' && !S.sel.length) e.push('Please choose at least one service.');
+    if (step === 'book3') {
+      if (S.name.trim().length < 2) e.push('Please enter your full name.');
+      if (!waNumber(S.mobile)) e.push(S.mobile.trim() ? 'Please enter a valid 10-digit mobile number.' : 'Mobile number is required. Your booking details are sent to it on WhatsApp.');
+      if (!S.date) e.push('Please choose a date.');
+      S.sel.forEach(function (id) { (svc(id).fields || []).forEach(function (f, i) { if (f[1] && !((S.fields[id] || [])[i] || '').trim()) e.push(f[0] + ' is required for ' + svc(id).name + '.'); }); });
+    }
+    if (step === 'review' && (foodOnly() || S.addFood) && !COUPONS.some(function (c) { return S.qty[c.id] > 0; }))
+      e.push(foodOnly() ? 'Please choose at least one item and enter the quantity.' : 'Choose a food item and quantity, or untick "Add Food".');
+    return e;
+  }
+
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('button, input');
+    if (!t) return;
+    if (t.dataset.go) { if (t.dataset.go === 'pay' && !S.booking) ensureBooking(); go(t.dataset.go); }
+    else if (t.dataset.pick) { S.sel = [+t.dataset.pick]; if (svc(+t.dataset.pick).foodOnly) S.addFood = false; go('book1'); }
+    else if (t.dataset.next) { var e = validate(t.dataset.next); if (e.length) { S.errors = e; render(); } else go(t.dataset.next); }
+    else if (t.dataset.inc || t.dataset.dec) { var id = +(t.dataset.inc || t.dataset.dec); S.qty[id] = Math.max(0, Math.min(200, (S.qty[id] || 0) + (t.dataset.inc ? 1 : -1))); render(); }
+    else if (t.dataset.copy) { var b = t; try { navigator.clipboard.writeText(b.dataset.copy).then(function () { b.textContent = 'Copied ✓'; }, function () {}); } catch (x) {} }
+    else if (t.id === 'submitBooking') { if (!$('#agree').checked) { S.errors = ['Please tick the box to confirm the details are correct.']; render(); return; } S.booking = null; S.payment = 'pending'; S.status = 'pending'; S.utr = ''; ensureBooking(); go('pay'); }
+    else if (t.id === 'verify') { S.utr = S.utr || $('#vref').value || '427812345678'; S.payment = 'paid'; S.status = S.sel.some(function (id) { return svc(id).approval; }) ? 'pending' : 'confirmed'; render(); }
+  });
+  document.addEventListener('change', function (ev) {
+    var t = ev.target;
+    if (t.dataset.svc) {
+      var id = +t.dataset.svc, s = svc(id);
+      if (t.checked) { S.sel = S.sel.filter(function (o) { return !(s.foodOnly || svc(o).foodOnly); }); S.sel.push(id); }
+      else S.sel = S.sel.filter(function (o) { return o !== id; });
+      render();
+    } else if (t.id === 'waOptIn') { S.waOptIn = t.checked; }
+    else if (t.id === 'addFood') { S.addFood = t.checked; render(); }
+    else if (t.dataset.cchk) { var c = +t.dataset.cchk; S.qty[c] = t.checked ? (S.qty[c] || 1) : 0; render(); }
+    else if (t.dataset.slot) S.slot[+t.dataset.slot] = +t.value;
+    else if (t.dataset.qty) { S.qty[+t.dataset.qty] = Math.max(0, Math.min(200, parseInt(t.value, 10) || 0)); render(); }
+  });
+  document.addEventListener('input', function (ev) {
+    var t = ev.target;
+    if (t.dataset.bind) { S[t.dataset.bind] = t.value; if (t.dataset.bind === 'mobile' && $('#waOpt')) $('#waOpt').innerHTML = waOptHtml(); }
+    else if (t.id === 'adminWa') { S.adminWa = t.value; saveAdmin(t.value); var w = $('#adminWaLink'); if (w) w.outerHTML = adminLinkHtml(); }
+    else if (t.dataset.part) S.participants[+t.dataset.part] = t.value;
+    else if (t.dataset.field) { var p = t.dataset.field.split(':'); (S.fields[p[0]] = S.fields[p[0]] || [])[+p[1]] = t.value; }
+  });
+  document.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    if (ev.target.id === 'utrForm') {
+      var v = $('#utr').value.replace(/\s/g, '');
+      if (!/^[A-Za-z0-9]{6,35}$/.test(v)) { S.errors = ['Please enter the UPI reference / UTR exactly as shown in your UPI app (usually 12 digits).']; render(); return; }
+      S.utr = v; S.payment = 'awaiting'; go('status');
+    } else if (ev.target.id === 'lookupForm') { ensureBooking(); go('status'); }
+  });
+  render();
+})();
+</script>
+
+</body></html>
