@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Temple">
+  <circle cx="32" cy="32" r="31" fill="#fff6e3"/>
+  <!-- flag on the spire -->
+  <path d="M33 6v9" stroke="#7a1d1d" stroke-width="1.6"/>
+  <path d="M33 6l9 2.5-9 2.5z" fill="#d9701a"/>
+  <!-- wheel on the spire -->
+  <circle cx="32" cy="17" r="3" fill="none" stroke="#b8860b" stroke-width="1.4"/>
+  <path d="M32 14v6M29 17h6" stroke="#b8860b" stroke-width="1"/>
+  <!-- curvilinear spire (rekha deula) -->
+  <path d="M32 20c-5 0-9 8-10.5 18L20 52h24l-1.5-14C41 28 37 20 32 20z" fill="#7a1d1d"/>
+  <path d="M26 30h12M24.6 36h14.8M23.6 42h16.8M22.8 47h18.4" stroke="#f2bd2c" stroke-width="1.3"/>
+  <!-- base and doorway -->
+  <rect x="15" y="52" width="34" height="4" rx="1" fill="#521010"/>
+  <path d="M29 52v-5a3 3 0 0 1 6 0v5z" fill="#f2bd2c"/>
+</svg>

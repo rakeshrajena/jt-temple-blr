@@ -1,0 +1,9 @@
+.env
+storage/*.sqlite*
+storage/logs/*
+storage/sessions/*
+storage/cache/*
+storage/uploads/*
+storage/backups/*
+!storage/*/.htaccess
+!storage/*/.gitignore
