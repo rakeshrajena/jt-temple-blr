@@ -14,7 +14,7 @@ use SJT\Service\Validator;
 /** Booking wizard: choose services -> details -> food -> server-side review -> submit. */
 final class BookingController extends Controller
 {
-    private const INPUT_KEYS = ['services', 'name', 'mobile', 'email', 'service_date', 'instructions', 'slot', 'participants', 'f', 'add_food', 'food_cat', 'food'];
+    private const INPUT_KEYS = ['services', 'name', 'mobile', 'email', 'service_date', 'instructions', 'slot', 'participants', 'f', 'add_food', 'food_cat', 'food', 'wa_opt_in'];
 
     public function form(Request $req): Response
     {

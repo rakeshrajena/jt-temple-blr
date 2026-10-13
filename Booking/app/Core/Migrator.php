@@ -55,10 +55,13 @@ final class Migrator
         foreach ($this->pending() as $version => $file) {
             $log && $log("Applying $version ...");
             $m = require $file;
-            // MySQL DDL auto-commits, so each statement is applied individually;
-            // all statements use IF NOT EXISTS so a re-run after a failure is safe.
+            // MySQL DDL (CREATE/ALTER/RENAME) performs an implicit commit, so it
+            // cannot run inside a transaction. Callable migrations therefore run
+            // untransactional; one that needs atomic DML wraps its own
+            // $db->transaction() internally. SQL statements use IF NOT EXISTS so
+            // a re-run after a failure is safe.
             if (is_callable($m)) {
-                $this->db->transaction(fn () => $m($this->db));
+                $m($this->db);
             } else {
                 foreach ($m as $sql) {
                     $this->db->pdo->exec(strtr($sql, $this->tokens()));
