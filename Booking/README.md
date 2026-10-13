@@ -187,7 +187,7 @@ These are **intentionally stubbed** in the preview; the live app already covers 
 4. **Final service prices, slots, capacities, closure dates** — seed data is editable but not committee-signed-off.
 5. **Temple contact block on invoices** — preview shows “(temple office number)”; live reads settings (must be filled).
 6. **Optional Razorpay** — for automatic pay confirmation without manual UTR check.
-7. **Integration with main site** — root [`README.md`](../README.md) documents inventory/donation `php/` app only; add navigation or embed when Booking is deployed.
+7. **Integration with main site** — root [`README.md`](../README.md) now lists all three apps (ERP `php/`, Python, and this `Booking/` app); add a "Book seva / prasadam" link on the public temple site once deployed.
 
 ### Relative to this monorepo layout
 
@@ -195,7 +195,7 @@ These are **intentionally stubbed** in the preview; the live app already covers 
 |---|---|
 | `bookingPreview.html` location | Sits at repo root; not served from `booking/` — useful for static demos only |
 | Two products | Inventory (`php/`) vs booking (`booking/`) — can share one MySQL database; separate admin logins |
-| No shared README at booking level before | This file documents cross-artifact flows |
+| Booking now in root README | Root [`../README.md`](../README.md) lists all three apps; this file documents the booking flow and cross-artifact details |
 
 ---
 
