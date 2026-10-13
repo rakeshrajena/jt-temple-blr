@@ -171,6 +171,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--focus); outline:
 
 .check-row { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border: 2px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; margin-bottom: 14px; }
 .check-row.has-error { border-color: var(--bad); }
+.check-row.wa-opt { border-color: var(--ok); background: var(--ok-bg); }
+.check-row.wa-opt input[type=checkbox] { accent-color: var(--ok); }
 input[type=checkbox] { width: 26px; height: 26px; flex: none; margin: 2px 0 0; accent-color: var(--maroon); }
 
 .service-options { display: grid; gap: 12px; }

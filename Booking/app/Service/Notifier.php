@@ -34,10 +34,12 @@ final class Notifier
     public function bookingCreated(array $b): void
     {
         $ctx = $this->context($b);
-        $this->queue($b, 'devotee', $b['mobile'], 'booking_received', 'wa_tpl_devotee_ack', [
-            $b['devotee_name'], $b['booking_no'], $ctx['services'], $ctx['when'], $ctx['food'],
-            money((int) $b['total_paise']), $ctx['status'], $ctx['link'], $ctx['contact'],
-        ]);
+        if ((int) ($b['wa_opt_in'] ?? 1) === 1) {
+            $this->queue($b, 'devotee', $b['mobile'], 'booking_received', 'wa_tpl_devotee_ack', [
+                $b['devotee_name'], $b['booking_no'], $ctx['services'], $ctx['when'], $ctx['food'],
+                money((int) $b['total_paise']), $ctx['status'], $ctx['link'], $ctx['contact'],
+            ]);
+        }
         foreach ($this->settings->adminNumbers() as $n) {
             $this->queue($b, 'admin', $n, 'admin_new_booking', 'wa_tpl_admin_new', [
                 $b['booking_no'], $b['devotee_name'], fmt_mobile($b['mobile']), $ctx['services'], $ctx['when'],
@@ -62,6 +64,9 @@ final class Notifier
     /** Payment verified/failed, approval, rejection, cancellation, rescheduling, charge changes. */
     public function statusUpdate(array $b, string $message): void
     {
+        if ((int) ($b['wa_opt_in'] ?? 1) !== 1) {
+            return; // devotee opted out of WhatsApp messages
+        }
         $ctx = $this->context($b);
         $this->queue($b, 'devotee', $b['mobile'], 'booking_update', 'wa_tpl_devotee_update', [
             $b['devotee_name'], $b['booking_no'], $message, status_label('booking', $b['booking_status']),

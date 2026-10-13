@@ -91,6 +91,7 @@ final class BookingService
                 'email' => $draft['email'],
                 'service_date' => $draft['service_date'],
                 'instructions' => $draft['instructions'] !== '' ? $draft['instructions'] : null,
+                'wa_opt_in' => $draft['wa_opt_in'] ? 1 : 0,
                 'subtotal_paise' => $q['subtotal_paise'],
                 'additional_label' => $q['additional_label'],
                 'additional_paise' => $q['additional_paise'],

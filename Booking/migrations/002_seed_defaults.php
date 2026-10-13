@@ -97,7 +97,13 @@ return function (Database $db): void {
         }
     }
 
-    foreach ([['Food Coupon (Standard)', 'Prasadam meal', 15000], ['Food Coupon (Special)', 'Special prasadam meal', 25000]] as $i => [$n, $d, $p]) {
+    // Prasadam menu matches bookingPreview.html (thalis + extra kheeri).
+    foreach ([
+        ['Niyamita Bhoga Thali', 'Anna, Daali, Mixed Veg, Khatta', 15100],
+        ['Special Bhoga Thali', 'Anna, Daali, Mixed Veg, Khatta, ek Bhajji, Kheeri', 19100],
+        ['Khichuri Bhoga Thali', 'Khichuri, Bhaja, Khatta', 15100],
+        ['Extra Kheeri', 'Additional serving of Kheeri', 5000],
+    ] as $i => [$n, $d, $p]) {
         $db->insert('booking_coupons', [
             'name' => $n, 'description' => $d, 'price_paise' => $p, 'max_per_booking' => 200,
             'is_active' => 1, 'sort_order' => $i, 'created_at' => $now, 'updated_at' => $now,

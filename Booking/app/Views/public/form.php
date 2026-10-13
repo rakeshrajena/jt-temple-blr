@@ -9,6 +9,7 @@ $err = fn (string $k) => $errors[$k] ?? null;
 $val = fn (string $k) => is_string($in[$k] ?? null) ? $in[$k] : '';
 $nested = fn (string $k, $sid, ?string $sub = null) => (string) ($sub === null ? (($in[$k] ?? [])[$sid] ?? '') : ((($in[$k] ?? [])[$sid] ?? [])[$sub] ?? ''));
 $addFood = !empty($in['add_food']);
+$waOptIn = ($in['wa_opt_in'] ?? '') !== '0';
 ?>
 <?php $step = 1; include __DIR__ . '/../partials/progress.php'; ?>
 
@@ -71,6 +72,13 @@ $addFood = !empty($in['add_food']);
         <p class="field-error" id="service_date-error" data-date-message <?= $err('service_date') ? '' : 'hidden' ?>><?= e($err('service_date') ?? '') ?></p>
       </div>
     </div>
+
+    <label class="check-row wa-opt">
+      <input type="checkbox" name="wa_opt_in" value="1" <?= $waOptIn ? 'checked' : '' ?>>
+      <span><strong>Send my booking details to WhatsApp</strong> <span class="opt">(recommended)</span>
+        <span class="sub">Booking number, services, date, amount and payment updates are sent to your mobile on WhatsApp. The temple office is also informed of your booking.</span>
+      </span>
+    </label>
 
     <?php foreach ($services as $s): $sid = $s['id']; $on = in_array((string) $sid, $sel, true); ?>
     <div class="service-panel" data-panel="<?= $sid ?>" <?= $on ? '' : 'data-inactive' ?>>

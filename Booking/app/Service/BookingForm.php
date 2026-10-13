@@ -28,7 +28,7 @@ final class BookingForm
     public function validate(array $in): array
     {
         // Normalise shapes first: anything not of the expected type is treated as empty.
-        foreach (['name', 'mobile', 'email', 'service_date', 'instructions', 'add_food'] as $k) {
+        foreach (['name', 'mobile', 'email', 'service_date', 'instructions', 'add_food', 'wa_opt_in'] as $k) {
             $in[$k] = is_string($in[$k] ?? null) ? $in[$k] : '';
         }
         foreach (['services', 'slot', 'participants', 'f', 'food_cat', 'food'] as $k) {
@@ -182,6 +182,10 @@ final class BookingForm
             throw new ValidationException($err);
         }
 
+        // WhatsApp opt-in for the devotee. A checkbox submits "1" when ticked;
+        // when absent (or "0") the devotee is opted out. Default is opt-in.
+        $waOptIn = ($in['wa_opt_in'] ?? '') !== '0';
+
         $draft = [
             'booking_type' => $foodOnly ? 'food_only' : 'service',
             'name' => $name,
@@ -191,6 +195,7 @@ final class BookingForm
             'instructions' => $instructions,
             'services' => $lines,
             'food' => $food,
+            'wa_opt_in' => $waOptIn,
         ];
         $draft['quote'] = $this->quote($draft);
         return $draft;
