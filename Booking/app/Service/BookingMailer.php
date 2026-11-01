@@ -55,26 +55,30 @@ final class BookingMailer
                 ];
             } catch (\Throwable $e) {
                 Logger::warning('Invoice PDF for email failed', ['booking' => $b['booking_no'], 'error' => $e->getMessage()]);
-                return 'The invoice PDF could not be generated.';
             }
         }
         $temple = trim($this->settings->get('temple_name', 'Shree Jagannatha Temple Bengaluru'));
-        return SmtpMail::send($smtp, $to, $subject, $body, $temple, $attachment);
+        $err = SmtpMail::send($smtp, $to, $subject, $body, $temple, $attachment);
+        if ($err === null || $attachment === null) {
+            return $err;
+        }
+        Logger::warning('Booking email with PDF refused; retrying without attachment', ['booking' => $b['booking_no'], 'error' => $err]);
+        return SmtpMail::send($smtp, $to, $subject, $body . "\r\n\r\n(Invoice PDF could not be attached; use the booking link above to download it.)", $temple, null);
     }
 
     public function bookingReceivedBody(array $b, array $ctx): string
     {
         return $this->compose(
             $b,
-            'Your booking request has been received.',
+            BookingDevoteeCopy::emailLeadCreated($b),
             $ctx,
-            'If payment is pending, you can pay online or by UPI using the link below. Your invoice is attached.',
+            BookingDevoteeCopy::emailFooterCreated($b),
         );
     }
 
     public function statusBody(array $b, string $message, array $ctx): string
     {
-        return $this->compose($b, $message, $ctx, 'Your latest invoice is attached for your records.');
+        return $this->compose($b, $message, $ctx, BookingDevoteeCopy::emailFooterUpdate($b));
     }
 
     /** @param array{link: string, status: string} $ctx */

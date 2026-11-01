@@ -127,22 +127,31 @@ final class SmtpMail
         $text = str_replace("\n", "\r\n", $text);
         $plain = rtrim($text) . "\r\n\r\n--\r\n" . $signatureName;
         $html = $htmlOverride ?? self::htmlDocument($body, $signatureName);
-        $alternative = 'jt_alt_' . bin2hex(random_bytes(6));
-        $altBody = '--' . $alternative . "\r\n"
-            . "Content-Type: text/plain; charset=UTF-8\r\n\r\n" . $plain . "\r\n"
-            . '--' . $alternative . "\r\n"
-            . "Content-Type: text/html; charset=UTF-8\r\n\r\n" . $html . "\r\n"
-            . '--' . $alternative . "--\r\n";
-        $message = 'Content-Type: multipart/alternative; boundary="' . $alternative . "\"\r\n\r\n" . $altBody;
         if ($attachment === null) {
-            $raw = $headers . "Content-Type: text/plain; charset=UTF-8\r\n\r\n" . $plain;
+            $alternative = 'jt_alt_' . bin2hex(random_bytes(6));
+            $altBody = '--' . $alternative . "\r\n"
+                . "Content-Type: text/plain; charset=UTF-8\r\n"
+                . "Content-Transfer-Encoding: 8bit\r\n\r\n"
+                . $plain . "\r\n"
+                . '--' . $alternative . "\r\n"
+                . "Content-Type: text/html; charset=UTF-8\r\n"
+                . "Content-Transfer-Encoding: 8bit\r\n\r\n"
+                . $html . "\r\n"
+                . '--' . $alternative . "--\r\n";
+            $raw = $headers
+                . 'Content-Type: multipart/alternative; boundary="' . $alternative . "\"\r\n\r\n"
+                . $altBody;
             return self::dotStuff($raw) . "\r\n.\r\n";
         }
+        // With PDF: plain + attachment (flat multipart/mixed — nested alternative is rejected by some hosts).
         $mixed = 'jt_' . bin2hex(random_bytes(8));
         $encoded = rtrim(chunk_split(base64_encode($attachment['content']), 76, "\r\n"));
         $raw = $headers
             . 'Content-Type: multipart/mixed; boundary="' . $mixed . "\"\r\n\r\n"
-            . '--' . $mixed . "\r\n" . $message
+            . '--' . $mixed . "\r\n"
+            . "Content-Type: text/plain; charset=UTF-8\r\n"
+            . "Content-Transfer-Encoding: 8bit\r\n\r\n"
+            . $plain . "\r\n"
             . '--' . $mixed . "\r\n"
             . 'Content-Type: application/pdf; name="' . $attachment['filename'] . "\"\r\n"
             . "Content-Transfer-Encoding: base64\r\n"

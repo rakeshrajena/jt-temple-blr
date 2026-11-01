@@ -324,7 +324,7 @@ final class BookingService
             ]);
         });
         $fresh = $this->bookings->find((int) $b['id']);
-        $this->notifier->statusUpdate($fresh, 'Your payment of ' . money($amount) . ' (ref ' . $ref . ') has been verified.' . ($fresh['booking_status'] === 'confirmed' ? ' Your booking is confirmed.' : ' Your booking is awaiting approval by the temple office.'));
+        $this->notifier->statusUpdate($fresh, BookingDevoteeCopy::paymentReceivedCore($fresh, $amount, false, $ref));
         return $fresh;
     }
 
@@ -357,7 +357,7 @@ final class BookingService
         });
         $fresh = $this->bookings->find($bookingId);
         if ($changed && $fresh['payment_status'] === 'paid') {
-            $this->notifier->statusUpdate($fresh, 'Your online payment of ' . money((int) $fresh['total_paise']) . ' has been received.' . ($fresh['booking_status'] === 'confirmed' ? ' Your booking is confirmed.' : ' Your booking is awaiting approval by the temple office.'));
+            $this->notifier->statusUpdate($fresh, BookingDevoteeCopy::paymentReceivedCore($fresh, (int) $fresh['total_paise'], true));
         } elseif ($changed && $fresh['payment_status'] === 'awaiting_verification') {
             $this->notifier->statusUpdate($fresh, 'We received your online payment, but the amount paid does not match the amount due. The temple office will review it and contact you if needed.');
         }

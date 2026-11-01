@@ -50,7 +50,12 @@ final class Notifier
         if (!$this->settings->adminNumbers()) {
             $this->recordFailure($b, 'admin', '-', 'admin_new_booking', 'No administrator WhatsApp number is configured (Settings > Notifications).');
         }
-        $this->queueDevoteeEmail($b, 'booking_received', 'Booking received — ' . $b['booking_no'], $this->mailer->bookingReceivedBody($b, $ctx));
+        $this->queueDevoteeEmail(
+            $b,
+            'booking_received',
+            BookingDevoteeCopy::emailSubjectCreated($b),
+            $this->mailer->bookingReceivedBody($b, $ctx),
+        );
     }
 
     public function paymentSubmitted(array $b, string $reference): void
@@ -66,21 +71,21 @@ final class Notifier
     }
 
     /** Payment verified/failed, approval, rejection, cancellation, rescheduling, charge changes. */
-    public function statusUpdate(array $b, string $message): void
+    public function statusUpdate(array $b, string $message, ?string $emailSubject = null): void
     {
-        if ((int) ($b['wa_opt_in'] ?? 1) !== 1) {
-            return; // devotee opted out of WhatsApp messages
-        }
         $ctx = $this->context($b);
-        $this->queue($b, 'devotee', $b['mobile'], 'booking_update', 'wa_tpl_devotee_update', [
-            $b['devotee_name'], $b['booking_no'], $message, status_label('booking', $b['booking_status']),
-            status_label('payment', $b['payment_status']), $ctx['link'], $ctx['contact'],
-        ]);
+        $detail = BookingDevoteeCopy::updateDetail($b, $ctx, $message);
+        if ((int) ($b['wa_opt_in'] ?? 1) === 1) {
+            $this->queue($b, 'devotee', $b['mobile'], 'booking_update', 'wa_tpl_devotee_update', [
+                $b['devotee_name'], $b['booking_no'], $detail, status_label('booking', $b['booking_status']),
+                status_label('payment', $b['payment_status']), $ctx['link'], $ctx['contact'],
+            ]);
+        }
         $this->queueDevoteeEmail(
             $b,
             'booking_update',
-            'Update on booking ' . $b['booking_no'],
-            $this->mailer->statusBody($b, $message, $ctx),
+            $emailSubject ?? BookingDevoteeCopy::emailSubjectUpdate($b),
+            $this->mailer->statusBody($b, $detail, $ctx),
         );
     }
 

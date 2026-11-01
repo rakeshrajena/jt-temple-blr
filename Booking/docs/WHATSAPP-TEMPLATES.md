@@ -53,7 +53,9 @@ Booking details and invoice: {{6}}
 Temple office: {{7}}
 Thank you.
 ```
-Samples: `Ananya Sahu` · `SJT-2026-000123` · `Your payment of ₹1,852 (ref 427812345678) has been verified. Your booking is confirmed.` · `Confirmed` · `Paid (verified)` · `https://sjtbengaluru.org/booking/b/SJT-2026-000123?t=abc` · `Shree Jagannatha Temple Bengaluru, +91 80 1234 5678`
+Samples: `Ananya Sahu` · `SJT-2026-000123` · `Your online payment of ₹1,852 was received successfully. Your booking is now confirmed. Services: Special Puja, Vehicle Puja. Date and time: Fri, 16 Oct 2026, Morning (7:00 AM – 9:00 AM). Prasadam / food coupons: Niyamita Bhoga Thali × 4. Amount: ₹1,852.` · `Confirmed` · `Paid (verified)` · `https://sjtbengaluru.org/booking/b/SJT-2026-000123?t=abc` · `Shree Jagannatha Temple Bengaluru, +91 80 1234 5678`
+
+(The app fills {{3}} with payment/status text plus services, date/time, prasadam, and amount. Email uses the same detail and matching subjects such as *Payment successful - booking confirmed (SJT-…)* or *Temple booking received - payment pending (SJT-…)*.)
 
 ## 3. `sjt_admin_new_booking` — to temple administrators
 
