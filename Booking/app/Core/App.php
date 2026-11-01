@@ -49,6 +49,12 @@ final class App
         return self::$basePath;
     }
 
+    /** Filesystem root of the Booking app (e.g. public_html/Booking). */
+    public static function root(): string
+    {
+        return self::publicPath();
+    }
+
     public static function publicPath(): string
     {
         return defined('BOOKING_ROOT') ? BOOKING_ROOT : APP_ROOT;
