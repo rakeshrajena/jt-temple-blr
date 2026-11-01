@@ -61,7 +61,9 @@ password so the public cannot see it.
    DB_USER=<cpaneluser>_sjtstage
    DB_PASS=<the password from 2.1>
    ```
-   Leave the WhatsApp and gateway values empty for now.
+   For staging, Razorpay **test** keys are fine (`rzp_test_…`). Leave WhatsApp empty until templates are approved.
+   When ERP (`php/`) is on the same account, use the **same** `DB_NAME` / user as `php/.env` and upload `php/` beside `Booking/`.
+   Set in `php/.env`: `BOOKING_APP_URL` and `BOOKING_ADMIN_URL` pointing at this folder.
 3. Right-click `.env` › **Change Permissions** › `600`.
 4. Make sure `storage` and every folder inside it are writable (`755`, owner = your cPanel user).
 5. **cPanel › Directory Privacy** › `public_html/BookingStaging` › enable password protection and
@@ -69,9 +71,9 @@ password so the public cannot see it.
 
 ### 2.4 Create the tables and the first administrator
 
-**Option A — Web installer (no SSH):** after `.env` is configured with `INSTALL_TOKEN` (16+ chars) and `APP_KEY`, open  
-`https://sjtbengaluru.org/BookingStaging/install.php`, enter the setup key, fill in the first admin, and submit.  
-Then delete `install.php` and remove `INSTALL_TOKEN` from `.env`.
+**Option A — Unified web installer (no SSH):** configure `php/.env` and `Booking/.env` (same database). Open either  
+`https://sjtbengaluru.org/BookingStaging/install.php` **or** `…/php/install.php` — one setup key runs **ERP + all Booking migrations**.  
+Tick **Run Booking migrations**, optionally create an admin, submit. Then delete both `install.php` files and remove `INSTALL_TOKEN` from `.env`.
 
 **Option B — Terminal** (cPanel › Advanced › Terminal) or SSH:
 ```bash
@@ -113,14 +115,17 @@ Repeat section 2 with these differences:
 | Item | Staging | Production |
 |---|---|---|
 | Folder | `public_html/BookingStaging` | `public_html/Booking` (capital B) |
-| Database | `<user>_sjtstage` | new `<user>_sjtbooking` (fresh — no test bookings) |
+| Database | `<user>_sjtstage` | **Recommended:** same MySQL as ERP (`php/`) so donations/receipts sync. Alternative: fresh `<user>_sjtbooking` (booking-only DB, no ERP ledger). |
 | `.env` APP_ENV / APP_URL | `staging` / …/BookingStaging | `production` / `https://sjtbengaluru.org/Booking` |
+| Razorpay | test keys | **live** keys (`rzp_live_…`), `RAZORPAY_WEBHOOK_SECRET`, webhook → `…/Booking/webhooks/payment` |
 | Directory Privacy | on | **off** |
 | Cron jobs | staging paths | production paths (and remove the staging backup job if staging is retired) |
 
-Then re-enter the settings (temple details, UPI, WhatsApp, prices) in the production dashboard,
-repeat the ₹1 UPI test and one WhatsApp test, and switch the temple website's "Book now" links to
-`https://sjtbengaluru.org/Booking`.
+Production `.env` checklist (copy from `.env.example`): `APP_DEBUG=false`, strong `APP_KEY`, no placeholder `INSTALL_TOKEN`, `GATEWAY_SSL_VERIFY=true`, optional `ERP_APP_URL`, `STAFF_SESSION_PATH` if ERP and Booking share a parent path.
+
+After deploy: open `/Booking/install.php` once (or `php bin/console.php migrate`) so migrations through **008_erp_journal_link** run; then `php bin/console.php check`. If replacing an older live site with existing paid bookings, run `php bin/console.php erp:sync-bookings` once.
+
+Then re-enter dashboard settings (temple details, WhatsApp, prices), configure ERP **Settings › Messages** (SMTP for email receipts), test Razorpay and one WhatsApp message, and point the public site to `https://sjtbengaluru.org/Booking`.
 
 ### Optional: accept lowercase /booking
 Add at the **top** of `public_html/.htaccess` (create it if it does not exist):
@@ -142,8 +147,10 @@ URLs. Keep the `Booking` folder when replacing the "Coming Soon" page.
 1. Take a backup: `bash bin/backup.sh`.
 2. Upload the new zip, extract to a temporary folder, then copy over **everything except** `.env`
    and `storage/` into `public_html/Booking` (the whole folder lives in one place now).
-3. Run `php bin/console.php migrate` (migrations only add tables/columns; nothing is deleted).
-4. Open `/Booking/health` and the dashboard.
+3. Run `php bin/console.php migrate` or submit `/Booking/install.php` with the setup key (migrations only add tables/columns; nothing is deleted).
+4. If ERP is shared and this release adds booking↔donation links, run `php bin/console.php erp:sync-bookings` when instructed in release notes.
+5. Open `/Booking/health` and the dashboard; run `php bin/console.php check`.
+
 Always try the update on staging first.
 
 ## 5. Troubleshooting

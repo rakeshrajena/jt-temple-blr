@@ -7,5 +7,5 @@
     <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
     <button class="btn btn-primary" type="submit">Sign in</button>
   </form>
-  <p class="muted small">Accounts lock for 15 minutes after 5 wrong passwords. Ask a senior administrator to reset a forgotten password.</p>
+  <p class="muted small">When this database is shared with the temple ERP, use the same username and password as ERP sign-in. Accounts lock for 15 minutes after 5 wrong passwords.</p>
 </section>

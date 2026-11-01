@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace SJT\Core;
 
+use SJT\Service\ErpStaffSession;
+
 final class Kernel
 {
     public function __construct(private Router $router)
@@ -28,8 +30,13 @@ final class Kernel
             if (!empty($opts['admin'])) {
                 $user = Container::auth()->user();
                 if (!$user) {
+                    $intended = $req->path . ($req->query ? '?' . http_build_query($req->query) : '');
+                    if (ErpStaffSession::enabled()) {
+                        $return = App::basePath() . ($intended !== '' ? $intended : '/admin');
+                        return Response::redirect(ErpStaffSession::erpLoginUrl($return), true);
+                    }
                     if ($req->method === 'GET') {
-                        Session::set('admin_intended', $req->path . ($req->query ? '?' . http_build_query($req->query) : ''));
+                        Session::set('admin_intended', $intended);
                     }
                     return Response::redirect('/admin/login');
                 }
@@ -68,10 +75,14 @@ final class Kernel
 
     private function securityHeaders(Response $res, Request $req): void
     {
-        $gateway = Env::get('PAYMENT_GATEWAY') === 'razorpay';
-        $script = "'self'" . ($gateway ? ' https://checkout.razorpay.com' : '');
-        $frame = $gateway ? 'https://api.razorpay.com https://checkout.razorpay.com' : "'none'";
-        $connect = "'self'" . ($gateway ? ' https://lumberjack.razorpay.com https://api.razorpay.com' : '');
+        try {
+            $csp = Container::onlinePay()->contentSecurityPolicy();
+        } catch (\Throwable) {
+            $csp = ['script' => [], 'frame' => [], 'connect' => []];
+        }
+        $script = "'self'" . ($csp['script'] ? ' ' . implode(' ', $csp['script']) : '');
+        $frame = $csp['frame'] ? implode(' ', $csp['frame']) : "'none'";
+        $connect = "'self'" . ($csp['connect'] ? ' ' . implode(' ', $csp['connect']) : '');
         $res->headers += [
             'Content-Security-Policy' => "default-src 'self'; script-src $script; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src $connect; frame-src $frame; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'",
             'X-Content-Type-Options' => 'nosniff',

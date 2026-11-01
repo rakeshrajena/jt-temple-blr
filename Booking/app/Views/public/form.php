@@ -61,8 +61,9 @@ $waOptIn = ($in['wa_opt_in'] ?? '') !== '0';
         <?php if ($err('mobile')): ?><p class="field-error" id="mobile-error"><?= e($err('mobile')) ?></p><?php endif; ?>
       </div>
       <div class="field<?= $err('email') ? ' has-error' : '' ?>">
-        <label for="email">Email <span class="opt">(optional)</span></label>
-        <input id="email" name="email" type="email" inputmode="email" maxlength="150" autocomplete="email" value="<?= e($val('email')) ?>" <?= $err('email') ? 'aria-invalid="true" aria-describedby="email-error"' : '' ?>>
+        <label for="email">Email <span class="opt">(optional — required for email receipt)</span></label>
+        <input id="email" name="email" type="email" inputmode="email" maxlength="150" autocomplete="email" value="<?= e($val('email')) ?>" aria-describedby="email-hint<?= $err('email') ? ' email-error' : '' ?>" <?= $err('email') ? 'aria-invalid="true"' : '' ?>>
+        <p class="hint" id="email-hint">We email your booking confirmation, payment status, and invoice PDF to this address.</p>
         <?php if ($err('email')): ?><p class="field-error" id="email-error"><?= e($err('email')) ?></p><?php endif; ?>
       </div>
       <div class="field<?= $err('service_date') ? ' has-error' : '' ?>">
@@ -177,7 +178,17 @@ $waOptIn = ($in['wa_opt_in'] ?? '') !== '0';
 
     <div class="step-nav">
       <button type="button" class="btn btn-secondary" data-prev>Back</button>
-      <button type="submit" class="btn btn-primary btn-lg">Review booking</button>
+      <button type="submit" class="btn btn-primary btn-lg" data-busy="Preparing your booking review">Review booking</button>
     </div>
   </fieldset>
 </form>
+
+<dialog class="avail-dialog" id="avail-dialog" aria-labelledby="avail-dialog-title" aria-describedby="avail-dialog-body">
+  <div class="avail-dialog-inner">
+    <h2 class="h3" id="avail-dialog-title">Date not available</h2>
+    <div id="avail-dialog-body" class="avail-dialog-body"></div>
+    <form method="dialog">
+      <button type="submit" class="btn btn-primary btn-lg" data-avail-dialog-ok>OK, choose another date</button>
+    </form>
+  </div>
+</dialog>

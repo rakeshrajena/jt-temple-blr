@@ -1,4 +1,6 @@
 .env
+.env.*
+!.env.example
 storage/*.sqlite*
 storage/logs/*
 storage/sessions/*

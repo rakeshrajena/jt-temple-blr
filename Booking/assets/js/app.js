@@ -50,6 +50,10 @@
     var addFood = $('#add_food', form);
     var couponsBox = $('[data-coupons]', form);
     var dateInput = $('#service_date', form);
+    var availDialog = $('#avail-dialog');
+    var lastAvailProblems = [];
+    var lastAvailDate = '';
+    var lastAvailServices = null;
     var svcById = {};
     (pricing.services || []).forEach(function (s) { svcById[s.id] = s; });
 
@@ -93,18 +97,26 @@
         if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) first = flag(first, $('#email'), 'Please enter a valid email address, or leave it empty.');
         if (!dateInput.value) first = flag(first, dateInput, 'Please choose a date.');
         else if ((dateInput.min && dateInput.value < dateInput.min) || (dateInput.max && dateInput.value > dateInput.max)) first = flag(first, dateInput, 'Please choose a date within the booking window shown below.');
-        sel.forEach(function (s) {
-          var panel = $('[data-panel="' + s.id + '"]', step); if (!panel) return;
-          var slot = $('[data-slot-select]', panel);
-          if (slot && !slot.value) first = flag(first, slot, 'Please choose a time for ' + s.name + '.');
-          $$('[data-required]', panel).forEach(function (f) { if (!f.value.trim()) first = flag(first, f, 'This field is required.'); });
-          var p = $('input[name^="participants"]', panel);
-          if (p && (!(+p.value >= 1) || +p.value > +p.max)) first = flag(first, p, 'Enter a number between 1 and ' + p.max + '.');
-        });
-        var unavailable = $('[data-date-message]:not([hidden])', step);
-        if (unavailable && unavailable.textContent.trim() && !first) first = dateInput;
+        else if (step2AvailabilityBlocked()) {
+          showAvailPopup(availabilityBlockMessages());
+          first = first || dateInput;
+        } else {
+          sel.forEach(function (s) {
+            if (servicePanelBlocked(String(s.id))) return;
+            var panel = $('[data-panel="' + s.id + '"]', step); if (!panel) return;
+            var slot = $('[data-slot-select]', panel);
+            if (slot && !slot.disabled && !slot.value) first = flag(first, slot, 'Please choose a time for ' + s.name + '.');
+            $$('[data-required]', panel).forEach(function (f) { if (!f.disabled && !f.value.trim()) first = flag(first, f, 'This field is required.'); });
+            var p = $('input[name^="participants"]', panel);
+            if (p && !p.disabled && (!(+p.value >= 1) || +p.value > +p.max)) first = flag(first, p, 'Enter a number between 1 and ' + p.max + '.');
+          });
+        }
       }
       if (i === 2) {
+        if (step2AvailabilityBlocked()) {
+          showAvailPopup(availabilityBlockMessages());
+          return false;
+        }
         var foodOnly = sel.some(function (s) { return s.foodOnly; });
         if (foodOnly || (addFood && addFood.checked)) {
           var any = false;
@@ -154,7 +166,7 @@
     function sync() {
       var sel = selected();
       var foodOnly = sel.some(function (s) { return s.foodOnly; });
-      var foodAllowed = sel.some(function (s) { return s.allowFood; });
+      var foodAllowed = foodOnly || sel.some(function (s) { return !s.foodOnly && s.allowFood; });
       $$('[data-panel]', form).forEach(function (p) {
         var on = sel.some(function (s) { return String(s.id) === p.getAttribute('data-panel'); });
         if (on) p.removeAttribute('data-inactive'); else p.setAttribute('data-inactive', '');
@@ -162,9 +174,13 @@
       var row = $('[data-add-food-row]', form), note = $('[data-food-only-note]', form);
       if (row) row.hidden = foodOnly || (!foodAllowed && sel.length > 0);
       if (note) note.hidden = !foodOnly;
+      if (addFood && !foodAllowed && !foodOnly && sel.length > 0) {
+        addFood.checked = false;
+      }
       var showCoupons = foodOnly || (addFood && addFood.checked);
       if (couponsBox) { if (showCoupons) couponsBox.removeAttribute('data-collapsed'); else couponsBox.setAttribute('data-collapsed', ''); }
       estimate();
+      applyAvailabilityFields(lastAvailServices);
     }
     if (addFood) addFood.addEventListener('change', function () {
       if (addFood.checked) { var firstCheck = $('[data-coupon-check]', form); if (firstCheck && !$$('[data-coupon-check]:checked', form).length) { /* leave choice to devotee */ } }
@@ -206,18 +222,128 @@
     // Availability for the chosen date: slot places left, blocked dates.
     var slotLabels = {};
     $$('[data-slot-select]', form).forEach(function (sel) { $$('option', sel).forEach(function (o) { slotLabels[o.value] = o.textContent; }); });
+    function fillAvailDialogBody(body, problems) {
+      body.innerHTML = '';
+      if (problems.length === 1) {
+        var p = document.createElement('p'); p.textContent = problems[0]; body.appendChild(p);
+      } else {
+        var ul = document.createElement('ul');
+        problems.forEach(function (t) { var li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
+        body.appendChild(ul);
+      }
+    }
+    function showAvailPopup(problems) {
+      if (!problems.length) return;
+      var title = $('#avail-dialog-title');
+      if (title) title.textContent = problems.length > 1 ? 'Some services are not available' : 'Date not available';
+      var body = $('#avail-dialog-body');
+      if (body) fillAvailDialogBody(body, problems);
+      if (availDialog && availDialog.showModal) {
+        if (availDialog.open) availDialog.close();
+        availDialog.showModal();
+        var ok = $('[data-avail-dialog-ok]', availDialog);
+        if (ok) setTimeout(function () { ok.focus(); }, 0);
+      } else if (window.alert) {
+        window.alert(problems.join('\n\n'));
+      }
+    }
+    if (availDialog) {
+      availDialog.addEventListener('close', function () {
+        if (dateInput) dateInput.focus();
+      });
+    }
+    function setAvailDisabled(el, off) {
+      if (!el || el === dateInput || el.matches('[data-prev]')) return;
+      if (off) { el.disabled = true; el.setAttribute('data-avail-disabled', '1'); }
+      else if (el.getAttribute('data-avail-disabled')) { el.disabled = false; el.removeAttribute('data-avail-disabled'); }
+    }
+    function availabilityBlockMessages() {
+      if (lastAvailDate === dateInput.value && lastAvailProblems.length) return lastAvailProblems;
+      var dm = $('[data-date-message]', form);
+      if (dm && !dm.hidden && dm.textContent.trim()) return [dm.textContent.trim()];
+      return [];
+    }
+    function step2AvailabilityBlocked() {
+      return availabilityBlockMessages().length > 0;
+    }
+    function servicePanelBlocked(serviceId) {
+      if (step2AvailabilityBlocked()) return true;
+      if (!lastAvailServices || lastAvailDate !== dateInput.value) return false;
+      var a = lastAvailServices[serviceId];
+      if (!a || !a.available) return true;
+      var panel = $('[data-panel="' + serviceId + '"]', form);
+      var slotSel = panel && $('[data-slot-select]', panel);
+      if (slotSel) {
+        var open = false;
+        $$('option', slotSel).forEach(function (o) { if (o.value && !o.disabled) open = true; });
+        if (!open) return true;
+      }
+      return false;
+    }
+    function applyAvailabilityFields(services) {
+      var step2 = steps[1];
+      var step3 = steps[2];
+      var globalOff = step2AvailabilityBlocked();
+      ['#name', '#mobile', '#email', '#instructions'].forEach(function (id) { setAvailDisabled($(id, form), globalOff); });
+      var waIn = $('.wa-opt input', form);
+      if (waIn) setAvailDisabled(waIn, globalOff);
+      $$('[data-next]', step2).forEach(function (btn) { btn.disabled = globalOff; });
+      if (step3) {
+        var foodOff = globalOff;
+        $$('input, select, textarea, button', step3).forEach(function (el) {
+          setAvailDisabled(el, foodOff);
+        });
+      }
+      $$('[data-panel]', form).forEach(function (panel) {
+        var sid = panel.getAttribute('data-panel');
+        var hidden = panel.hasAttribute('data-inactive');
+        var block = !hidden && servicePanelBlocked(sid);
+        $$('input, select, textarea, button', panel).forEach(function (el) { setAvailDisabled(el, block); });
+        panel.classList.toggle('panel-unavailable', block);
+      });
+      if (step2) step2.classList.toggle('step-availability-blocked', globalOff);
+      if (step3) step3.classList.toggle('step-availability-blocked', globalOff);
+      if (!services && !globalOff) {
+        $$('[data-avail-disabled]', form).forEach(function (el) { setAvailDisabled(el, false); });
+      }
+    }
     function loadAvailability() {
       var msg = $('[data-date-message]', form);
-      if (!dateInput.value || !pricing.availabilityUrl || !window.fetch) return;
+      if (!dateInput.value) {
+        lastAvailDate = '';
+        lastAvailProblems = [];
+        lastAvailServices = null;
+        if (msg) { msg.textContent = ''; msg.hidden = true; }
+        applyAvailabilityFields(null);
+        return;
+      }
+      if (!pricing.availabilityUrl || !window.fetch) return;
+      if (!selected().length) {
+        lastAvailServices = null;
+        lastAvailProblems = [];
+        applyAvailabilityFields(null);
+        return;
+      }
       fetch(pricing.availabilityUrl + '?date=' + encodeURIComponent(dateInput.value), { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (data) {
           if (!data || !data.services) return;
           var problems = [];
           selected().forEach(function (s) { var a = data.services[s.id]; if (a && !a.available && a.message) problems.push(a.message); });
+          lastAvailDate = dateInput.value;
+          lastAvailProblems = problems;
+          lastAvailServices = data.services;
           if (msg) { msg.textContent = problems.join(' '); msg.hidden = !problems.length; }
+          if (problems.length) showAvailPopup(problems);
           $$('[data-slot-select]', form).forEach(function (sel) {
-            var a = data.services[sel.getAttribute('data-slot-select')]; if (!a) return;
+            var sid = sel.getAttribute('data-slot-select');
+            var a = data.services[sid]; if (!a) return;
+            if (!a.available) {
+              setAvailDisabled(sel, true);
+              sel.value = '';
+              return;
+            }
+            setAvailDisabled(sel, false);
             var open = {}; (a.slots || []).forEach(function (sl) { open[sl.id] = sl; });
             $$('option', sel).forEach(function (o) {
               if (!o.value) return;
@@ -228,9 +354,19 @@
               if (o.disabled && o.selected) sel.value = '';
             });
           });
+          applyAvailabilityFields(data.services);
         }).catch(function () {});
     }
-    if (dateInput) dateInput.addEventListener('change', loadAvailability);
+    if (dateInput) {
+      var dateBeforePick = '';
+      dateInput.addEventListener('focus', function () { dateBeforePick = dateInput.value; });
+      dateInput.addEventListener('change', loadAvailability);
+      dateInput.addEventListener('input', loadAvailability);
+      dateInput.addEventListener('blur', function () {
+        if (!dateInput.value || dateInput.value !== dateBeforePick) return;
+        if (lastAvailDate === dateInput.value && lastAvailProblems.length) showAvailPopup(lastAvailProblems);
+      });
+    }
     svcBoxes.forEach(function (b) { b.addEventListener('change', loadAvailability); });
 
     // Initial state: after a server error, open the first step containing an error.
@@ -246,29 +382,76 @@
   }
 
   // ---------------------------------------------------------------- optional online gateway (Razorpay)
+  function busyShow(text) {
+    if (window.jtBusy) window.jtBusy(text || 'Please wait');
+  }
+  function busyHide() {
+    if (window.jtBusyDone) window.jtBusyDone();
+  }
+  function gatewaySyncFromEl(el, onOk, onFail) {
+    var syncUrl = el.getAttribute('data-gateway-sync') || el.getAttribute('data-gateway-sync-only');
+    if (!syncUrl) return onFail('Could not check payment status.');
+    busyShow('Confirming your payment');
+    var body = new URLSearchParams({ _csrf: el.getAttribute('data-csrf') });
+    fetch(syncUrl, { method: 'POST', body: body, credentials: 'same-origin' })
+      .then(function (r) { return r.json().catch(function () { return { error: 'Server error while checking payment.' }; }); })
+      .then(function (d) { if (d.redirect) onOk(d.redirect); else onFail(d.error || 'Payment not found yet.'); })
+      .catch(function () { onFail('Network error while checking payment. Please try again.'); });
+  }
+  function gatewayVerifyFromEl(gw, resp, fail) {
+    busyShow('Confirming your payment');
+    var v = new URLSearchParams(resp);
+    v.append('_csrf', gw.getAttribute('data-csrf'));
+    fetch(gw.getAttribute('data-gateway-verify'), { method: 'POST', body: v, credentials: 'same-origin' })
+      .then(function (r) { return r.json().catch(function () { return { error: 'Server error after payment.' }; }); })
+      .then(function (d) {
+        if (d.redirect) { window.location = d.redirect; return; }
+        gatewaySyncFromEl(gw, function (url) { window.location = url; }, function (m) {
+          fail((d.error || 'Payment could not be verified.') + ' ' + m);
+        });
+      })
+      .catch(function () {
+        gatewaySyncFromEl(gw, function (url) { window.location = url; }, fail);
+      });
+  }
   var gw = $('[data-gateway-pay]');
   if (gw) {
     gw.addEventListener('click', function () {
       var err = $('[data-gateway-error]');
-      function fail(m) { if (err) { err.textContent = m; err.hidden = false; } gw.disabled = false; }
+      function fail(m) {
+        busyHide();
+        if (err) { err.textContent = m; err.hidden = false; }
+        gw.disabled = false;
+      }
       gw.disabled = true;
+      if (err) err.hidden = true;
+      busyShow(gw.getAttribute('data-busy') || 'Opening secure payment');
       var body = new URLSearchParams({ _csrf: gw.getAttribute('data-csrf') });
       fetch(gw.getAttribute('data-gateway-pay'), { method: 'POST', body: body, credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
         .then(function (o) {
-          if (!o || o.error || !window.Razorpay) return fail((o && o.error) || 'Online payment is unavailable. Please use the UPI QR code.');
+          if (!o || o.error || !window.Razorpay) return fail((o && o.error) || 'Online payment is unavailable. Please try again or contact the temple office.');
+          busyHide();
           var rz = new window.Razorpay({
             key: o.key, order_id: o.order_id, amount: o.amount, currency: o.currency, name: o.name, description: o.description, prefill: o.prefill,
-            handler: function (resp) {
-              var v = new URLSearchParams(resp); v.append('_csrf', gw.getAttribute('data-csrf'));
-              fetch(gw.getAttribute('data-gateway-verify'), { method: 'POST', body: v, credentials: 'same-origin' })
-                .then(function (r) { return r.json(); })
-                .then(function (d) { if (d.redirect) window.location = d.redirect; else fail(d.error || 'Payment could not be verified.'); });
-            },
-            modal: { ondismiss: function () { gw.disabled = false; } }
+            handler: function (resp) { gatewayVerifyFromEl(gw, resp, fail); },
+            modal: { ondismiss: function () { busyHide(); gw.disabled = false; } }
           });
           rz.open();
-        }).catch(function () { fail('Online payment is unavailable. Please use the UPI QR code.'); });
+        }).catch(function () { fail('Online payment is unavailable. Please try again or contact the temple office.'); });
+    });
+  }
+  var gwSync = $('[data-gateway-sync-only]');
+  if (gwSync) {
+    gwSync.addEventListener('click', function () {
+      var err = $('[data-gateway-error]');
+      gwSync.disabled = true;
+      busyShow('Checking payment status');
+      gatewaySyncFromEl(gwSync, function (url) { window.location = url; }, function (m) {
+        busyHide();
+        if (err) { err.textContent = m; err.hidden = false; }
+        gwSync.disabled = false;
+      });
     });
   }
 })();

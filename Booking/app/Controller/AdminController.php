@@ -9,6 +9,7 @@ use SJT\Core\Request;
 use SJT\Core\Response;
 use SJT\Core\Session;
 use SJT\Service\Auth;
+use SJT\Service\ErpStaffSession;
 use SJT\Service\Reports;
 
 final class AdminController extends Controller
@@ -18,11 +19,19 @@ final class AdminController extends Controller
         if (Container::auth()->user()) {
             return Response::redirect('/admin');
         }
+        if (ErpStaffSession::enabled()) {
+            $return = App::basePath() . (string) Session::get('admin_intended', '/admin');
+            Session::forget('admin_intended');
+            return Response::redirect(ErpStaffSession::erpLoginUrl($return), true);
+        }
         return $this->view('admin/login', ['title' => 'Administrator sign in', 'username' => ''], 200, 'admin/layout');
     }
 
     public function login(Request $req): Response
     {
+        if (ErpStaffSession::enabled()) {
+            return Response::redirect(ErpStaffSession::erpLoginUrl(App::basePath() . '/admin'), true);
+        }
         $username = $req->str('username');
         $res = Container::auth()->attempt($username, (string) ($req->post['password'] ?? ''), $req->ip());
         if (!$res['ok']) {
@@ -35,6 +44,9 @@ final class AdminController extends Controller
 
     public function logout(Request $req): Response
     {
+        if (ErpStaffSession::enabled()) {
+            return Response::redirect(ErpStaffSession::erpLogoutUrl(), true);
+        }
         $actor = Container::auth()->actor();
         Container::audit()->log($actor, 'admin', $actor['id'], null, 'auth.logout', []);
         Container::auth()->logout();
@@ -54,8 +66,13 @@ final class AdminController extends Controller
             'failed_notifications' => (int) $db->value("SELECT COUNT(*) FROM notifications WHERE status = 'failed'"),
         ];
         $setup = [];
-        if (!Container::upi()->available()) {
-            $setup[] = ['UPI payment details are not verified yet, so devotees are asked to pay at the counter.', '/admin/settings#payment'];
+        $online = Container::onlinePay();
+        if (\SJT\OnlinePay\OnlinePaymentService::upiManualForDevotees()) {
+            if (!Container::upi()->available()) {
+                $setup[] = ['UPI payment details are not verified yet, so devotees are asked to pay at the counter.', '/admin/settings#payment'];
+            }
+        } elseif (!$online->enabled()) {
+            $setup[] = ['Razorpay is not configured in .env — devotees cannot pay online yet.', ErpStaffSession::enabled() ? ErpStaffSession::erpOnlineBookingSettingsUrl() : '/admin/settings#payment'];
         }
         if (!Container::whatsapp()->configured() || !$s->bool('whatsapp_enabled')) {
             $setup[] = ['WhatsApp notifications are not active. Messages are being logged as failed for follow-up.', '/admin/settings#whatsapp'];
@@ -64,7 +81,7 @@ final class AdminController extends Controller
             $setup[] = ['No administrator WhatsApp number is set for new-booking alerts.', '/admin/settings#whatsapp'];
         }
         if (!$s->bool('prices_reviewed')) {
-            $setup[] = ['Service prices are still the installation placeholders. Review and confirm them.', '/admin/services'];
+            $setup[] = ['Service prices are still the installation placeholders. Review and confirm them.', ErpStaffSession::enabled() ? ErpStaffSession::erpBookingServicesUrl() : '/admin/services'];
         }
         if (!$s->get('temple_phone')) {
             $setup[] = ['The temple phone number is missing from invoices and messages.', '/admin/settings#temple'];
@@ -91,9 +108,10 @@ final class AdminController extends Controller
     public function password(Request $req): Response
     {
         $u = Container::auth()->user();
-        $row = App::db()->one('SELECT password_hash FROM admins WHERE id = ?', [$u['id']]);
+        $accounts = Container::auth()->accounts();
+        $row = $accounts->findAuthRowById((int) $u['id']);
         $errors = [];
-        if (!password_verify((string) ($req->post['current'] ?? ''), $row['password_hash'])) {
+        if (!$row || !password_verify((string) ($req->post['current'] ?? ''), (string) $row['password_hash'])) {
             $errors['current'] = 'Current password is incorrect.';
         }
         $new = (string) ($req->post['new'] ?? '');
@@ -105,7 +123,7 @@ final class AdminController extends Controller
         if ($errors) {
             return $this->adminView('password', ['title' => 'Change password', 'errors' => $errors], 422);
         }
-        App::db()->update('admins', ['password_hash' => Auth::hash($new), 'updated_at' => now()], 'id = :id', ['id' => $u['id']]);
+        $accounts->updatePasswordHash((int) $u['id'], Auth::hash($new));
         Container::audit()->log(Container::auth()->actor(), 'admin', $u['id'], null, 'admin.password_changed', []);
         Session::regenerate();
         flash('success', 'Your password has been changed.');

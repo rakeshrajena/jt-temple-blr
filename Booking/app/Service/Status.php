@@ -64,6 +64,9 @@ final class Status
     {
         $p = $b['payment_status'];
         $a = $b['approval_status'];
+        if (($b['cancellation_status'] ?? '') === 'awaiting_approval' && $b['booking_status'] === 'confirmed') {
+            return ['warn', 'Cancellation awaiting accounts approval', 'The temple has requested to cancel this booking. Accounts approval is pending in the ERP (same as receipt cancellation). Your booking remains confirmed until then.'];
+        }
         return match ($b['booking_status']) {
             'confirmed' => ['ok', 'Booking confirmed', 'Your booking is confirmed. Please quote your booking number at the temple counter.'],
             'completed' => ['ok', 'Service completed', 'Thank you. This booking has been completed.'],

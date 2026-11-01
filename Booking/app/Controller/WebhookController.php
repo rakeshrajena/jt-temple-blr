@@ -47,26 +47,30 @@ final class WebhookController extends Controller
         return Response::json(['ok' => true]);
     }
 
-    /** Razorpay: payment.captured / order.paid. */
-    public function razorpay(Request $req): Response
+    /** Active gateway webhook (alias: /webhooks/razorpay for Razorpay). */
+    public function payment(Request $req): Response
     {
-        $gw = Container::gateway();
+        $pay = Container::onlinePay();
         $body = $req->rawBody();
-        if (!$gw->webhookSignatureValid($body, $req->header('X-Razorpay-Signature'))) {
-            Logger::warning('Rejected Razorpay webhook with invalid signature');
+        $sig = $req->header('X-Razorpay-Signature') ?: $req->header('X-Webhook-Signature');
+        if (!$pay->verifyWebhookSignature($body, $sig)) {
+            Logger::warning('Rejected payment webhook with invalid signature', ['driver' => $pay->driverId()]);
             return Response::json(['error' => 'invalid signature'], 401);
         }
-        $data = json_decode($body, true) ?: [];
-        $event = (string) ($data['event'] ?? '');
-        $p = $data['payload']['payment']['entity'] ?? null;
-        if (in_array($event, ['payment.captured', 'order.paid'], true) && $p && ($p['status'] ?? '') === 'captured') {
-            $row = $gw->paymentForOrder((string) ($p['order_id'] ?? ''));
-            if ($row && (int) $row['amount_paise'] === (int) ($p['amount'] ?? -1)) {
-                Container::service()->markGatewayPaid($row, (string) $p['id'], 'webhook');
+        foreach ($pay->parseWebhookCaptures($body) as $cap) {
+            $row = $pay->paymentForOrder($cap->orderId);
+            if ($row && (int) $row['amount_paise'] === $cap->amountPaise) {
+                Container::service()->markGatewayPaid($row, $cap->paymentId, 'webhook');
             } elseif ($row) {
-                Logger::warning('Razorpay webhook amount mismatch', ['order' => $p['order_id'] ?? null]);
+                Logger::warning('Payment webhook amount mismatch', ['order' => $cap->orderId, 'driver' => $pay->driverId()]);
             }
         }
         return Response::json(['ok' => true]);
+    }
+
+    /** @deprecated Use payment(); kept for existing Razorpay dashboard URLs. */
+    public function razorpay(Request $req): Response
+    {
+        return $this->payment($req);
     }
 }

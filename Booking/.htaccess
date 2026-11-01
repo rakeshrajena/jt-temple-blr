@@ -18,7 +18,9 @@ DirectoryIndex index.php
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Force HTTPS
+    # Force HTTPS in production (skip on local AMPPS: http://localhost:8080/...)
+    RewriteCond %{HTTP_HOST} !^localhost(:\d+)?$ [NC]
+    RewriteCond %{HTTP_HOST} !^127\.0\.0\.1(:\d+)?$ [NC]
     RewriteCond %{HTTPS} !=on
     RewriteCond %{HTTP:X-Forwarded-Proto} !=https
     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
@@ -28,10 +30,10 @@ DirectoryIndex index.php
 
     # Never serve dotfiles or application internals directly
     RewriteRule (^|/)\. - [F]
-    RewriteRule ^(app|bin|migrations|storage|tests|docs)(/|$) - [F]
+    RewriteRule ^(app|bin|migrations|online_pay|storage|tests|docs)(/|$) - [F]
 
     # One-time web setup (delete install.php after use)
-    RewriteRule ^install\.php$ - [L]
+    RewriteRule ^install(_probe|_booking_only|_erp_locator)?\.php$ - [L]
 
     # Static assets and any real files are served as-is; everything else goes to index.php
     RewriteCond %{REQUEST_FILENAME} -f [OR]

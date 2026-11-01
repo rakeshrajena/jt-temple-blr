@@ -28,13 +28,16 @@ $r->get('/b/{no}/invoice.pdf', [P::class, 'invoicePdf']);
 $r->get('/b/{no}/qr.png', [P::class, 'qr']);
 $r->post('/b/{no}/gateway/order', [P::class, 'gatewayOrder']);
 $r->post('/b/{no}/gateway/verify', [P::class, 'gatewayVerify']);
+$r->post('/b/{no}/gateway/sync', [P::class, 'gatewaySync']);
 $r->get('/lookup', [P::class, 'lookupForm']);
 $r->post('/lookup', [P::class, 'lookup']);
 $r->get('/health', [P::class, 'health']);
+$r->get('/brand/logo', [P::class, 'brandLogo']);
 
 // ---- Webhooks (authenticated by signature, not CSRF)
 $r->get('/webhooks/whatsapp', [W::class, 'whatsappVerify']);
 $r->post('/webhooks/whatsapp', [W::class, 'whatsapp'], ['csrf' => false]);
+$r->post('/webhooks/payment', [W::class, 'payment'], ['csrf' => false]);
 $r->post('/webhooks/razorpay', [W::class, 'razorpay'], ['csrf' => false]);
 
 // ---- Administrator

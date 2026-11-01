@@ -28,6 +28,7 @@ final class Notifier
         private Bookings $bookings,
         private Settings $settings,
         private WhatsAppClient $wa,
+        private BookingMailer $mailer,
     ) {
     }
 
@@ -49,6 +50,12 @@ final class Notifier
         if (!$this->settings->adminNumbers()) {
             $this->recordFailure($b, 'admin', '-', 'admin_new_booking', 'No administrator WhatsApp number is configured (Settings > Notifications).');
         }
+        $this->queueDevoteeEmail(
+            $b,
+            'booking_received',
+            BookingDevoteeCopy::emailSubjectCreated($b),
+            $this->mailer->bookingReceivedBody($b, $ctx),
+        );
     }
 
     public function paymentSubmitted(array $b, string $reference): void
@@ -59,19 +66,27 @@ final class Notifier
                 $b['booking_no'], $b['devotee_name'], money((int) $b['total_paise']), $reference, $ctx['admin_link'],
             ]);
         }
+        $msg = 'We have received your payment reference ' . $reference . ' for ' . money((int) $b['total_paise']) . '. The temple office will verify it against the bank statement and update your booking.';
+        $this->statusUpdate($b, $msg);
     }
 
     /** Payment verified/failed, approval, rejection, cancellation, rescheduling, charge changes. */
-    public function statusUpdate(array $b, string $message): void
+    public function statusUpdate(array $b, string $message, ?string $emailSubject = null): void
     {
-        if ((int) ($b['wa_opt_in'] ?? 1) !== 1) {
-            return; // devotee opted out of WhatsApp messages
-        }
         $ctx = $this->context($b);
-        $this->queue($b, 'devotee', $b['mobile'], 'booking_update', 'wa_tpl_devotee_update', [
-            $b['devotee_name'], $b['booking_no'], $message, status_label('booking', $b['booking_status']),
-            status_label('payment', $b['payment_status']), $ctx['link'], $ctx['contact'],
-        ]);
+        $detail = BookingDevoteeCopy::updateDetail($b, $ctx, $message);
+        if ((int) ($b['wa_opt_in'] ?? 1) === 1) {
+            $this->queue($b, 'devotee', $b['mobile'], 'booking_update', 'wa_tpl_devotee_update', [
+                $b['devotee_name'], $b['booking_no'], $detail, status_label('booking', $b['booking_status']),
+                status_label('payment', $b['payment_status']), $ctx['link'], $ctx['contact'],
+            ]);
+        }
+        $this->queueDevoteeEmail(
+            $b,
+            'booking_update',
+            $emailSubject ?? BookingDevoteeCopy::emailSubjectUpdate($b),
+            $this->mailer->statusBody($b, $detail, $ctx),
+        );
     }
 
     private function context(array $b): array
@@ -88,6 +103,27 @@ final class Notifier
             'admin_link' => absolute_url('/admin/bookings/' . $b['booking_no']),
             'contact' => trim($this->settings->get('temple_name', '') . ($phone ? ', ' . $phone : '')),
         ];
+    }
+
+    private function queueDevoteeEmail(array $b, string $event, string $subject, string $body): void
+    {
+        $to = $this->mailer->devoteeAddress($b);
+        if (!$to) {
+            return;
+        }
+        $now = now();
+        $payload = json_encode(['subject' => $subject, 'body' => $body, 'attach_invoice' => true], JSON_UNESCAPED_UNICODE);
+        try {
+            $id = $this->db->insert('notifications', [
+                'booking_id' => (int) $b['id'], 'channel' => 'email', 'audience' => 'devotee',
+                'recipient' => $to, 'event' => $event, 'template' => null,
+                'params_json' => $payload, 'status' => 'queued', 'attempts' => 0, 'next_attempt_at' => $now,
+                'created_at' => $now, 'updated_at' => $now,
+            ]);
+            $this->dispatch($id);
+        } catch (\Throwable $e) {
+            Logger::error('Booking email could not be queued', ['booking' => $b['booking_no'], 'event' => $event, 'error' => $e->getMessage()]);
+        }
     }
 
     private function queue(array $b, string $audience, string $recipient, string $event, string $templateSetting, array $params): void
@@ -123,11 +159,38 @@ final class Notifier
     public function dispatch(int $id): bool
     {
         $n = $this->db->one('SELECT * FROM notifications WHERE id = ?', [$id]);
-        if (!$n || !in_array($n['status'], ['queued', 'failed'], true) || !$n['template'] || !$n['params_json']) {
+        if (!$n || !in_array($n['status'], ['queued', 'failed'], true) || !$n['params_json']) {
             return false;
         }
         $attempts = (int) $n['attempts'] + 1;
-        if (!$this->settings->bool('whatsapp_enabled')) {
+        if (($n['channel'] ?? 'whatsapp') === 'email') {
+            $payload = json_decode($n['params_json'], true);
+            if (!is_array($payload)) {
+                return false;
+            }
+            $b = $n['booking_id'] ? $this->bookings->find((int) $n['booking_id']) : null;
+            if (!$b) {
+                $res = ['ok' => false, 'id' => null, 'error' => 'Booking not found for this email.', 'retryable' => false];
+            } else {
+                try {
+                    $err = $this->mailer->sendPayload($b, $n['recipient'], $payload);
+                    $res = [
+                        'ok' => $err === null,
+                        'id' => null,
+                        'error' => $err,
+                        'retryable' => $err !== null && (
+                            str_contains((string) $err, 'mail server')
+                            || str_contains((string) $err, 'Could not reach')
+                        ),
+                    ];
+                } catch (\Throwable $e) {
+                    Logger::error('Booking email send crashed', ['notification' => $id, 'error' => $e->getMessage()]);
+                    $res = ['ok' => false, 'id' => null, 'error' => $e->getMessage(), 'retryable' => true];
+                }
+            }
+        } elseif (!$n['template']) {
+            return false;
+        } elseif (!$this->settings->bool('whatsapp_enabled')) {
             $res = ['ok' => false, 'id' => null, 'error' => 'WhatsApp notifications are switched off (Settings > WhatsApp).', 'retryable' => false];
         } else {
             $res = $this->wa->sendTemplate($n['recipient'], $n['template'], $this->settings->get('whatsapp_language', 'en'), json_decode($n['params_json'], true) ?: []);
@@ -148,7 +211,7 @@ final class Notifier
             'status' => 'failed', 'error' => mb_substr((string) $res['error'], 0, 1000), 'attempts' => $attempts,
             'next_attempt_at' => $next, 'updated_at' => $now,
         ], 'id = :id', ['id' => $id]);
-        Logger::warning('WhatsApp notification failed', ['notification' => $id, 'event' => $n['event'], 'error' => $res['error']]);
+        Logger::warning('Notification failed', ['notification' => $id, 'channel' => $n['channel'], 'event' => $n['event'], 'error' => $res['error']]);
         return false;
     }
 

@@ -19,7 +19,8 @@ final class InvoiceRenderer
         $id = (int) $b['id'];
         $verified = array_values(array_filter($this->bookings->payments($id), fn ($p) => in_array($p['status'], ['verified', 'refunded'], true)));
         $qr = null;
-        if (in_array($b['payment_status'], ['pending', 'failed'], true) && in_array($b['booking_status'], ['pending', 'confirmed'], true) && $this->upi->available()) {
+        if (in_array($b['payment_status'], ['pending', 'failed'], true) && in_array($b['booking_status'], ['pending', 'confirmed'], true)
+            && \SJT\OnlinePay\OnlinePaymentService::upiManualForDevotees() && $this->upi->available()) {
             $png = $this->upi->bookingQrPng($b);
             $qr = $png ? 'data:image/png;base64,' . base64_encode($png) : null;
         }
@@ -38,6 +39,7 @@ final class InvoiceRenderer
             'upi_vpa' => $this->upi->mode() === 'dynamic' ? $this->settings->get('upi_vpa') : null,
             'qr' => $qr,
             'terms' => $this->settings->get('terms_text', ''),
+            'logo_url' => TempleLogo::publicUrl(),
         ];
     }
 
@@ -71,38 +73,48 @@ final class InvoiceRenderer
         $right = $pageW - 50.0;
         $width = $right - $left;
 
-        // ---- header ----
-        $y = $pageH - 55.0;
+        // ---- header (left: logo + temple; right: INVOICE + meta — no overlap) ----
+        $colSplit = $left + $width * 0.52;
+        $topY = $pageH - 48.0;
+        $logoRaster = TempleLogo::pdfRaster();
+        $textX = $left;
+        $textMaxW = $colSplit - $left - 8.0;
+        if ($logoRaster !== null) {
+            [$lw, $lh] = TempleLogo::fitBox($logoRaster['width'], $logoRaster['height'], 52.0);
+            if ($lw > 0) {
+                $imgId = $pdf->addImage($logoRaster);
+                $pdf->drawImage($imgId, $left, $topY - $lh, $lw, $lh);
+                $textX = $left + $lw + 10.0;
+                $textMaxW = $colSplit - $textX - 8.0;
+            }
+        }
+        $y = $topY;
         $pdf->setFill(...$navy);
-        $pdf->text($left, $y, $temple['name'], 16, 'F2');
-        $y -= 20;
+        $nameLines = $pdf->wrap($temple['name'], 14, max(80.0, $textMaxW), true);
+        foreach ($nameLines as $i => $line) {
+            $pdf->text($textX, $y - ($i * 17), $line, 14, 'F2');
+        }
+        $y -= 17 * max(1, count($nameLines));
+        $y -= 4;
         $pdf->setFill(...$grey);
-        $headerLines = [];
-        if ($temple['address']) {
-            $headerLines[] = $temple['address'];
-        }
-        if ($temple['phone']) {
-            $headerLines[] = 'Phone: ' . $temple['phone'];
-        }
-        if ($temple['email']) {
-            $headerLines[] = 'Email: ' . $temple['email'];
-        }
-        if ($temple['website']) {
-            $headerLines[] = preg_replace('#^https?://#', '', $temple['website']);
-        }
-        if ($temple['gstin']) {
-            $headerLines[] = 'GSTIN: ' . $temple['gstin'];
-        }
+        $headerLines = array_filter([
+            $temple['address'] ?: null,
+            $temple['phone'] ? 'Phone: ' . $temple['phone'] : null,
+            $temple['email'] ? 'Email: ' . $temple['email'] : null,
+            $temple['website'] ? preg_replace('#^https?://#', '', $temple['website']) : null,
+            $temple['gstin'] ? 'GSTIN: ' . $temple['gstin'] : null,
+        ]);
         foreach ($headerLines as $line) {
-            $pdf->text($left, $y, $line, 9);
-            $y -= 13;
+            foreach ($pdf->wrap((string) $line, 9, max(80.0, $textMaxW)) as $ln) {
+                $pdf->text($textX, $y, $ln, 9);
+                $y -= 12;
+            }
         }
 
-        // ---- right column: INVOICE + meta ----
-        $rx = $left + $width * 0.55;
-        $ry = $pageH - 55.0;
+        $ry = $topY;
+        $invoiceTitle = 'INVOICE';
         $pdf->setFill(...$navy);
-        $pdf->text($rx, $ry, 'INVOICE', 18, 'F2');
+        $pdf->text($right - $pdf->textWidth($invoiceTitle, 18, true), $ry, $invoiceTitle, 18, 'F2');
         $ry -= 22;
         $meta = [
             'Invoice no.' => $b['invoice_no'],
@@ -110,16 +122,18 @@ final class InvoiceRenderer
             'Booking date' => date('d M Y', strtotime($b['created_at'])),
             'Service date' => date('d M Y (D)', strtotime($b['service_date'])),
         ];
+        $metaX = $right - 220.0;
         foreach ($meta as $k => $v) {
             $pdf->setFill(...$grey);
-            $pdf->text($rx, $ry, $k, 9);
+            $pdf->text($metaX, $ry, $k, 9);
             $pdf->setFill(...$dark);
-            $pdf->text($rx + 70, $ry, (string) $v, 9, 'F2');
-            $ry -= 16;
+            $val = (string) $v;
+            $pdf->text($right - $pdf->textWidth($val, 9, true), $ry, $val, 9, 'F2');
+            $ry -= 15;
         }
 
         // ---- divider + stamp ----
-        $y = min($y, $ry) - 6;
+        $y = min($y, $ry) - 8;
         $pdf->setStroke(...$navy);
         $pdf->setLineWidth(0.8);
         $pdf->line($left, $y, $right, $y);

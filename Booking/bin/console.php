@@ -10,6 +10,7 @@ declare(strict_types=1);
  *   php bin/console.php maintenance              (cron, daily)
  *   php bin/console.php check                    (configuration check)
  *   php bin/console.php key                      (print a new APP_KEY)
+ *   php bin/console.php erp:sync-bookings        (post paid bookings to ERP ledger + receipts)
  */
 if (PHP_SAPI !== 'cli') {
     exit("CLI only\n");
@@ -22,6 +23,7 @@ use SJT\Core\Container;
 use SJT\Core\Env;
 use SJT\Core\Migrator;
 use SJT\Service\Auth;
+use SJT\Service\StaffAccounts;
 
 $cmd = $argv[1] ?? 'help';
 $out = fn (string $s) => fwrite(STDOUT, $s . PHP_EOL);
@@ -64,13 +66,28 @@ try {
                 $err($p);
             }
             $db = App::db();
-            if ($db->value('SELECT 1 FROM admins WHERE username = ?', [$username])) {
+            $accounts = new StaffAccounts($db);
+            if ($accounts->findByUsername($username)) {
                 $err("User $username already exists. Use reset-password.");
             }
-            $db->insert('admins', [
-                'username' => $username, 'name' => $name ?: $username, 'password_hash' => Auth::hash($pw),
-                'role' => $role, 'is_active' => 1, 'failed_logins' => 0, 'created_at' => now(), 'updated_at' => now(),
-            ]);
+            $ts = now();
+            if ($accounts->usesErpUsers()) {
+                $db->insert('users', [
+                    'username' => $username,
+                    'full_name' => $name ?: $username,
+                    'password_hash' => Auth::hash($pw),
+                    'role' => StaffAccounts::erpRoleFromBookingSuper($role === 'super'),
+                    'is_active' => 1,
+                    'failed_logins' => 0,
+                    'created_at' => $ts,
+                    'updated_at' => $ts,
+                ]);
+            } else {
+                $db->insert('admins', [
+                    'username' => $username, 'name' => $name ?: $username, 'password_hash' => Auth::hash($pw),
+                    'role' => $role, 'is_active' => 1, 'failed_logins' => 0, 'created_at' => $ts, 'updated_at' => $ts,
+                ]);
+            }
             Container::audit()->log(['id' => null, 'name' => 'cli'], 'admin', $username, null, 'admin.created', ['role' => $role]);
             $out("Administrator '$username' ($role) created.");
             break;
@@ -81,10 +98,14 @@ try {
             if ($p = Auth::passwordProblem($pw)) {
                 $err($p);
             }
-            $n = App::db()->update('admins', ['password_hash' => Auth::hash($pw), 'failed_logins' => 0, 'locked_until' => null, 'updated_at' => now()], 'username = :u', ['u' => $username]);
-            if (!$n) {
+            $accounts = new StaffAccounts(App::db());
+            $row = $accounts->findAuthRowByUsername($username);
+            if (!$row) {
                 $err('No such user.');
             }
+            $accounts->updatePasswordHash((int) $row['id'], Auth::hash($pw));
+            $t = $accounts->table();
+            App::db()->update($t, ['failed_logins' => 0, 'locked_until' => null, 'updated_at' => now()], 'id = :id', ['id' => (int) $row['id']]);
             Container::audit()->log(['id' => null, 'name' => 'cli'], 'admin', $username, null, 'admin.password_reset', []);
             $out('Password updated and account unlocked.');
             break;
@@ -129,8 +150,13 @@ try {
             $pending = (new Migrator(App::db(), APP_ROOT . '/migrations'))->pending();
             $ok(!$pending, $pending ? 'pending migrations: ' . implode(', ', array_keys($pending)) : 'migrations up to date');
             $s = App::settings();
-            $ok((int) App::db()->value("SELECT COUNT(*) FROM admins WHERE role = 'super' AND is_active = 1") > 0, 'senior administrator account exists');
-            $ok($s->bool('upi_verified') && Container::upi()->available(), 'UPI payment details verified and available');
+            $ok((new StaffAccounts(App::db()))->seniorAdminExists(), 'senior administrator account exists');
+            $gw = Container::gateway();
+            if ($gw::upiManualForDevotees()) {
+                $ok($s->bool('upi_verified') && Container::upi()->available(), 'UPI payment details verified and available');
+            } else {
+                $ok($gw->enabled(), 'Razorpay gateway configured (PAYMENT_GATEWAY=razorpay and keys in .env)');
+            }
             $ok(Container::whatsapp()->configured(), 'WhatsApp API credentials present');
             $ok($s->bool('whatsapp_enabled'), 'WhatsApp notifications switched on');
             $ok((bool) $s->adminNumbers(), 'administrator WhatsApp number configured');
@@ -142,8 +168,22 @@ try {
             $out(bin2hex(random_bytes(32)));
             break;
 
+        case 'erp:sync-bookings':
+            $stats = Container::erpJournal()->backfillAllPaid(['id' => null, 'name' => 'cli']);
+            $out(sprintf(
+                'Processed %d paid booking(s): %d newly linked to ERP, %d with receipt, %d skipped.',
+                $stats['processed'],
+                $stats['linked'],
+                $stats['receipts'],
+                $stats['skipped']
+            ));
+            foreach ($stats['errors'] as $e) {
+                $out('[ERR] ' . $e);
+            }
+            break;
+
         default:
-            $out("Commands: migrate | create-admin [user] [name] [super|staff] | reset-password [user] | notifications:retry | maintenance | check | key");
+            $out("Commands: migrate | create-admin [user] [name] [super|staff] | reset-password [user] | notifications:retry | maintenance | check | key | erp:sync-bookings");
     }
 } catch (Throwable $e) {
     $err('Error: ' . $e->getMessage());

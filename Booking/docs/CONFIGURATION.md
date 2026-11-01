@@ -42,20 +42,38 @@ If the bank provides a merchant VPA, tick *Include merchant transaction referenc
 Changing the UPI ID, switching mode or uploading a new image **automatically un-verifies** the
 payment details until the test is repeated.
 
-### Optional online gateway (Razorpay)
-Only if the temple has an approved Razorpay account. In `.env`:
+### Invoice logo (same as ERP)
+
+Booking invoices (HTML + PDF) use the **same logo as ERP** billing and **Settings › Name, place, and logo**:
+
+- Uploaded logo: `php/storage/brand/` (key `brand_logo` in ERP `app_settings`)
+- Print-optimised PNG: `php/storage/brand/logo-print.png` (used in PDF when present)
+- Default: `php/static/logo.svg`
+
+No separate upload in Booking admin. Change the logo once in ERP Settings; redeploy both apps with the shared `php/storage/brand` folder on the server.
+
+### Devotee payments — Razorpay (default)
+
+In `.env`:
 ```
 PAYMENT_GATEWAY=razorpay
-RAZORPAY_KEY_ID=rzp_live_...
+RAZORPAY_KEY_ID=rzp_test_...   # or rzp_live_... in production
 RAZORPAY_KEY_SECRET=...
-RAZORPAY_WEBHOOK_SECRET=...
+RAZORPAY_WEBHOOK_SECRET=...    # recommended for production
+BOOKING_UPI_MANUAL=false       # devotees see Razorpay only
 ```
+
+Use **test keys** on staging first. Devotees see **Pay now** on the booking pay page (UPI, card, net banking via Razorpay).
+
 In the Razorpay dashboard: enable **automatic capture**, and add a webhook to
-`https://sjtbengaluru.org/Booking/webhooks/razorpay` for `payment.captured` and `order.paid`
-with the same secret. A "Pay online" button then appears next to the UPI QR; bookings paid this
-way are marked paid automatically after the server verifies Razorpay's signature.
-*This module is implemented to Razorpay's published API but could not be tested against a live
-Razorpay account; test it on staging with Razorpay test keys before enabling in production.*
+`https://sjtbengaluru.org/Booking/webhooks/payment` (or `/webhooks/razorpay`) for `payment.captured` and `order.paid`
+with the same webhook secret.
+
+With `BOOKING_UPI_MANUAL=false`, Booking admin **Settings › Online payment** shows Razorpay status only (no temple UPI ID form).
+
+To bring back the old **UPI QR + UTR** form for devotees, set `BOOKING_UPI_MANUAL=true` — the UPI settings form returns under Settings.
+
+Staff can always **verify** or **record** payments on individual bookings in admin regardless of gateway.
 
 ## 3. WhatsApp — `.env` + Settings › WhatsApp
 
@@ -77,6 +95,16 @@ Razorpay account; test it on staging with Razorpay test keys before enabling in 
    number(s)** (comma separated), check the template names and language code, save.
 6. Use **Send a test message** to your own phone.
 7. Configure the webhook (see docs/WHATSAPP-TEMPLATES.md).
+
+### Devotee email receipts
+
+When a devotee enters an **email address** on the booking form, the app sends email for the same
+events as WhatsApp (booking received / pay later, payment verified, payment failed, and other
+status updates). Each message includes booking and payment status and attaches the **invoice PDF**.
+
+Mail uses **Temple ERP › Settings › Messages** (SMTP host, port, From address). Configure that
+before going live; if SMTP is not set, bookings still work and failed emails appear under
+**Admin › Notifications** like WhatsApp failures.
 
 If WhatsApp is off or misconfigured, bookings continue normally; each unsent message appears
 under **Notifications › Failed** with the reason. Temporary errors retry automatically
@@ -102,9 +130,8 @@ Each must be a WhatsApp-enabled mobile number.
 
 Price changes apply only to new bookings; existing bookings and invoices keep their price.
 
-## 6. Food / prasadam coupons — Food coupons
-Edit name, price per person, maximum persons per booking, availability and order.
-Add more categories if needed. Defaults: *Food Coupon (Standard)* ₹150, *Food Coupon (Special)* ₹250.
+## 6. Food / prasadam coupons
+Managed in **Temple ERP › Settings › Online booking › Prasadam menu**. Printed serial coupons (CU-…) are under **Temple ERP › Coupons**. Other booking configuration (contact, rules, WhatsApp templates, Razorpay status) is under **Temple ERP › Settings › Online booking**.
 
 ## 7. Availability, dates and time slots
 - **Time slots** (per service): open the service › *Time slots*. Each slot has a label shown to
@@ -130,3 +157,13 @@ Add more categories if needed. Defaults: *Food Coupon (Standard)* ₹150, *Food 
 - **Additional charge per booking** (e.g. a convenience fee) — normally 0.
 - **Rate limit** for submissions from one network: `.env` `BOOKING_RATE_LIMIT_PER_HOUR` (default 40),
   generous enough for the office to book on behalf of devotees.
+
+---
+
+## Production deployment (summary)
+
+1. **`.env` files:** `php/.env` and `Booking/.env` with the same `DB_*`; put `INSTALL_TOKEN` in `php/.env` (and the same token in Booking if you use booking-only install). Booking needs `APP_KEY`, `APP_URL`, Razorpay/WhatsApp as in `.env.example`.
+2. **One web setup:** open **`php/install.php`** or **`Booking/install.php`** (same page when both folders exist). Enter the setup key once — runs ERP schema update **and** all Booking migrations (**001**–**008**), plus optional first admin.
+3. **CLI alternative:** `php bin/console.php migrate` inside `Booking/` after ERP `install.php` if you prefer SSH only.
+4. **Hardening:** delete `install.php`, remove `INSTALL_TOKEN`, chmod `.env` to `600`, enable cron jobs (`notifications:retry`, `maintenance`) per `docs/DEPLOYMENT-CPANEL.md`.
+5. **Verify:** `php bin/console.php check`; if upgrading with historical paid bookings, `php bin/console.php erp:sync-bookings` once.

@@ -149,8 +149,24 @@ final class BookingForm
 
         // ---- Food coupons
         $food = [];
-        $foodAllowed = (bool) array_filter($selected, fn ($s) => $s['allow_food']);
-        $wantsFood = $foodOnly || !empty($in['add_food']);
+        $hasFoodInput = static function (array $input): bool {
+            foreach ((array) ($input['food_cat'] ?? []) as $v) {
+                if (!empty($v)) {
+                    return true;
+                }
+            }
+            foreach ((array) ($input['food'] ?? []) as $raw) {
+                if (is_scalar($raw) && trim((string) $raw) !== '' && trim((string) $raw) !== '0') {
+                    return true;
+                }
+            }
+            return false;
+        };
+        // Food-only bookings always use the prasadam menu. Any puja/ceremony booking may add prasadam
+        // coupons (allow_food in admin only controls whether the optional “Add food” row is shown).
+        $nonFoodServices = array_filter($selected, fn ($s) => !$s['is_food_only']);
+        $foodAllowed = $foodOnly || $nonFoodServices !== [];
+        $wantsFood = $foodOnly || !empty($in['add_food']) || $hasFoodInput($in);
         if ($wantsFood && $selected && !$foodAllowed) {
             $err['food'] = 'Food coupons are not available with the selected service.';
         } elseif ($wantsFood) {

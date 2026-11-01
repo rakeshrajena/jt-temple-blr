@@ -6,7 +6,7 @@ $regular = array_values(array_filter($services, fn ($s) => !$s['is_food_only']))
 <section class="hero">
   <p class="hero-kicker">॥ Jai Jagannath ॥</p>
   <h1>Book a puja, ceremony or prasadam</h1>
-  <p class="lead">Choose a seva, pick a date and time, add food coupons if you wish, and pay by UPI. You will get a booking number straight away.</p>
+  <p class="lead">Choose a seva, pick a date and time, add food coupons if you wish, and pay online. You will get a booking number straight away.</p>
   <div class="hero-actions">
     <a class="btn btn-primary btn-lg" href="<?= e(url('/book')) ?>">Start booking</a>
     <a class="btn btn-secondary btn-lg" href="<?= e(url('/lookup')) ?>">Find my booking</a>
@@ -52,7 +52,7 @@ $regular = array_values(array_filter($services, fn ($s) => !$s['is_food_only']))
   <ol class="how-steps">
     <li><strong>Choose</strong> the service, date and time.</li>
     <li><strong>Review</strong> the price summary and submit. You get a booking number.</li>
-    <li><strong>Pay</strong> by scanning the temple's UPI QR code and enter the UPI reference number.</li>
-    <li><strong>Confirmation</strong> follows once the temple office verifies your payment<?= array_filter($regular, fn ($s) => $s['requires_approval']) ? ' (and approves ceremonies that need it)' : '' ?>.</li>
+    <li><strong>Pay</strong> online (UPI, card or net banking).</li>
+    <li><strong>Confirmation</strong> follows once your payment is received<?= array_filter($regular, fn ($s) => $s['requires_approval']) ? ' and the temple approves ceremonies that need it' : '' ?>.</li>
   </ol>
 </section>

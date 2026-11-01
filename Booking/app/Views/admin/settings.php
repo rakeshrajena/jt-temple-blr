@@ -1,10 +1,10 @@
 <?php
-/** @var array $s settings @var bool $waConfigured @var bool $staticQr @var string $webhookUrl */
+/** @var array $s @var bool $waConfigured @var bool $staticQr @var string $webhookUrl @var bool $showUpiSettings @var bool $razorpayConfigured @var string $razorpayKeyLabel @var string $razorpayWebhookUrl @var string $paymentGateway */
 $v = fn (string $k) => e((string) ($s[$k] ?? ''));
 $on = fn (string $k) => ($s[$k] ?? '0') === '1' ? ' checked' : '';
 ?>
 <h1>Settings</h1>
-<nav class="tabs"><a href="#temple">Temple details</a><a href="#booking">Booking rules</a><a href="#payment">UPI payment</a><a href="#whatsapp">WhatsApp</a></nav>
+<nav class="tabs"><a href="#temple">Temple details</a><a href="#booking">Booking rules</a><a href="#payment"><?= $showUpiSettings ? 'UPI payment' : 'Online payment' ?></a><a href="#whatsapp">WhatsApp</a></nav>
 
 <form method="post" action="<?= e(url('/admin/settings')) ?>" class="panel form" id="temple">
   <?= csrf_field() ?><input type="hidden" name="section" value="temple">
@@ -38,6 +38,7 @@ $on = fn (string $k) => ($s[$k] ?? '0') === '1' ? ' checked' : '';
 </form>
 
 <section class="panel" id="payment">
+  <?php if ($showUpiSettings): ?>
   <h2>UPI payment</h2>
   <div class="callout">
     <strong>Safety check before going live.</strong> Use only the temple's own bank UPI ID / QR. Make a ₹1 test payment from a personal phone, confirm with the temple treasurer that it arrived in the temple's bank account, and only then tick <em>"verified"</em>. Until then devotees are asked to pay at the counter.
@@ -78,6 +79,22 @@ $on = fn (string $k) => ($s[$k] ?? '0') === '1' ? ' checked' : '';
       <?php else: ?><p class="muted">Nothing to preview yet.</p><?php endif; ?>
     </div>
   </div>
+  <?php else: ?>
+  <h2>Online payment (Razorpay)</h2>
+  <p>Devotees pay with <strong>Pay now</strong> on the booking page (UPI, card, and net banking through Razorpay). You do <em>not</em> need a separate temple UPI ID or QR in Booking admin — settlement goes to the bank account linked in your Razorpay dashboard.</p>
+  <p>Gateway: <?= e($paymentGateway) ?> · <?= $razorpayConfigured ? '<span class="badge badge-ok">Keys loaded</span>' : '<span class="badge badge-bad">Not configured</span>' ?><?= $razorpayKeyLabel !== '' ? ' · Key ID ' . e($razorpayKeyLabel) : '' ?></p>
+  <div class="callout">
+    <strong>Server configuration (<code>Booking/.env</code>)</strong>
+    <ul class="muted small">
+      <li><code>PAYMENT_GATEWAY=razorpay</code></li>
+      <li><code>RAZORPAY_KEY_ID</code> and <code>RAZORPAY_KEY_SECRET</code> (test keys for staging, live keys for production)</li>
+      <li><code>BOOKING_UPI_MANUAL=false</code> — keeps the old scan-QR + UTR form hidden (recommended with Razorpay)</li>
+      <li>Optional <code>RAZORPAY_WEBHOOK_SECRET</code> — backup if a devotee closes the browser before payment confirmation</li>
+    </ul>
+  </div>
+  <p class="muted small">Webhook URL for Razorpay dashboard: <code><?= e($razorpayWebhookUrl) ?></code> (events such as <code>payment.captured</code>). Staff can still record or verify counter payments on individual bookings in admin.</p>
+  <p class="muted small">To use the legacy temple UPI QR + reference number flow instead, set <code>BOOKING_UPI_MANUAL=true</code> in <code>.env</code> and reload this page — the UPI settings form will reappear.</p>
+  <?php endif; ?>
 </section>
 
 <section class="panel" id="whatsapp">

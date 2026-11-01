@@ -38,14 +38,30 @@ $amount = money((int) $b['total_paise']);
       <?php endif; ?>
     </div>
     <p><a class="btn btn-primary" href="<?= e(url('/b/' . $no)) ?>">View booking status</a></p>
-  <?php elseif (!$upiAvailable && !$gateway): ?>
+  <?php elseif (!$gateway && !$upiAvailable): ?>
     <div class="alert alert-warn">
-      Online payment is being set up by the temple. Please pay <strong><?= e($amount) ?></strong> at the temple counter and quote booking number <strong><?= e($no) ?></strong>.
+      Online payment is not available yet. Please contact the temple office and quote booking number <strong><?= e($no) ?></strong> (amount due <strong><?= e($amount) ?></strong>).
       <?php if ($temple['phone']): ?> Temple office: <a href="tel:<?= e(preg_replace('/[^\d+]/', '', $temple['phone'])) ?>"><?= e($temple['phone']) ?></a>.<?php endif; ?>
     </div>
   <?php else: ?>
     <?php if ($b['payment_status'] === 'failed'): ?>
-      <div class="alert alert-error" role="alert">The temple office could not verify your earlier payment reference. Please check your UPI app and submit the correct reference, or contact the temple office.</div>
+      <div class="alert alert-error" role="alert"><?= $upiAvailable
+        ? 'The temple office could not verify your earlier payment reference. Please check your UPI app and submit the correct reference, or contact the temple office.'
+        : 'Your last online payment did not complete. Please try again below or contact the temple office.' ?></div>
+    <?php endif; ?>
+
+    <?php if ($gateway): ?>
+    <div class="card inset stack pay-gateway">
+      <h2 class="h3">Pay online</h2>
+      <p>Pay securely with UPI, card or net banking. Your booking is updated automatically once the payment succeeds.</p>
+      <button type="button" class="btn btn-primary btn-lg" data-busy="Opening secure payment" data-gateway-pay="<?= e(url('/b/' . $no . '/gateway/order')) ?>" data-gateway-verify="<?= e(url('/b/' . $no . '/gateway/verify')) ?>" data-gateway-sync="<?= e(url('/b/' . $no . '/gateway/sync')) ?>" data-csrf="<?= e(csrf_token()) ?>">Pay <?= e($amount) ?> now</button>
+      <?php if (!empty($gatewaySyncPending)): ?>
+      <p class="hint">If you already paid and see an error from the payment window, use the button below — we will check with the bank and update your booking.</p>
+      <button type="button" class="btn btn-secondary" data-gateway-sync-only="<?= e(url('/b/' . $no . '/gateway/sync')) ?>" data-csrf="<?= e(csrf_token()) ?>">I paid — update my booking</button>
+      <?php endif; ?>
+      <p class="field-error" data-gateway-error hidden role="alert"></p>
+    </div>
+    <?php if (!empty($checkoutScriptUrl)): ?><script src="<?= e($checkoutScriptUrl) ?>" defer></script><?php endif; ?>
     <?php endif; ?>
 
     <?php if ($upiAvailable): ?>
@@ -97,18 +113,8 @@ $amount = money((int) $b['total_paise']);
         <input id="payer_note" name="payer_note" maxlength="255">
       </div>
       <p class="hint">Submitting the reference does not confirm the booking by itself. The temple office checks every payment against its bank account.</p>
-      <button class="btn btn-primary btn-lg" type="submit" data-busy-text="Submitting…">Submit payment reference</button>
+      <button class="btn btn-primary btn-lg" type="submit" data-busy="Submitting your payment reference">Submit payment reference</button>
     </form>
-    <?php endif; ?>
-
-    <?php if ($gateway): ?>
-    <div class="card inset">
-      <h2 class="h3">Or pay online</h2>
-      <p>Pay securely with UPI, card or net banking. Your booking is updated automatically once the payment succeeds.</p>
-      <button type="button" class="btn btn-primary" data-gateway-pay="<?= e(url('/b/' . $no . '/gateway/order')) ?>" data-gateway-verify="<?= e(url('/b/' . $no . '/gateway/verify')) ?>" data-csrf="<?= e(csrf_token()) ?>">Pay <?= e($amount) ?> online</button>
-      <p class="field-error" data-gateway-error hidden></p>
-    </div>
-    <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
     <?php endif; ?>
 
     <p class="center"><a href="<?= e(url('/b/' . $no)) ?>">I'll pay later — show my booking</a></p>

@@ -7,7 +7,7 @@ This folder **is** the production booking application (`app/`, `assets/`, `stora
 | [`../bookingPreview.html`](../bookingPreview.html) | Design / UX preview for stakeholders; jump-bar between screens; WhatsApp opens via `wa.me` links |
 | **`booking/`** (this folder) | PHP 8.1+ app: persistence, pricing, payments, admin, PDF invoices, WhatsApp Cloud API |
 
-Full feature list: [`docs/SYSTEM-OVERVIEW.md`](docs/SYSTEM-OVERVIEW.md). Pre-launch checklist: [`docs/TEMPLE-ACTION-ITEMS.md`](docs/TEMPLE-ACTION-ITEMS.md). Hosting: [`docs/DEPLOYMENT-CPANEL.md`](docs/DEPLOYMENT-CPANEL.md).
+Full feature list: [`docs/SYSTEM-OVERVIEW.md`](docs/SYSTEM-OVERVIEW.md). Online payment gateways (adapter pattern): [`online_pay/README.md`](online_pay/README.md). Pre-launch checklist: [`docs/TEMPLE-ACTION-ITEMS.md`](docs/TEMPLE-ACTION-ITEMS.md). Hosting: [`docs/DEPLOYMENT-CPANEL.md`](docs/DEPLOYMENT-CPANEL.md).
 
 **Step-by-step booking + ERP (`php/`) integration plan (roles, cancel, payments, phased tests):** [`ERP-INTEGRATION-PLAN.md`](ERP-INTEGRATION-PLAN.md).
 
@@ -20,15 +20,16 @@ Use one database (e.g. **`sjt_temple_blr`**) for both apps. Point booking `.env`
    - **Browser:** open `https://your-site/Booking/install.php`, or
    - **SSH:** `php bin/console.php migrate` and `php bin/console.php create-admin …`
 3. After web setup: delete `install.php` and remove `INSTALL_TOKEN` from `.env`.
-4. Booking adds its own tables (`bookings`, `services`, `admins`, `booking_coupons`, …) and `schema_migrations`. It does **not** replace ERP `users` or ERP `food_coupons` (serial codes). Prasadam **catalog** for online booking lives in **`booking_coupons`**.
+4. Booking adds its own tables (`bookings`, `services`, …) and `schema_migrations`. ERP **`food_coupons`** are printed serial codes; the **online prasadam menu** is **`food_coupon_catalog`** (edited in ERP › Temple › Coupons). Legacy standalone DBs still use **`booking_coupons`**.
 
-Logins stay separate: ERP `users` vs booking `admins`.
+Booking admin uses the **same** database table as ERP: `users` (one username/password for both). Legacy booking-only installs migrate `admins` → `users` on migrate.
 
 ---
 
 ## Devotee booking flow (live app)
 
 The live system matches the preview’s **six progress steps** (Choose service → Details → Prasadam → Review → Pay → Done), but steps 1–3 are one form (`POST /book/review`), step 4 is server-rendered review (`POST /book/confirm`), and pay/status use booking URLs with an access token.
+
 
 ```mermaid
 flowchart TD
@@ -38,8 +39,8 @@ flowchart TD
     R[POST /book/review Server validate + quote]
     RV[GET/POST Review step 4]
     C[POST /book/confirm Create booking]
-    P[GET /b/no/pay UPI QR + optional Razorpay]
-    SP[POST /b/no/payment Submit UTR]
+    P[GET /b/no/pay Razorpay checkout]
+    SP[POST /b/no/payment Submit UTR if BOOKING_UPI_MANUAL]
     S[GET /b/no Status + invoice links]
     L[POST /lookup Booking no + mobile]
   end
@@ -65,7 +66,7 @@ flowchart TD
 
 ## Payment & confirmation flow
 
-Preview uses three payment labels (`pending` → `awaiting` → `paid`). The live app uses **`awaiting_verification`**, separate **approval** status, and never marks paid from UTR alone.
+By default devotees pay via **Razorpay** only (`PAYMENT_GATEWAY=razorpay`, `BOOKING_UPI_MANUAL=false`). Optional UPI QR + UTR uses **`awaiting_verification`**; Razorpay marks **`paid`** after signature verification. Staff can still verify or record payments in admin.
 
 ```mermaid
 flowchart LR

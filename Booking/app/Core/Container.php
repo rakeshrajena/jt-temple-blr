@@ -9,9 +9,13 @@ use SJT\Service\Audit;
 use SJT\Service\Auth;
 use SJT\Service\Availability;
 use SJT\Service\BookingForm;
+use SJT\Service\BookingMailer;
 use SJT\Service\BookingService;
+use SJT\Service\ErpJournalSync;
 use SJT\Service\InvoiceRenderer;
 use SJT\Service\Notifier;
+use SJT\OnlinePay\GatewayFactory;
+use SJT\OnlinePay\OnlinePaymentService;
 use SJT\Service\PaymentGateway;
 use SJT\Service\UpiPayment;
 use SJT\Service\WhatsAppClient;
@@ -40,14 +44,32 @@ final class Container
     public static function form(): BookingForm { return self::once('form', fn () => new BookingForm(self::catalog(), self::availability(), App::settings())); }
     public static function upi(): UpiPayment { return self::once('upi', fn () => new UpiPayment(App::settings())); }
     public static function whatsapp(): WhatsAppClient { return self::once('wa', fn () => new WhatsAppClient()); }
-    public static function notifier(): Notifier { return self::once('notifier', fn () => new Notifier(App::db(), self::bookings(), App::settings(), self::whatsapp())); }
+    public static function mailer(): BookingMailer { return self::once('mailer', fn () => new BookingMailer(App::db(), App::settings(), self::invoices())); }
+    public static function notifier(): Notifier { return self::once('notifier', fn () => new Notifier(App::db(), self::bookings(), App::settings(), self::whatsapp(), self::mailer())); }
     public static function invoices(): InvoiceRenderer { return self::once('invoices', fn () => new InvoiceRenderer(self::bookings(), App::settings(), self::upi())); }
-    public static function gateway(): PaymentGateway { return self::once('gateway', fn () => new PaymentGateway(App::db())); }
+    public static function onlinePay(): OnlinePaymentService
+    {
+        return self::once('onlinePay', fn () => new OnlinePaymentService(App::db(), GatewayFactory::create()));
+    }
+
+    public static function gateway(): PaymentGateway { return self::once('gateway', fn () => new PaymentGateway(self::onlinePay())); }
+
+    public static function erpJournal(): ErpJournalSync
+    {
+        return self::once('erpJournal', fn () => new ErpJournalSync(App::db(), self::bookings()));
+    }
 
     public static function service(): BookingService
     {
         return self::once('service', fn () => new BookingService(
-            App::db(), self::bookings(), self::catalog(), self::availability(), App::settings(), self::audit(), self::notifier()
+            App::db(),
+            self::bookings(),
+            self::catalog(),
+            self::availability(),
+            App::settings(),
+            self::audit(),
+            self::notifier(),
+            self::erpJournal(),
         ));
     }
 }

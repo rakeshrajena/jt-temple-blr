@@ -4,11 +4,9 @@ $path = \SJT\Core\App::request()->path;
 $nav = [
     '/admin' => 'Dashboard',
     '/admin/bookings' => 'Bookings',
-    '/admin/availability' => 'Availability',
     '/admin/notifications' => 'Notifications',
     '/admin/reports' => 'Reports',
 ];
-$superNav = ['/admin/services' => 'Services & prices', '/admin/coupons' => 'Food coupons', '/admin/settings' => 'Settings', '/admin/users' => 'Admins', '/admin/audit' => 'Audit log'];
 $isActive = fn (string $p) => $p === '/admin' ? $path === '/admin' : str_starts_with($path, $p);
 ?><!doctype html>
 <html lang="en">
@@ -19,6 +17,7 @@ $isActive = fn (string $p) => $p === '/admin' ? $path === '/admin' : str_starts_
 <title><?= e(($title ?? 'Admin') . ' · Temple booking admin') ?></title>
 <link rel="icon" href="<?= e(asset('img/logo.svg')) ?>" type="image/svg+xml">
 <link rel="stylesheet" href="<?= e(asset('css/admin.css')) ?>">
+<script src="<?= e(asset('js/busy.js')) ?>" defer></script>
 <script src="<?= e(asset('js/app.js')) ?>" defer></script>
 </head>
 <body class="admin">
@@ -28,15 +27,20 @@ $isActive = fn (string $p) => $p === '/admin' ? $path === '/admin' : str_starts_
   <?php if (!empty($admin)): ?>
   <div class="a-user">
     <span><?= e($admin['name']) ?> <small>(<?= $admin['role'] === 'super' ? 'senior admin' : 'staff' ?>)</small></span>
+    <?php if (!empty($erp_home_url)): ?><a href="<?= e($erp_home_url) ?>">Temple ERP</a><?php endif; ?>
+    <?php if (!empty($erp_booking_settings_url)): ?><a href="<?= e($erp_booking_settings_url) ?>">Booking settings</a><?php endif; ?>
     <a href="<?= e(url('/admin/password')) ?>">Password</a>
+    <?php if (!empty($erp_logout_url)): ?>
+    <a class="linklike" href="<?= e($erp_logout_url) ?>">Sign out</a>
+    <?php else: ?>
     <form method="post" action="<?= e(url('/admin/logout')) ?>"><?= csrf_field() ?><button type="submit" class="linklike">Sign out</button></form>
+    <?php endif; ?>
   </div>
   <?php endif; ?>
 </header>
 <?php if (!empty($admin)): ?>
 <nav class="a-nav" aria-label="Admin">
   <?php foreach ($nav as $p => $l): ?><a href="<?= e(url($p)) ?>"<?= $isActive($p) ? ' aria-current="page"' : '' ?>><?= e($l) ?></a><?php endforeach; ?>
-  <?php if ($admin['role'] === 'super'): foreach ($superNav as $p => $l): ?><a href="<?= e(url($p)) ?>"<?= $isActive($p) ? ' aria-current="page"' : '' ?>><?= e($l) ?></a><?php endforeach; endif; ?>
   <a href="<?= e(url('/')) ?>" target="_blank" rel="noopener" class="a-public">Public site ↗</a>
 </nav>
 <?php endif; ?>
@@ -46,5 +50,6 @@ $isActive = fn (string $p) => $p === '/admin' ? $path === '/admin' : str_starts_
 <?php endforeach; ?>
 <?= $content ?>
 </main>
+<?php booking_busy_overlay(); ?>
 </body>
 </html>

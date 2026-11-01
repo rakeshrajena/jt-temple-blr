@@ -36,8 +36,8 @@ $items = array_map(fn ($i) => $i, $q['items']);
   <?php endif; ?>
 
   <div class="callout">
-    <p><strong>What happens next:</strong> after you submit, you get a booking number<?= $total > 0 ? ' and a UPI QR code to pay ' . e(money($total)) : '' ?>.
-    Your booking is <strong>confirmed only after</strong> <?= $total > 0 ? 'the temple verifies your payment' : 'the temple office reviews it' ?><?= $needsApproval && $total > 0 ? ' and approves the ceremony' : '' ?>.</p>
+    <p><strong>What happens next:</strong> after you submit, you get a booking number<?= $total > 0 ? ' and can pay ' . e(money($total)) . ' online' : '' ?>.
+    Your booking is <strong>confirmed only after</strong> <?= $total > 0 ? 'your payment is received' : 'the temple office reviews it' ?><?= $needsApproval && $total > 0 ? ' and the ceremony is approved' : '' ?>.</p>
     <?php if ($total === 0 && $needsApproval): ?><p>The temple office will tell you the charges, if any, before you pay.</p><?php endif; ?>
   </div>
 
@@ -51,7 +51,7 @@ $items = array_map(fn ($i) => $i, $q['items']);
     <?php if (!empty($errors['agree'])): ?><p class="field-error" role="alert"><?= e($errors['agree']) ?></p><?php endif; ?>
     <div class="step-nav">
       <a class="btn btn-secondary" href="<?= e(url('/book', ['edit' => 1])) ?>">Edit booking</a>
-      <button type="submit" class="btn btn-primary btn-lg" data-busy-text="Submitting…">Submit booking</button>
+      <button type="submit" class="btn btn-primary btn-lg" data-busy="Submitting your booking">Submit booking</button>
     </div>
   </form>
 </section>

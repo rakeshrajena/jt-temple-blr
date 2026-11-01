@@ -17,7 +17,7 @@
     <tr>
       <td><?= e(fmt_datetime($n['created_at'])) ?></td>
       <td><?php if ($n['booking_no']): ?><a href="<?= e(url('/admin/bookings/' . $n['booking_no'])) ?>"><?= e($n['booking_no']) ?></a><br><small><?= e($n['devotee_name']) ?></small><?php endif; ?></td>
-      <td><?= e($n['audience']) ?><br><small><?= e($n['recipient'] === '-' ? '—' : fmt_mobile($n['recipient'])) ?></small></td>
+      <td><?= e($n['audience']) ?><br><small><?= e($n['recipient'] === '-' ? '—' : (($n['channel'] ?? '') === 'email' ? $n['recipient'] : fmt_mobile($n['recipient']))) ?></small></td>
       <td><?= e(str_replace('_', ' ', $n['event'])) ?><br><small class="muted"><?= e((string) $n['template']) ?></small></td>
       <td><?= badge('n', $n['status']) ?><?php if ($n['attempts']): ?><br><small>attempts: <?= (int) $n['attempts'] ?></small><?php endif; ?></td>
       <td><small><?= e((string) $n['error']) ?></small><?php if ($n['next_attempt_at'] && in_array($n['status'], ['failed', 'queued'], true)): ?><br><small class="muted">Next retry <?= e(fmt_datetime($n['next_attempt_at'])) ?></small><?php endif; ?></td>
