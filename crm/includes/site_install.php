@@ -117,15 +117,24 @@ function site_install_http_inner(array $opts): void
                 }
 
                 if ($runBooking) {
-                    $bookingApplied = site_install_booking_migrate($bookingRoot);
-                    $bookingAdminMsg = site_install_booking_maybe_admin($bookingRoot, $_POST);
-                    site_install_booking_write_lock($bookingRoot);
-                    $bookingLockWritten = true;
-                    $pendingBooking = [];
+                    try {
+                        $bookingApplied = site_install_booking_migrate($bookingRoot);
+                        $bookingAdminMsg = site_install_booking_maybe_admin($bookingRoot, $_POST);
+                        site_install_booking_write_lock($bookingRoot);
+                        $bookingLockWritten = true;
+                        $pendingBooking = [];
+                    } catch (PDOException $e) {
+                        error_log('[jt_blr] site_install booking: ' . $e->getMessage());
+                        $error = 'Booking migrations failed: ' . $e->getMessage()
+                            . ' — ensure Booking/.env uses the same DB_NAME, DB_USER, and DB_PASS (or DB_PASSWORD) as crm/.env.';
+                    } catch (Throwable $e) {
+                        error_log('[jt_blr] site_install booking: ' . $e->getMessage());
+                        $error = 'Booking setup failed: ' . $e->getMessage();
+                    }
                 }
             } catch (PDOException $e) {
-                error_log('[jt_blr] site_install: ' . $e->getMessage());
-                $error = 'Database error during setup. Check DB credentials in .env.';
+                error_log('[jt_blr] site_install erp: ' . $e->getMessage());
+                $error = 'ERP database update failed: ' . $e->getMessage();
             } catch (Throwable $e) {
                 error_log('[jt_blr] site_install: ' . $e->getMessage());
                 $error = $e->getMessage();
@@ -182,6 +191,42 @@ function site_install_load_booking(string $bookingRoot): void
     $loaded = true;
 }
 
+/** @param array<string, string> $env */
+function site_install_booking_env_db(array $env, string $part): string
+{
+    return match ($part) {
+        'name' => trim($env['DB_NAME'] ?? $env['MYSQL_DATABASE'] ?? ''),
+        'user' => trim($env['DB_USER'] ?? $env['MYSQL_USER'] ?? ''),
+        'pass' => trim($env['DB_PASS'] ?? $env['DB_PASSWORD'] ?? $env['MYSQL_PASSWORD'] ?? ''),
+        default => '',
+    };
+}
+
+/** After Env::load(Booking/.env), fill missing DB_* from crm config (unified install). */
+function site_install_booking_sync_db_env(string $bookingRoot): void
+{
+    site_install_load_booking($bookingRoot);
+    \SJT\Core\Env::load($bookingRoot . '/.env');
+    $pairs = [
+        'DB_HOST' => defined('DB_HOST') ? DB_HOST : '',
+        'DB_PORT' => defined('DB_PORT') ? DB_PORT : '',
+        'DB_NAME' => defined('DB_NAME') ? DB_NAME : '',
+        'DB_USER' => defined('DB_USER') ? DB_USER : '',
+        'DB_PASS' => defined('DB_PASS') ? DB_PASS : '',
+    ];
+    foreach ($pairs as $key => $crmVal) {
+        if ($crmVal === '') {
+            continue;
+        }
+        if (trim((string) \SJT\Core\Env::get($key, '')) === '') {
+            \SJT\Core\Env::set($key, $crmVal);
+        }
+    }
+    if (trim((string) \SJT\Core\Env::get('DB_PASS', '')) === '' && defined('DB_PASS') && DB_PASS !== '') {
+        \SJT\Core\Env::set('DB_PASS', DB_PASS);
+    }
+}
+
 /** @return array<string, string> */
 function site_install_booking_env(string $bookingRoot): array
 {
@@ -227,10 +272,14 @@ function site_install_booking_problems(string $bookingRoot): array
             $problems[] = 'Set APP_KEY in Booking/.env (run: php bin/console.php key inside Booking/).';
         }
         if (($env['DB_DRIVER'] ?? 'mysql') === 'mysql') {
-            foreach (['DB_NAME', 'DB_USER'] as $k) {
-                if (trim($env[$k] ?? '') === '') {
-                    $problems[] = "Booking/.env: $k is empty.";
-                }
+            if (site_install_booking_env_db($env, 'name') === '') {
+                $problems[] = 'Booking/.env: DB_NAME (or MYSQL_DATABASE) is empty.';
+            }
+            if (site_install_booking_env_db($env, 'user') === '') {
+                $problems[] = 'Booking/.env: DB_USER (or MYSQL_USER) is empty.';
+            }
+            if (site_install_booking_env_db($env, 'pass') === '' && !defined('DB_PASS')) {
+                $problems[] = 'Booking/.env: DB_PASS or DB_PASSWORD is empty.';
             }
         }
     }
@@ -241,8 +290,7 @@ function site_install_booking_problems(string $bookingRoot): array
 function site_install_booking_pending(string $bookingRoot): array
 {
     try {
-        site_install_load_booking($bookingRoot);
-        \SJT\Core\Env::load($bookingRoot . '/.env');
+        site_install_booking_sync_db_env($bookingRoot);
         $db = \SJT\Core\Database::fromEnv();
         return array_keys((new \SJT\Core\Migrator($db, $bookingRoot . '/migrations'))->pending());
     } catch (Throwable) {
@@ -253,8 +301,7 @@ function site_install_booking_pending(string $bookingRoot): array
 /** @return list<string> applied migration version ids */
 function site_install_booking_migrate(string $bookingRoot): array
 {
-    site_install_load_booking($bookingRoot);
-    \SJT\Core\Env::load($bookingRoot . '/.env');
+    site_install_booking_sync_db_env($bookingRoot);
     $db = \SJT\Core\Database::fromEnv();
     return (new \SJT\Core\Migrator($db, $bookingRoot . '/migrations'))->migrate();
 }
@@ -277,8 +324,7 @@ function site_install_booking_maybe_admin(string $bookingRoot, array $post): ?st
     if ($username === '' && $password === '') {
         return null;
     }
-    site_install_load_booking($bookingRoot);
-    \SJT\Core\Env::load($bookingRoot . '/.env');
+    site_install_booking_sync_db_env($bookingRoot);
     $db = \SJT\Core\Database::fromEnv();
     $name = trim((string) ($post['admin_name'] ?? ''));
     $role = (string) ($post['admin_role'] ?? 'super');

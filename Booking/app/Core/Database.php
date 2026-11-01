@@ -46,11 +46,23 @@ final class Database
             'driver' => $driver,
             'host' => Env::get('DB_HOST', 'localhost'),
             'port' => Env::get('DB_PORT', '3306'),
-            'name' => Env::get('DB_NAME', ''),
-            'user' => Env::get('DB_USER', ''),
-            'pass' => Env::get('DB_PASS', ''),
+            'name' => self::envFirst(['DB_NAME', 'MYSQL_DATABASE']),
+            'user' => self::envFirst(['DB_USER', 'MYSQL_USER']),
+            'pass' => self::envFirst(['DB_PASS', 'DB_PASSWORD', 'MYSQL_PASSWORD']),
             'path' => $path,
         ]);
+    }
+
+    /** @param list<string> $keys */
+    private static function envFirst(array $keys, string $default = ''): string
+    {
+        foreach ($keys as $key) {
+            $v = trim((string) Env::get($key, ''));
+            if ($v !== '') {
+                return $v;
+            }
+        }
+        return $default;
     }
 
     public function run(string $sql, array $params = []): \PDOStatement

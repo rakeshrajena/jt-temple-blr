@@ -8,7 +8,8 @@ final class Env
 {
     private static array $vars = [];
 
-    public static function load(string $file): void
+    /** @param list<string>|null $onlyKeys When set, apply only these keys (repo-root .env local overrides). */
+    public static function load(string $file, ?array $onlyKeys = null): void
     {
         if (!is_file($file)) {
             return;
@@ -20,6 +21,9 @@ final class Env
             }
             [$k, $v] = explode('=', $line, 2);
             $k = trim($k);
+            if ($onlyKeys !== null && !in_array($k, $onlyKeys, true)) {
+                continue;
+            }
             $v = trim($v);
             if (strlen($v) >= 2 && ($v[0] === '"' || $v[0] === "'") && $v[-1] === $v[0]) {
                 $v = substr($v, 1, -1);

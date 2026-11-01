@@ -12,7 +12,8 @@ function env_values(): array
     $values = [];
     // The file next to index.php is the one uploaded to the server.
     // A .env one folder above it, on this computer only, overrides that file.
-    foreach ([$app . '/.env', $app . '/../.env'] as $path) {
+    $parent = $app . '/../.env';
+    foreach ([$app . '/.env', $parent] as $path) {
         if (!is_file($path)) {
             continue;
         }
@@ -20,9 +21,23 @@ function env_values(): array
         if (!is_string($raw)) {
             continue;
         }
-        $values = array_merge($values, env_parse($raw));
+        $parsed = env_parse($raw);
+        if ($path === $parent) {
+            $parsed = array_intersect_key($parsed, array_flip(env_local_override_keys()));
+        }
+        $values = array_merge($values, $parsed);
     }
     return $values;
+}
+
+/** Keys allowed from repo-root .env on AMPPS (production values stay in crm/.env). */
+function env_local_override_keys(): array
+{
+    return [
+        'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'DB_PASS',
+        'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE',
+        'BOOKING_APP_URL', 'BOOKING_ADMIN_URL', 'INSTALL_TOKEN',
+    ];
 }
 
 /** @return array<string, string> */
