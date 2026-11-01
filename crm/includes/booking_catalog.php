@@ -431,6 +431,67 @@ function booking_catalog_unblock(int $id): array
     return ['error' => null];
 }
 
+function booking_catalog_service_booking_count(int $serviceId): int
+{
+    return (int) db_value(
+        "SELECT COUNT(DISTINCT b.id) FROM bookings b
+         INNER JOIN booking_items i ON i.booking_id = b.id
+         WHERE i.service_id = ? AND b.booking_status NOT IN ('cancelled', 'rejected')",
+        [$serviceId]
+    );
+}
+
+function booking_catalog_slot_booking_count(int $slotId): int
+{
+    return (int) db_value(
+        "SELECT COUNT(DISTINCT b.id) FROM bookings b
+         INNER JOIN booking_items i ON i.booking_id = b.id
+         WHERE i.slot_id = ? AND b.booking_status NOT IN ('cancelled', 'rejected')",
+        [$slotId]
+    );
+}
+
+/** @return array{error:?string, service_id?:int} */
+function booking_catalog_delete_slot(int $id): array
+{
+    $slot = booking_catalog_slot($id);
+    if (!$slot) {
+        return ['error' => 'Time slot not found.'];
+    }
+    if (booking_catalog_slot_booking_count($id) > 0) {
+        return ['error' => 'This slot is used on existing bookings and cannot be removed. Untick Active instead.'];
+    }
+    $sid = (int) $slot['service_id'];
+    $svc = booking_catalog_service($sid);
+    if (
+        $svc
+        && !empty($svc['requires_slot'])
+        && !empty($svc['is_active'])
+        && !empty($slot['is_active'])
+        && booking_catalog_active_slot_count($sid) <= 1
+    ) {
+        return ['error' => 'Cannot remove the only active time slot. Add another slot first, or turn off “Requires time slot”.', 'service_id' => $sid];
+    }
+    db_exec('DELETE FROM time_slots WHERE id = ?', [$id]);
+    return ['error' => null, 'service_id' => $sid];
+}
+
+/** @return array{error:?string} */
+function booking_catalog_delete_service(int $id): array
+{
+    $svc = booking_catalog_service($id);
+    if (!$svc) {
+        return ['error' => 'Service not found.'];
+    }
+    if (booking_catalog_service_booking_count($id) > 0) {
+        return ['error' => 'This service has bookings and cannot be removed. Turn off “Offer online” instead.'];
+    }
+    db_exec('DELETE FROM time_slots WHERE service_id = ?', [$id]);
+    db_exec('DELETE FROM blocked_dates WHERE service_id = ?', [$id]);
+    db_exec('DELETE FROM services WHERE id = ?', [$id]);
+    return ['error' => null];
+}
+
 function booking_catalog_confirm_prices(string $actor): void
 {
     booking_setting_set('prices_reviewed', '1', $actor);
@@ -478,6 +539,8 @@ function settings_process_booking_post(string $bookingActor): void
                 : ['error' => t('shell.admin_only')],
             'booking_service_save' => booking_catalog_save_service_from_post($bookingActor),
             'booking_slot_save' => booking_catalog_save_slot_from_post(),
+            'booking_slot_delete' => booking_catalog_delete_slot((int) ($_POST['slot_id'] ?? 0)),
+            'booking_service_delete' => booking_catalog_delete_service((int) ($_POST['id'] ?? 0)),
             'booking_block_dates' => booking_catalog_block_from_post($bookingActor),
             default => ['error' => 'Unknown booking settings form.'],
         };
@@ -508,6 +571,24 @@ function settings_process_booking_post(string $bookingActor): void
         }
         flash('error', $result['error']);
         redirect(booking_catalog_settings_service_url($sid) . '#slots');
+    }
+    if ($form === 'booking_slot_delete') {
+        $sid = (int) ($result['service_id'] ?? $_POST['service_id'] ?? 0);
+        if (($result['error'] ?? null) === null) {
+            flash('success', t('settings.ob_slot_removed'));
+            redirect(booking_catalog_settings_service_url($sid) . '#slots');
+        }
+        flash('error', $result['error']);
+        redirect(booking_catalog_settings_service_url($sid > 0 ? $sid : 0) . '#slots');
+    }
+    if ($form === 'booking_service_delete') {
+        if (($result['error'] ?? null) === null) {
+            flash('success', t('settings.ob_service_removed'));
+            redirect(url('settings') . '#ob-services');
+        }
+        $serviceId = (int) ($_POST['id'] ?? 0);
+        flash('error', $result['error']);
+        redirect($serviceId > 0 ? booking_catalog_settings_service_url($serviceId) : url('settings') . '#ob-services');
     }
     flash($result['error'] !== null ? 'error' : 'success', $result['error'] ?? (
         $form === 'booking_prasadam' ? t('settings.ob_prasadam_saved') : t('settings.ob_saved')

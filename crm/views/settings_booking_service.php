@@ -12,10 +12,18 @@ $serviceAction = booking_catalog_settings_service_url((int) $s['id']);
 ?>
 <div class="settings-page settings-ob-page">
   <p class="settings-ob-back"><a href="<?= e($back) ?>">← <?= e(t('settings.ob_services')) ?></a></p>
-  <header class="settings-ob-hero">
+  <header class="settings-ob-hero settings-head-inline">
     <div>
       <h2 style="margin:0;font-size:1.35rem;"><?= e($pageTitle) ?></h2>
     </div>
+    <?php if ($bookingCatalogCanEdit && (int) $s['id'] > 0): ?>
+      <form method="POST" action="<?= e(url('settings')) ?>" class="settings-ob-inline-form" onsubmit="return confirm(<?= e(json_encode(t('settings.ob_service_remove_confirm'), JSON_UNESCAPED_UNICODE)) ?>);">
+        <?= csrf_field() ?>
+        <input type="hidden" name="form" value="booking_service_delete">
+        <input type="hidden" name="id" value="<?= (int) $s['id'] ?>">
+        <button class="btn btn-outline btn-sm btn-danger" type="submit"><?= e(t('common.remove')) ?> <?= e(t('settings.ob_service_remove_label')) ?></button>
+      </form>
+    <?php endif; ?>
   </header>
 
   <form method="POST" action="<?= e($serviceAction) ?>" class="settings-ob-form">
@@ -94,25 +102,36 @@ $serviceAction = booking_catalog_settings_service_url((int) $s['id']);
     </header>
     <div class="settings-ob-slots">
     <?php foreach (array_merge($slots, [['id' => 0, 'label' => '', 'start_time' => '', 'capacity' => null, 'weekdays' => '1234567', 'is_active' => true, 'sort_order' => count($slots)]]) as $sl): ?>
-    <form method="POST" action="<?= e($serviceAction) ?>#slots" class="booking-slot-row settings-ob-slot-card">
-      <?= csrf_field() ?>
-      <input type="hidden" name="form" value="booking_slot_save">
-      <input type="hidden" name="service_id" value="<?= (int) $s['id'] ?>">
-      <input type="hidden" name="id" value="<?= (int) $sl['id'] ?>">
-      <div class="form-grid cols-3">
-        <div class="form-group"><label><?= e(t('settings.label')) ?></label><input name="label" value="<?= e($sl['label']) ?>" maxlength="100" placeholder="<?= $sl['id'] ? '' : 'Morning (7–9 AM)' ?>"<?= $bookingCatalogCanEdit ? '' : ' readonly' ?>></div>
-        <div class="form-group"><label><?= e(t('settings.ob_starts')) ?></label><input type="time" name="start_time" value="<?= e($sl['start_time']) ?>"<?= $bookingCatalogCanEdit ? '' : ' readonly' ?>></div>
-        <div class="form-group"><label><?= e(t('settings.ob_capacity')) ?></label><input type="number" name="capacity" min="0" value="<?= e((string) ($sl['capacity'] ?? '')) ?>"<?= $bookingCatalogCanEdit ? '' : ' readonly' ?>></div>
-      </div>
-      <div class="booking-slot-days"><?php foreach ($wd as $k => $l): ?><label class="settings-check inline"><input type="checkbox" name="weekdays[]" value="<?= $k ?>"<?= $chk(str_contains((string) $sl['weekdays'], (string) $k)) ?><?= $bookingCatalogCanEdit ? '' : ' disabled' ?>><?= $l ?></label><?php endforeach; ?></div>
-      <div class="settings-ob-slot-actions">
-        <label class="settings-check"><input type="checkbox" name="is_active" value="1"<?= $chk((bool) $sl['is_active']) ?><?= $bookingCatalogCanEdit ? '' : ' disabled' ?>> <?= e(t('settings.ob_slot_active')) ?></label>
-        <input type="hidden" name="sort_order" value="<?= (int) $sl['sort_order'] ?>">
-        <?php if ($bookingCatalogCanEdit): ?>
-        <button class="btn btn-outline btn-sm" type="submit"><?= $sl['id'] ? e(t('common.update')) : e(t('settings.ob_slot_add')) ?></button>
-        <?php endif; ?>
-      </div>
-    </form>
+    <div class="booking-slot-row settings-ob-slot-card">
+      <form method="POST" action="<?= e($serviceAction) ?>#slots">
+        <?= csrf_field() ?>
+        <input type="hidden" name="form" value="booking_slot_save">
+        <input type="hidden" name="service_id" value="<?= (int) $s['id'] ?>">
+        <input type="hidden" name="id" value="<?= (int) $sl['id'] ?>">
+        <div class="form-grid cols-3">
+          <div class="form-group"><label><?= e(t('settings.label')) ?></label><input name="label" value="<?= e($sl['label']) ?>" maxlength="100" placeholder="<?= $sl['id'] ? '' : 'Morning (7–9 AM)' ?>"<?= $bookingCatalogCanEdit ? '' : ' readonly' ?>></div>
+          <div class="form-group"><label><?= e(t('settings.ob_starts')) ?></label><input type="time" name="start_time" value="<?= e($sl['start_time']) ?>"<?= $bookingCatalogCanEdit ? '' : ' readonly' ?>></div>
+          <div class="form-group"><label><?= e(t('settings.ob_capacity')) ?></label><input type="number" name="capacity" min="0" value="<?= e((string) ($sl['capacity'] ?? '')) ?>"<?= $bookingCatalogCanEdit ? '' : ' readonly' ?>></div>
+        </div>
+        <div class="booking-slot-days"><?php foreach ($wd as $k => $l): ?><label class="settings-check inline"><input type="checkbox" name="weekdays[]" value="<?= $k ?>"<?= $chk(str_contains((string) $sl['weekdays'], (string) $k)) ?><?= $bookingCatalogCanEdit ? '' : ' disabled' ?>><?= $l ?></label><?php endforeach; ?></div>
+        <div class="settings-ob-slot-actions">
+          <label class="settings-check"><input type="checkbox" name="is_active" value="1"<?= $chk((bool) $sl['is_active']) ?><?= $bookingCatalogCanEdit ? '' : ' disabled' ?>> <?= e(t('settings.ob_slot_active')) ?></label>
+          <input type="hidden" name="sort_order" value="<?= (int) $sl['sort_order'] ?>">
+          <?php if ($bookingCatalogCanEdit): ?>
+          <button class="btn btn-outline btn-sm" type="submit"><?= $sl['id'] ? e(t('common.update')) : e(t('settings.ob_slot_add')) ?></button>
+          <?php endif; ?>
+        </div>
+      </form>
+      <?php if ($bookingCatalogCanEdit && (int) $sl['id'] > 0): ?>
+      <form method="POST" action="<?= e($serviceAction) ?>#slots" class="settings-ob-slot-remove">
+        <?= csrf_field() ?>
+        <input type="hidden" name="form" value="booking_slot_delete">
+        <input type="hidden" name="service_id" value="<?= (int) $s['id'] ?>">
+        <input type="hidden" name="slot_id" value="<?= (int) $sl['id'] ?>">
+        <button class="btn btn-outline btn-sm btn-danger" type="submit"><?= e(t('common.remove')) ?></button>
+      </form>
+      <?php endif; ?>
+    </div>
     <?php endforeach; ?>
     </div>
   </article>

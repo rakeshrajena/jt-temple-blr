@@ -407,6 +407,149 @@ function smtp_inline_images(?array $logo, array $inlineImages): array
     return $images;
 }
 
+/** @param array<string, string> $settings */
+function smtp_ehlo_name(array $settings): string
+{
+    $from = trim((string) ($settings['smtp_from_email'] ?? ''));
+    if (str_contains($from, '@')) {
+        $host = substr($from, strrpos($from, '@') + 1);
+        if ($host !== '' && preg_match('/^[a-z0-9.-]+$/i', $host) === 1) {
+            return $host;
+        }
+    }
+    $hn = gethostname();
+    return is_string($hn) && $hn !== '' ? $hn : 'localhost';
+}
+
+/**
+ * @param array<string, string> $settings
+ * @return array{0: resource, 1: string, 2: bool}|string
+ */
+function smtp_prefer_local_mta_first(): bool
+{
+    if (env_value('SMTP_PREFER_LOCAL_MTA', '') === '1' || env_value('SMTP_ONLY_LOCAL_MTA', '') === '1') {
+        return true;
+    }
+    $hn = strtolower((string) gethostname());
+    return str_contains($hn, 'secureserver.net');
+}
+
+function smtp_open_socket(array $settings): array|string
+{
+    $plans = [];
+    $enc = (string) ($settings['smtp_encryption'] ?? 'tls');
+    $host = trim((string) ($settings['smtp_host'] ?? ''));
+    $port = (int) ($settings['smtp_port'] ?? 587);
+    $localPlans = [];
+    if (env_value('SMTP_SKIP_LOCAL_MTA', '') !== '1') {
+        foreach (['127.0.0.1', 'localhost'] as $localHost) {
+            $localPlans[] = [
+                'remote' => 'tcp://' . $localHost . ':25',
+                'encryption' => 'none',
+                'auth' => false,
+                'label' => 'Local MTA (' . $localHost . ')',
+                'timeout' => 5,
+            ];
+        }
+    }
+    $remotePlans = [];
+    if ($host !== '' && env_value('SMTP_ONLY_LOCAL_MTA', '') !== '1') {
+        $remotePlans[] = [
+            'remote' => ($enc === 'ssl' ? 'ssl://' : 'tcp://') . $host . ':' . $port,
+            'encryption' => $enc,
+            'auth' => true,
+            'label' => 'configured SMTP',
+            'timeout' => 8,
+        ];
+    }
+    $tryRelay = env_value('SMTP_TRY_GODADDY_RELAY', '') === '1'
+        || env_value('GODADDY_SMTP_RELAY', '') === '1'
+        || ($settings['smtp_try_godaddy_relay'] ?? '') === '1'
+        || str_contains(strtolower($host), 'secureserver.net');
+    if ($tryRelay && env_value('SMTP_ONLY_LOCAL_MTA', '') !== '1') {
+        $remotePlans[] = [
+            'remote' => 'tcp://relay-hosting.secureserver.net:25',
+            'encryption' => 'none',
+            'auth' => false,
+            'label' => 'GoDaddy relay',
+            'timeout' => 8,
+        ];
+    }
+    $plans = smtp_prefer_local_mta_first() ? array_merge($localPlans, $remotePlans) : array_merge($remotePlans, $localPlans);
+    $lastErr = 'Could not reach the mail server.';
+    foreach ($plans as $plan) {
+        $errno = 0;
+        $errstr = '';
+        $timeout = (int) ($plan['timeout'] ?? 12);
+        $ctx = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true]]);
+        $socket = @stream_socket_client(
+            $plan['remote'],
+            $errno,
+            $errstr,
+            $timeout,
+            STREAM_CLIENT_CONNECT,
+            str_starts_with($plan['remote'], 'ssl://') ? $ctx : null,
+        );
+        if ($socket !== false) {
+            return [$socket, $plan['encryption'], $plan['auth']];
+        }
+        error_log('[jt_blr] SMTP connect failed ' . $plan['label'] . ' ' . $plan['remote'] . ' errno=' . $errno . ' ' . $errstr);
+        $lastErr = 'Could not reach the mail server.'
+            . ($errstr !== '' ? ' (' . $plan['label'] . ': ' . $errstr . ')' : '');
+    }
+    return $lastErr;
+}
+
+/** Plain/HTML optional; attachment optional. Used when TCP to remote SMTP is blocked. */
+function smtp_send_php_mail(
+    array $settings,
+    string $to,
+    string $subject,
+    string $body,
+    ?array $attachment = null,
+    ?string $html = null,
+): ?string {
+    if (env_value('SMTP_DISABLE_PHP_MAIL', '') === '1') {
+        return 'Outbound SMTP is blocked and PHP mail fallback is disabled.';
+    }
+    if (!function_exists('mail')) {
+        return 'PHP mail() is not available on this server.';
+    }
+    $from = trim($settings['smtp_from_email']);
+    $fromName = trim($settings['smtp_from_name']) !== '' ? trim($settings['smtp_from_name']) : APP_NAME;
+    $plain = str_replace("\n", "\r\n", str_replace(["\r\n", "\r"], "\n", $body));
+    $headers = 'MIME-Version: 1.0' . "\r\n"
+        . 'From: ' . smtp_quoted_name($fromName) . ' <' . $from . '>' . "\r\n"
+        . 'Reply-To: ' . $from . "\r\n";
+    $message = $plain;
+    if ($attachment !== null) {
+        $boundary = 'jt_' . bin2hex(random_bytes(8));
+        $encoded = rtrim(chunk_split(base64_encode($attachment['content']), 76, "\r\n"));
+        $headers .= 'Content-Type: multipart/mixed; boundary="' . $boundary . '"' . "\r\n";
+        $message = '--' . $boundary . "\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n"
+            . $plain . "\r\n--" . $boundary . "\r\n"
+            . 'Content-Type: application/pdf; name="' . $attachment['filename'] . "\"\r\n"
+            . "Content-Transfer-Encoding: base64\r\n"
+            . 'Content-Disposition: attachment; filename="' . $attachment['filename'] . "\"\r\n\r\n"
+            . $encoded . "\r\n--" . $boundary . "--\r\n";
+    } elseif ($html !== null && trim($html) !== '') {
+        $boundary = 'jt_alt_' . bin2hex(random_bytes(6));
+        $headers .= 'Content-Type: multipart/alternative; boundary="' . $boundary . '"' . "\r\n";
+        $message = '--' . $boundary . "\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n"
+            . $plain . "\r\n--" . $boundary . "\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n"
+            . $html . "\r\n--" . $boundary . "--\r\n";
+    } else {
+        $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+    }
+    $ok = @mail($to, $subject, $message, $headers, '-f' . $from);
+    if (!$ok) {
+        error_log('[jt_blr] PHP mail() failed sendmail_path=' . ini_get('sendmail_path'));
+        return 'PHP mail() failed. Hosting may block all outbound mail — contact GoDaddy support.';
+    }
+    error_log('[jt_blr] Sent via PHP mail() to ' . $to);
+    return null;
+}
+
 /**
  * Returns an error message, or null when the message was accepted.
  *
@@ -434,20 +577,20 @@ function send_smtp_message(
     if (!smtp_is_ready($settings)) {
         return 'Outgoing mail is not configured.';
     }
-    $encryption = $settings['smtp_encryption'];
-    $remote = ($encryption === 'ssl' ? 'ssl://' : 'tcp://') . $settings['smtp_host'] . ':' . (int) $settings['smtp_port'];
-    $errno = 0;
-    $errstr = '';
-    $socket = @stream_socket_client($remote, $errno, $errstr, 12, STREAM_CLIENT_CONNECT);
-    if ($socket === false) {
-        return 'Could not reach the mail server.';
+    $opened = smtp_open_socket($settings);
+    if (is_string($opened)) {
+        $htmlDoc = $html ?? ($attachment === null ? email_html_document($body, true) : null);
+        $fallback = smtp_send_php_mail($settings, $to, $subject, $body, $attachment, $htmlDoc);
+        return $fallback === null ? null : ($fallback ?: $opened);
     }
+    [$socket, $encryption, $useAuth] = $opened;
     stream_set_timeout($socket, 12);
+    $ehlo = smtp_ehlo_name($settings);
     try {
         if (!str_starts_with(smtp_read($socket), '220')) {
             return 'The mail server did not accept the connection.';
         }
-        $hello = smtp_command($socket, 'EHLO localhost');
+        $hello = smtp_command($socket, 'EHLO ' . $ehlo);
         if (!str_starts_with($hello, '250')) {
             return 'The mail server refused the greeting.';
         }
@@ -459,11 +602,11 @@ function send_smtp_message(
             if ($secure !== true) {
                 return 'The mail server could not start a secure connection.';
             }
-            if (!str_starts_with(smtp_command($socket, 'EHLO localhost'), '250')) {
+            if (!str_starts_with(smtp_command($socket, 'EHLO ' . $ehlo), '250')) {
                 return 'The mail server refused the greeting.';
             }
         }
-        if ($settings['smtp_username'] !== '') {
+        if ($useAuth && $settings['smtp_username'] !== '') {
             if (!str_starts_with(smtp_command($socket, 'AUTH LOGIN'), '334')) {
                 return 'The mail server refused the login.';
             }
