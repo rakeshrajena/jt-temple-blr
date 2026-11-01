@@ -4,17 +4,17 @@ WhatsApp only allows a business to start a conversation with an **approved templ
 Create these four templates in **Meta Business Suite › WhatsApp Manager › Message templates**.
 
 - Category: **Utility** · Language: **English** (code `en`; if you choose *English (US)* use `en_US`
-  and enter that code in Settings › WhatsApp).
+ and enter that code in Settings › WhatsApp).
 - The names below are the defaults in Settings › WhatsApp; if Meta requires a different name, put
-  the approved name in the matching setting.
-- The variables `{{1}} … {{n}}` must be in exactly this order — the app fills them in this order.
+ the approved name in the matching setting.
+- The variables `{{1}} … {{n}}` must be in exactly this order - the app fills them in this order.
 - Meta asks for sample values; suggestions are given. Approval usually takes minutes to a day.
 - Meta does not allow a template to start or end with a variable, so each one ends with a short
-  fixed sentence. No buttons, header or footer are required. (Links are sent as text so they work everywhere.)
+ fixed sentence. No buttons, header or footer are required. (Links are sent as text so they work everywhere.)
 
 ---
 
-## 1. `sjt_booking_received` — to the devotee after booking
+## 1. `sjt_booking_received` - to the devotee after booking
 
 ```
 🙏 Jai Jagannath, {{1}}.
@@ -32,9 +32,9 @@ View your booking, invoice and payment QR: {{8}}
 Temple office: {{9}}
 Please quote your booking number in all communication.
 ```
-Samples: `Ananya Sahu` · `SJT-2026-000123` · `Special Puja, Vehicle Puja` · `Fri, 16 Oct 2026, Morning (7:00 AM – 9:00 AM)` · `Food Coupon (Standard) × 4, Food Coupon (Special) × 2` · `₹1,852` · `Booking request received — payment pending` · `https://sjtbengaluru.org/booking/b/SJT-2026-000123?t=abc` · `Shree Jagannatha Temple Bengaluru, +91 80 1234 5678`
+Samples: `Ananya Sahu` · `SJT-2026-000123` · `Special Puja, Vehicle Puja` · `Fri, 16 Oct 2026, Morning (7:00 AM - 9:00 AM)` · `Food Coupon (Standard) × 4, Food Coupon (Special) × 2` · `₹1,852` · `Booking request received - payment pending` · `https://sjtbengaluru.org/booking/b/SJT-2026-000123?t=abc` · `Shree Jagannatha Temple Bengaluru, +91 80 1234 5678`
 
-## 2. `sjt_booking_update` — to the devotee on every status change
+## 2. `sjt_booking_update` - to the devotee on every status change
 
 Used for: payment verified, payment not verified, approved, not approved, cancelled,
 rescheduled, charges changed, refund recorded.
@@ -53,11 +53,11 @@ Booking details and invoice: {{6}}
 Temple office: {{7}}
 Thank you.
 ```
-Samples: `Ananya Sahu` · `SJT-2026-000123` · `Your online payment of ₹1,852 was received successfully. Your booking is now confirmed. Services: Special Puja, Vehicle Puja. Date and time: Fri, 16 Oct 2026, Morning (7:00 AM – 9:00 AM). Prasadam / food coupons: Niyamita Bhoga Thali × 4. Amount: ₹1,852.` · `Confirmed` · `Paid (verified)` · `https://sjtbengaluru.org/booking/b/SJT-2026-000123?t=abc` · `Shree Jagannatha Temple Bengaluru, +91 80 1234 5678`
+Samples: `Ananya Sahu` · `SJT-2026-000123` · `Your online payment of ₹1,852 was received successfully. Your booking is now confirmed. Services: Special Puja, Vehicle Puja. Date and time: Fri, 16 Oct 2026, Morning (7:00 AM - 9:00 AM). Prasadam / food coupons: Niyamita Bhoga Thali × 4. Amount: ₹1,852.` · `Confirmed` · `Paid (verified)` · `https://sjtbengaluru.org/booking/b/SJT-2026-000123?t=abc` · `Shree Jagannatha Temple Bengaluru, +91 80 1234 5678`
 
 (The app fills {{3}} with payment/status text plus services, date/time, prasadam, and amount. Email uses the same detail and matching subjects such as *Payment successful - booking confirmed (SJT-…)* or *Temple booking received - payment pending (SJT-…)*.)
 
-## 3. `sjt_admin_new_booking` — to temple administrators
+## 3. `sjt_admin_new_booking` - to temple administrators
 
 ```
 New temple booking {{1}}
@@ -72,11 +72,11 @@ Status: {{8}}
 Open in dashboard: {{9}}
 Sign-in required.
 ```
-Samples: `SJT-2026-000123` · `Ananya Sahu` · `+91 98450 12345` · `Special Puja` · `Fri, 16 Oct 2026, Morning (7:00 AM – 9:00 AM)` · `Food Coupon (Standard) × 4` · `₹1,101` · `Booking request received — payment pending` · `https://sjtbengaluru.org/booking/admin/bookings/SJT-2026-000123`
+Samples: `SJT-2026-000123` · `Ananya Sahu` · `+91 98450 12345` · `Special Puja` · `Fri, 16 Oct 2026, Morning (7:00 AM - 9:00 AM)` · `Food Coupon (Standard) × 4` · `₹1,101` · `Booking request received - payment pending` · `https://sjtbengaluru.org/booking/admin/bookings/SJT-2026-000123`
 
 (The dashboard link asks for the admin password; it does not expose the booking publicly.)
 
-## 4. `sjt_admin_payment_submitted` — to administrators when a devotee submits a UTR
+## 4. `sjt_admin_payment_submitted` - to administrators when a devotee submits a UTR
 
 ```
 Payment reference submitted for booking {{1}}.
@@ -92,7 +92,7 @@ Samples: `SJT-2026-000123` · `Ananya Sahu` · `₹1,101` · `427812345678` · `
 
 ---
 
-## Webhook (delivery reports — optional but recommended)
+## Webhook (delivery reports - optional but recommended)
 
 In the Meta App Dashboard › WhatsApp › Configuration:
 - **Callback URL:** `https://sjtbengaluru.org/booking/webhooks/whatsapp`
@@ -106,8 +106,8 @@ The app checks Meta's `X-Hub-Signature-256` with `WA_APP_SECRET` and updates eac
 ## Important WhatsApp rules
 
 - Devotees receive template messages without having messaged the temple first, but Meta may
-  block messages to users who report spam — keep messages to booking matters only.
+ block messages to users who report spam - keep messages to booking matters only.
 - Per-message charges apply for utility templates (billed by Meta to the WhatsApp Business account).
 - The temple's WhatsApp Business number used for the API **cannot** simultaneously be used in the
-  normal WhatsApp / WhatsApp Business phone app unless the provider supports "coexistence".
-  Use a dedicated number if unsure.
+ normal WhatsApp / WhatsApp Business phone app unless the provider supports "coexistence".
+ Use a dedicated number if unsure.

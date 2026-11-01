@@ -18,7 +18,7 @@ Devotee **Pay now** (card / UPI via provider) lives here. Manual temple UPI QR +
 PAYMENT_GATEWAY=razorpay
 RAZORPAY_KEY_ID=rzp_test_...
 RAZORPAY_KEY_SECRET=...
-RAZORPAY_WEBHOOK_SECRET=   # optional until webhook URL is set
+RAZORPAY_WEBHOOK_SECRET= # optional until webhook URL is set
 BOOKING_UPI_MANUAL=false
 ```
 
@@ -28,16 +28,16 @@ BOOKING_UPI_MANUAL=false
 2. Register it in `GatewayFactory::create()` (match a new `PAYMENT_GATEWAY` value).
 3. Add `.env` keys for that provider only in `.env.example` + `docs/CONFIGURATION.md`.
 4. If checkout needs browser JS, return `checkoutScriptUrl()` and extend `assets/js/app.js` (or add `online_pay/assets/yourprovider.js`) to open that checkout using the JSON from `POST /b/{no}/gateway/order`.
-5. Webhook: implement `verifyWebhookSignature` + `parseWebhookCaptures`, then expose URL  
-   `POST /webhooks/payment` (provider-specific paths like `/webhooks/razorpay` remain as aliases).
+5. Webhook: implement `verifyWebhookSignature` + `parseWebhookCaptures`, then expose URL 
+ `POST /webhooks/payment` (provider-specific paths like `/webhooks/razorpay` remain as aliases).
 
 HTTP routes and admin booking screens stay unchanged; they use `gateway_order_id` / `gateway_payment_id` columns generically.
 
 ### Payment captured at provider but booking still “pending”
 
-1. **Checkout verify** (`POST …/gateway/verify`) — HMAC from Razorpay popup (primary).
-2. **Auto reconcile** — if verify fails, the app calls Razorpay’s API (`fetchCapturedPaymentsForOrder`) via the same verify response or **`POST …/gateway/sync`**.
-3. **Pay page** — **“I paid — update my booking”** when an initiated gateway order exists.
-4. **Webhook** (`POST …/webhooks/payment`) — recommended on production when `RAZORPAY_WEBHOOK_SECRET` is set.
+1. **Checkout verify** (`POST …/gateway/verify`) - HMAC from Razorpay popup (primary).
+2. **Auto reconcile** - if verify fails, the app calls Razorpay’s API (`fetchCapturedPaymentsForOrder`) via the same verify response or **`POST …/gateway/sync`**.
+3. **Pay page** - **“I paid - update my booking”** when an initiated gateway order exists.
+4. **Webhook** (`POST …/webhooks/payment`) - recommended on production when `RAZORPAY_WEBHOOK_SECRET` is set.
 
 Staff can still verify/record payment in admin if all automated paths fail.

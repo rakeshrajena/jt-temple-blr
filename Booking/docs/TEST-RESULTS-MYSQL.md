@@ -1,6 +1,6 @@
 # Automated test results (mysql)
 
-Run: 2026-10-10 14:44 IST · PHP 8.3.6 · MySQL 8.0-protocol server (Dolt — no MySQL/MariaDB package was installable in the sandbox; repeat on the host database) · version 8.0.31 · mock WhatsApp Cloud API
+Run: 2026-10-10 14:44 IST · PHP 8.3.6 · MySQL 8.0-protocol server (Dolt - no MySQL/MariaDB package was installable in the sandbox; repeat on the host database) · version 8.0.31 · mock WhatsApp Cloud API
 
 **60 of 60 tests passed.**
 
@@ -14,7 +14,7 @@ Run: 2026-10-10 14:44 IST · PHP 8.3.6 · MySQL 8.0-protocol server (Dolt — no
 | 6 | CSV export neutralises spreadsheet formulas | PASS |
 | 7 | WhatsApp template parameters are sanitised | PASS |
 | 8 | Payment gateway signatures (Razorpay) are verified with HMAC | PASS |
-| 9 | Individual service booking (Special Puja) — booking number, totals, pending status | PASS |
+| 9 | Individual service booking (Special Puja) - booking number, totals, pending status | PASS |
 | 10 | Multiple services in one booking (Special + Vehicle Puja) | PASS |
 | 11 | Service booking with ₹150 food coupons (4 persons) | PASS |
 | 12 | Service booking with ₹250 food coupons (2 persons) | PASS |

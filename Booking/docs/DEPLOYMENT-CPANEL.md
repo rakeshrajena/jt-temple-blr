@@ -12,17 +12,17 @@ tools. Nothing on the rest of the domain is changed; the app only adds a `Bookin
 
 - cPanel login for sjtbengaluru.org (from the temple / hosting provider).
 - The release zip of the **`booking/`** folder (e.g. `booking-<version>.zip`).
-- 30–60 minutes.
+- 30-60 minutes.
 
 ## 1. Check the hosting (once)
 
 1. **cPanel › MultiPHP Manager**: set the domain to **PHP 8.1 or newer** (8.2/8.3 recommended).
 2. **cPanel › Select PHP Version › Extensions** (CloudLinux hosts): make sure these are ticked:
-   `pdo_mysql`, `mbstring`, `gd`, `curl`, `dom`, `xml`, `fileinfo`, `openssl`, `zip`.
+ `pdo_mysql`, `mbstring`, `gd`, `curl`, `dom`, `xml`, `fileinfo`, `openssl`, `zip`.
 3. **cPanel › MultiPHP INI Editor**: `memory_limit` ≥ 256M, `upload_max_filesize` ≥ 4M,
-   `max_execution_time` ≥ 60.
+ `max_execution_time` ≥ 60.
 4. **cPanel › SSL/TLS Status**: sjtbengaluru.org must have a valid certificate (run AutoSSL if
-   not). The app forces HTTPS.
+ not). The app forces HTTPS.
 
 ## 2. Staging installation
 
@@ -39,43 +39,43 @@ password so the public cannot see it.
 **cPanel › File Manager**
 1. In `public_html`, create a folder named exactly **`BookingStaging`**.
 2. Upload the zip into `public_html/BookingStaging`, right-click › **Extract**, and move the
-   extracted files up so the folder directly contains `index.php`, `install.php`, `.htaccess`,
-   `app/`, `assets/`, `bin/`, `migrations/`, `storage/`, `.env`.
-   There is **no** `public/` subfolder and **no** `app-path.php` — the app runs from one folder,
-   exactly like the ERP `php/` app. The `.htaccess` inside the folder protects `.env`, `app/`,
-   `storage/`, etc.
+ extracted files up so the folder directly contains `index.php`, `install.php`, `.htaccess`,
+ `app/`, `assets/`, `bin/`, `migrations/`, `storage/`, `.env`.
+ There is **no** `public/` subfolder and **no** `app-path.php` - the app runs from one folder,
+ exactly like the ERP `php/` app. The `.htaccess` inside the folder protects `.env`, `app/`,
+ `storage/`, etc.
 
 ### 2.3 Configuration file
 1. In `BookingStaging`, copy `.env.example` to `.env` (enable *Show Hidden Files* in File Manager
-   settings to see dot files).
+ settings to see dot files).
 2. Edit `.env`:
-   ```
-   APP_ENV=staging
-   APP_DEBUG=false
-   APP_URL=https://sjtbengaluru.org/BookingStaging
-   APP_KEY=<64 random characters — run: php bin/console.php key>
-   INSTALL_TOKEN=<16+ random characters>
-   DB_DRIVER=mysql
-   DB_HOST=localhost
-   DB_NAME=<cpaneluser>_sjtstage
-   DB_USER=<cpaneluser>_sjtstage
-   DB_PASS=<the password from 2.1>
-   ```
-   For staging, Razorpay **test** keys are fine (`rzp_test_…`). Leave WhatsApp empty until templates are approved.
-   When ERP (`php/`) is on the same account, use the **same** `DB_NAME` / user as `php/.env` and upload `php/` beside `Booking/`.
-   Set in `php/.env`: `BOOKING_APP_URL` and `BOOKING_ADMIN_URL` pointing at this folder.
+ ```
+ APP_ENV=staging
+ APP_DEBUG=false
+ APP_URL=https://sjtbengaluru.org/BookingStaging
+ APP_KEY=<64 random characters - run: php bin/console.php key>
+ INSTALL_TOKEN=<16+ random characters>
+ DB_DRIVER=mysql
+ DB_HOST=localhost
+ DB_NAME=<cpaneluser>_sjtstage
+ DB_USER=<cpaneluser>_sjtstage
+ DB_PASS=<the password from 2.1>
+ ```
+ For staging, Razorpay **test** keys are fine (`rzp_test_…`). Leave WhatsApp empty until templates are approved.
+ When ERP (`php/`) is on the same account, use the **same** `DB_NAME` / user as `php/.env` and upload `php/` beside `Booking/`.
+ Set in `php/.env`: `BOOKING_APP_URL` and `BOOKING_ADMIN_URL` pointing at this folder.
 3. Right-click `.env` › **Change Permissions** › `600`.
 4. Make sure `storage` and every folder inside it are writable (`755`, owner = your cPanel user).
 5. **cPanel › Directory Privacy** › `public_html/BookingStaging` › enable password protection and
-   create a user for the testers. (Remove this only for production, never on staging.)
+ create a user for the testers. (Remove this only for production, never on staging.)
 
 ### 2.4 Create the tables and the first administrator
 
-**Option A — Unified web installer (no SSH):** configure `php/.env` and `Booking/.env` (same database). Open either  
-`https://sjtbengaluru.org/BookingStaging/install.php` **or** `…/php/install.php` — one setup key runs **ERP + all Booking migrations**.  
+**Option A - Unified web installer (no SSH):** configure `php/.env` and `Booking/.env` (same database). Open either 
+`https://sjtbengaluru.org/BookingStaging/install.php` **or** `…/php/install.php` - one setup key runs **ERP + all Booking migrations**. 
 Tick **Run Booking migrations**, optionally create an admin, submit. Then delete both `install.php` files and remove `INSTALL_TOKEN` from `.env`.
 
-**Option B — Terminal** (cPanel › Advanced › Terminal) or SSH:
+**Option B - Terminal** (cPanel › Advanced › Terminal) or SSH:
 ```bash
 cd ~/public_html/BookingStaging
 php bin/console.php migrate
@@ -93,7 +93,7 @@ Check `~/sjt-setup.log`, then **delete the cron job** and change the password af
 - https://sjtbengaluru.org/BookingStaging/health → `{"status":"ok"}`
 - https://sjtbengaluru.org/BookingStaging → booking home page
 - https://sjtbengaluru.org/BookingStaging/admin → sign in
-- The dashboard shows a "Before going live" list — work through it (docs/CONFIGURATION.md).
+- The dashboard shows a "Before going live" list - work through it (docs/CONFIGURATION.md).
 
 ### 2.7 Scheduled jobs (cPanel › Cron Jobs)
 | When | Command |
@@ -146,7 +146,7 @@ URLs. Keep the `Booking` folder when replacing the "Coming Soon" page.
 
 1. Take a backup: `bash bin/backup.sh`.
 2. Upload the new zip, extract to a temporary folder, then copy over **everything except** `.env`
-   and `storage/` into `public_html/Booking` (the whole folder lives in one place now).
+ and `storage/` into `public_html/Booking` (the whole folder lives in one place now).
 3. Run `php bin/console.php migrate` or submit `/Booking/install.php` with the setup key (migrations only add tables/columns; nothing is deleted).
 4. If ERP is shared and this release adds booking↔donation links, run `php bin/console.php erp:sync-bookings` when instructed in release notes.
 5. Open `/Booking/health` and the dashboard; run `php bin/console.php check`.

@@ -1,4 +1,4 @@
-# Temple online booking — flow & gap review
+# Temple online booking - flow & gap review
 
 This folder **is** the production booking application (`app/`, `assets/`, `storage/`, …). At the repo root, **`bookingPreview.html`** is a standalone UI prototype with sample data (nothing is saved to a database).
 
@@ -9,16 +9,16 @@ This folder **is** the production booking application (`app/`, `assets/`, `stora
 
 Full feature list: [`docs/SYSTEM-OVERVIEW.md`](docs/SYSTEM-OVERVIEW.md). Online payment gateways (adapter pattern): [`online_pay/README.md`](online_pay/README.md). Pre-launch checklist: [`docs/TEMPLE-ACTION-ITEMS.md`](docs/TEMPLE-ACTION-ITEMS.md). Hosting: [`docs/DEPLOYMENT-CPANEL.md`](docs/DEPLOYMENT-CPANEL.md).
 
-**Step-by-step booking + ERP (`php/`) integration plan (roles, cancel, payments, phased tests):** [`ERP-INTEGRATION-PLAN.md`](ERP-INTEGRATION-PLAN.md).
+**Step-by-step booking + ERP (`crm/`) integration plan (roles, cancel, payments, phased tests):** [`ERP-INTEGRATION-PLAN.md`](ERP-INTEGRATION-PLAN.md).
 
 ### Same MySQL database as ERP (recommended here)
 
-Use one database (e.g. **`sjt_temple_blr`**) for both apps. Point booking `.env` at the **same** `DB_NAME`, `DB_USER`, and `DB_PASS` as `php/.env` / `php/config.php`.
+Use one database (e.g. **`sjt_temple_blr`**) for both apps. Point booking `.env` at the **same** `DB_NAME`, `DB_USER`, and `DB_PASS` as `crm/.env` / `crm/config.php`.
 
-1. ERP tables already exist from `php/install.php` or first visit.
+1. ERP tables already exist from `crm/install.php` or first visit.
 2. From this **`booking/`** folder: copy `.env.example` → `.env`, set `APP_KEY` and `INSTALL_TOKEN`, then either:
-   - **Browser:** open `https://your-site/Booking/install.php`, or
-   - **SSH:** `php bin/console.php migrate` and `php bin/console.php create-admin …`
+ - **Browser:** open `https://your-site/Booking/install.php`, or
+ - **SSH:** `php bin/console.php migrate` and `php bin/console.php create-admin …`
 3. After web setup: delete `install.php` and remove `INSTALL_TOKEN` from `.env`.
 4. Booking adds its own tables (`bookings`, `services`, …) and `schema_migrations`. ERP **`food_coupons`** are printed serial codes; the **online prasadam menu** is **`food_coupon_catalog`** (edited in ERP › Temple › Coupons). Legacy standalone DBs still use **`booking_coupons`**.
 
@@ -28,36 +28,36 @@ Booking admin uses the **same** database table as ERP: `users` (one username/pas
 
 ## Devotee booking flow (live app)
 
-The live system matches the preview’s **six progress steps** (Choose service → Details → Prasadam → Review → Pay → Done), but steps 1–3 are one form (`POST /book/review`), step 4 is server-rendered review (`POST /book/confirm`), and pay/status use booking URLs with an access token.
+The live system matches the preview’s **six progress steps** (Choose service → Details → Prasadam → Review → Pay → Done), but steps 1-3 are one form (`POST /book/review`), step 4 is server-rendered review (`POST /book/confirm`), and pay/status use booking URLs with an access token.
 
 
 ```mermaid
 flowchart TD
-  subgraph public [Devotee - public routes]
-    H[GET / Home]
-    B[GET /book Form steps 1-3]
-    R[POST /book/review Server validate + quote]
-    RV[GET/POST Review step 4]
-    C[POST /book/confirm Create booking]
-    P[GET /b/no/pay Razorpay checkout]
-    SP[POST /b/no/payment Submit UTR if BOOKING_UPI_MANUAL]
-    S[GET /b/no Status + invoice links]
-    L[POST /lookup Booking no + mobile]
-  end
+ subgraph public [Devotee - public routes]
+ H[GET / Home]
+ B[GET /book Form steps 1-3]
+ R[POST /book/review Server validate + quote]
+ RV[GET/POST Review step 4]
+ C[POST /book/confirm Create booking]
+ P[GET /b/no/pay Razorpay checkout]
+ SP[POST /b/no/payment Submit UTR if BOOKING_UPI_MANUAL]
+ S[GET /b/no Status + invoice links]
+ L[POST /lookup Booking no + mobile]
+ end
 
-  H --> B
-  B --> R
-  R -->|validation errors| B
-  R --> RV
-  RV -->|edit| B
-  RV --> C
-  C -->|total changed| RV
-  C -->|saved| P
-  C -->|no payment due| S
-  P --> SP
-  SP --> S
-  L -->|match| S
-  L -->|no match| L
+ H --> B
+ B --> R
+ R -->|validation errors| B
+ R --> RV
+ RV -->|edit| B
+ RV --> C
+ C -->|total changed| RV
+ C -->|saved| P
+ C -->|no payment due| S
+ P --> SP
+ SP --> S
+ L -->|match| S
+ L -->|no match| L
 ```
 
 **After submit:** the devotee gets a booking number immediately. That is a **booking request**, not a confirmed seva, until payment (if any) is **verified** and, for approval-required services, the temple **approves**.
@@ -70,31 +70,31 @@ By default devotees pay via **Razorpay** only (`PAYMENT_GATEWAY=razorpay`, `BOOK
 
 ```mermaid
 flowchart LR
-  subgraph devotee [Devotee]
-    QR[Scan dynamic UPI QR or Razorpay]
-    UTR[Enter UTR on pay page]
-  end
+ subgraph devotee [Devotee]
+ QR[Scan dynamic UPI QR or Razorpay]
+ UTR[Enter UTR on pay page]
+ end
 
-  subgraph system [System]
-    PS[payment_status: pending]
-    AV[payment_status: awaiting_verification]
-    PD[payment_status: paid]
-    AP[approval_status: pending / approved]
-    BS[booking_status derived]
-  end
+ subgraph system [System]
+ PS[payment_status: pending]
+ AV[payment_status: awaiting_verification]
+ PD[payment_status: paid]
+ AP[approval_status: pending / approved]
+ BS[booking_status derived]
+ end
 
-  subgraph admin [Temple admin]
-    V[Verify against bank statement]
-    A[Approve ceremony if required]
-  end
+ subgraph admin [Temple admin]
+ V[Verify against bank statement]
+ A[Approve ceremony if required]
+ end
 
-  PS --> QR
-  QR -->|Razorpay signature OK| PD
-  PS --> UTR --> AV
-  AV --> V --> PD
-  PD --> BS
-  AP --> A --> BS
-  BS -->|paid + approved or N/A| CONF[booking_status: confirmed]
+ PS --> QR
+ QR -->|Razorpay signature OK| PD
+ PS --> UTR --> AV
+ AV --> V --> PD
+ PD --> BS
+ AP --> A --> BS
+ BS -->|paid + approved or N/A| CONF[booking_status: confirmed]
 ```
 
 | State | Preview (`bookingPreview.html`) | Live (`booking/`) |
@@ -112,16 +112,16 @@ Preview shows a **mock dashboard** (fixed counts) and a simplified booking scree
 
 ```mermaid
 flowchart TD
-  D[GET /admin Dashboard]
-  BL[GET /admin/bookings List + filters + CSV]
-  BD[GET /admin/bookings/no Detail]
-  ACT[POST action verify / reject pay / approve / reject / cancel / reschedule / charges / refund / note]
-  N[Notifications retry + resolve]
-  CFG[Services slots coupons settings users availability reports audit]
+ D[GET /admin Dashboard]
+ BL[GET /admin/bookings List + filters + CSV]
+ BD[GET /admin/bookings/no Detail]
+ ACT[POST action verify / reject pay / approve / reject / cancel / reschedule / charges / refund / note]
+ N[Notifications retry + resolve]
+ CFG[Services slots coupons settings users availability reports audit]
 
-  D --> BL --> BD --> ACT
-  D --> N
-  D --> CFG
+ D --> BL --> BD --> ACT
+ D --> N
+ D --> CFG
 ```
 
 Implemented in live admin but **not** interactive in the preview: reject payment, adjust “Other services” charges, approve/reject ceremony, reschedule with capacity check, refund, notification retry, CSV export, availability blocks, full audit trail.
@@ -132,22 +132,22 @@ Implemented in live admin but **not** interactive in the preview: reject payment
 
 ```mermaid
 stateDiagram-v2
-  [*] --> pending: booking.created
-  pending --> confirmed: payment OK and approval OK
-  pending --> rejected: temple rejects approval
-  pending --> cancelled: temple cancels
-  confirmed --> completed: service done
-  confirmed --> cancelled: temple cancels
-  rejected --> [*]
-  cancelled --> [*]
-  completed --> [*]
+ [*] --> pending: booking.created
+ pending --> confirmed: payment OK and approval OK
+ pending --> rejected: temple rejects approval
+ pending --> cancelled: temple cancels
+ confirmed --> completed: service done
+ confirmed --> cancelled: temple cancels
+ rejected --> [*]
+ cancelled --> [*]
+ completed --> [*]
 ```
 
 Headlines shown to devotees are centralized in `Status::headline()` (payment pending, awaiting verification, awaiting approval, confirmed, etc.).
 
 ---
 
-## Preview vs production — alignment
+## Preview vs production - alignment
 
 | Area | Preview | Live app | Notes |
 |---|---|---|---|
@@ -174,33 +174,33 @@ Headlines shown to devotees are centralized in `Status::headline()` (payment pen
 
 These are **intentionally stubbed** in the preview; the live app already covers most of them:
 
-1. **Real persistence and idempotent submit** — preview only; live has it.
-2. **Separate approval badge and workflow** — preview collapses into one “Confirmed / Request received” badge; live exposes payment + approval + booking status.
-3. **Payment reject / failed path** — not simulated in preview; live notifies devotee to resubmit UTR.
-4. **Admin reschedule, cancel, notes, refunds** — preview UI placeholders; live forms on `/admin/bookings/{no}`.
-5. **Dynamic availability** — preview static; live API + admin calendar.
+1. **Real persistence and idempotent submit** - preview only; live has it.
+2. **Separate approval badge and workflow** - preview collapses into one “Confirmed / Request received” badge; live exposes payment + approval + booking status.
+3. **Payment reject / failed path** - not simulated in preview; live notifies devotee to resubmit UTR.
+4. **Admin reschedule, cancel, notes, refunds** - preview UI placeholders; live forms on `/admin/bookings/{no}`.
+5. **Dynamic availability** - preview static; live API + admin calendar.
 
-### Relative to going live (temple / ops — see action items doc)
+### Relative to going live (temple / ops - see action items doc)
 
-1. **Hosting** — app targets `https://sjtbengaluru.org/Booking`; not linked from this AMPPS `php/` inventory repo by default.
-2. **UPI VPA** — preview uses `shreejagannathtrust@rbl` (real QR in demo bar); production must be treasurer-approved and ₹1-tested.
-3. **WhatsApp Business Cloud API** — templates, phone number, token; until then messages queue as failed (bookings still work).
-4. **Final service prices, slots, capacities, closure dates** — seed data is editable but not committee-signed-off.
-5. **Temple contact block on invoices** — preview shows “(temple office number)”; live reads settings (must be filled).
-6. **Optional Razorpay** — for automatic pay confirmation without manual UTR check.
-7. **Integration with main site** — root [`README.md`](../README.md) now lists all three apps (ERP `php/`, Python, and this `Booking/` app); add a "Book seva / prasadam" link on the public temple site once deployed.
+1. **Hosting** - app targets `https://sjtbengaluru.org/Booking`; not linked from the local AMPPS `crm/` ERP tree by default.
+2. **UPI VPA** - preview uses `shreejagannathtrust@rbl` (real QR in demo bar); production must be treasurer-approved and ₹1-tested.
+3. **WhatsApp Business Cloud API** - templates, phone number, token; until then messages queue as failed (bookings still work).
+4. **Final service prices, slots, capacities, closure dates** - seed data is editable but not committee-signed-off.
+5. **Temple contact block on invoices** - preview shows “(temple office number)”; live reads settings (must be filled).
+6. **Optional Razorpay** - for automatic pay confirmation without manual UTR check.
+7. **Integration with main site** - root [`README.md`](../README.md) lists ERP (`crm/`), optional Python prototype, and this `Booking/` app; add a "Book seva / prasadam" link on the public temple site once deployed.
 
 ### Relative to this monorepo layout
 
 | Gap | Detail |
 |---|---|
-| `bookingPreview.html` location | Sits at repo root; not served from `booking/` — useful for static demos only |
-| Two products | Inventory (`php/`) vs booking (`booking/`) — can share one MySQL database; separate admin logins |
-| Booking now in root README | Root [`../README.md`](../README.md) lists all three apps; this file documents the booking flow and cross-artifact details |
+| `bookingPreview.html` location | Sits at repo root; not served from `booking/` - useful for static demos only |
+| Two products | ERP (`crm/`) vs booking (`Booking/`) - can share one MySQL database; one `users` table when integrated |
+| Booking in root README | Root [`../README.md`](../README.md) lists ERP and booking; this file documents the booking flow and cross-artifact details |
 
 ---
 
-## Quick reference — key files
+## Quick reference - key files
 
 | Concern | Location |
 |---|---|

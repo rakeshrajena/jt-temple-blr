@@ -4,9 +4,9 @@
 
 | Suite | Command | Latest result |
 |---|---|---|
-| End-to-end + unit (SQLite) | `php tests/run.php` | **60 / 60 passed** — TEST-RESULTS-SQLITE.md |
-| End-to-end + unit (MySQL protocol) | `TEST_DB_DRIVER=mysql TEST_DB_HOST=127.0.0.1 TEST_DB_PORT=3306 TEST_DB_USER=root TEST_DB_PASS=… php tests/run.php` | **60 / 60 passed** — TEST-RESULTS-MYSQL.md |
-| Browser layout & interaction | `python3 tests/ui_test.py <url> <admin> <password> docs/screenshots` | **115 / 115 passed** — TEST-RESULTS-UI.md |
+| End-to-end + unit (SQLite) | `php tests/run.php` | **60 / 60 passed** - TEST-RESULTS-SQLITE.md |
+| End-to-end + unit (MySQL protocol) | `TEST_DB_DRIVER=mysql TEST_DB_HOST=127.0.0.1 TEST_DB_PORT=3306 TEST_DB_USER=root TEST_DB_PASS=… php tests/run.php` | **60 / 60 passed** - TEST-RESULTS-MYSQL.md |
+| Browser layout & interaction | `python3 tests/ui_test.py <url> <admin> <password> docs/screenshots` | **115 / 115 passed** - TEST-RESULTS-UI.md |
 
 `tests/run.php` starts the real app with PHP's web server on a fresh database plus a mock WhatsApp
 Cloud API, then drives every flow over HTTP exactly as a browser would (sessions, CSRF tokens,

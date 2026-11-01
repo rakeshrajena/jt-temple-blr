@@ -1,4 +1,4 @@
-# Local development — AMPPS (Windows)
+# Local development - AMPPS (Windows)
 
 ## URLs and ports
 
@@ -6,7 +6,7 @@
 |---------|------------------------|
 | **Website** | `http://localhost:8080` (if you changed Apache from port 80) |
 | **This app** | `http://localhost:8080/jt_blr/jt-temple-blr/Booking` |
-| **MySQL** | Host **`localhost`**, port **`3306`** (not 8080 — 8080 is the web server) |
+| **MySQL** | Host **`localhost`**, port **`3306`** (not 8080 - 8080 is the web server) |
 
 `APP_URL` in `.env` must match the browser address **exactly** (scheme, host, port, and path). The app uses it for links, CSRF, and Razorpay return URLs.
 
@@ -61,7 +61,7 @@ Webhooks to localhost need a tunnel (e.g. ngrok); for local testing, **Pay now**
 When ERP and Booking share the database (`donors` + `bookings` tables), **one login covers both**:
 
 1. Sign in at **ERP** (`/php/`).
-2. Open **Temple › Online bookings** or `/Booking/admin` — no second login.
+2. Open **Temple › Online bookings** or `/Booking/admin` - no second login.
 
 Both apps share the PHP session cookie (`jt_blr_session`) under the project folder path. Staff accounts live in the **`users`** table (migration `005_shared_staff_users`).
 
@@ -83,13 +83,13 @@ GATEWAY_SSL_VERIFY=false
 
 ### Razorpay says paid but booking still pending
 
-After a server glitch, use **“I paid — update my booking”** on the pay page (or pay again — verify will reconcile from Razorpay’s API). For booking **SJT-2026-000001** that paid before the verify bug was fixed, open that booking’s pay URL and click that button once.
+After a server glitch, use **“I paid - update my booking”** on the pay page (or pay again - verify will reconcile from Razorpay’s API). For booking **SJT-2026-000001** that paid before the verify bug was fixed, open that booking’s pay URL and click that button once.
 
 ## Common issues
 
 | Symptom | Fix |
 |---------|-----|
-| Redirect to `https://localhost/...` and broken page | `.htaccess` skips HTTPS only for `localhost` / `127.0.0.1` — use those hosts, not another name |
+| Redirect to `https://localhost/...` and broken page | `.htaccess` skips HTTPS only for `localhost` / `127.0.0.1` - use those hosts, not another name |
 | "Session expired" on forms | `APP_URL` must match the URL in the browser bar |
 | `Access denied for user 'root'@'localhost'` (1698) with `DB_HOST=127.0.0.1` | On this PC, **WSL** may own `127.0.0.1:3306`. Use **`DB_HOST=localhost`** so PHP hits **AMPPS** MySQL, or stop WSL MySQL |
 | Other MySQL login errors | Start MySQL in AMPPS; default password `mysql`, or reset in AMPPS MySQL settings |
