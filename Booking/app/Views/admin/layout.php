@@ -1,20 +1,12 @@
 <?php
 /** Admin layout. @var ?array $admin */
 $path = \SJT\Core\App::request()->path;
-$erpAvail = class_exists(\SJT\Service\ErpStaffSession::class) && \SJT\Service\ErpStaffSession::enabled()
-    ? \SJT\Service\ErpStaffSession::erpBookingAvailabilityUrl() : '/admin/availability';
 $nav = [
     '/admin' => 'Dashboard',
     '/admin/bookings' => 'Bookings',
-    $erpAvail => 'Availability',
     '/admin/notifications' => 'Notifications',
     '/admin/reports' => 'Reports',
 ];
-$erpServices = class_exists(\SJT\Service\ErpStaffSession::class) && \SJT\Service\ErpStaffSession::enabled()
-    ? \SJT\Service\ErpStaffSession::erpBookingServicesUrl() : null;
-$superNav = $erpServices
-    ? [$erpServices => 'Services & prices (ERP)']
-    : ['/admin/services' => 'Services & prices'];
 $isActive = fn (string $p) => $p === '/admin' ? $path === '/admin' : str_starts_with($path, $p);
 ?><!doctype html>
 <html lang="en">
@@ -49,7 +41,6 @@ $isActive = fn (string $p) => $p === '/admin' ? $path === '/admin' : str_starts_
 <?php if (!empty($admin)): ?>
 <nav class="a-nav" aria-label="Admin">
   <?php foreach ($nav as $p => $l): ?><a href="<?= e(url($p)) ?>"<?= $isActive($p) ? ' aria-current="page"' : '' ?>><?= e($l) ?></a><?php endforeach; ?>
-  <?php if ($admin['role'] === 'super'): foreach ($superNav as $p => $l): ?><a href="<?= e(url($p)) ?>"<?= $isActive($p) ? ' aria-current="page"' : '' ?>><?= e($l) ?></a><?php endforeach; endif; ?>
   <a href="<?= e(url('/')) ?>" target="_blank" rel="noopener" class="a-public">Public site ↗</a>
 </nav>
 <?php endif; ?>
