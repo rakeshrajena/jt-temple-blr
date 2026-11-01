@@ -1,4 +1,4 @@
-# Booking + ERP (`php/`) — end-to-end plan (no code yet)
+# Booking + ERP (`php/`) - end-to-end plan (no code yet)
 
 This document describes **how booking works today**, **who must sign in**, **cancellation and books**, **payments already in the booking app**, and a **phased plan** to connect the public booking app to the temple ERP in [`../php/`](../php/) (cash book, day book, ledger, approvals).
 
@@ -15,15 +15,15 @@ Related: [`README.md`](README.md) (flows), [`docs/ADMIN-GUIDE.md`](docs/ADMIN-GU
 | Purpose | Public seva / prasadam booking, pay, invoice | Donations, expenses, inventory, **cash book**, ledger, bank recon |
 | Database | Own DB (SQLite dev / MySQL prod) | `sjt_temple_blr` (separate) |
 | Devotee access | No login | No login (except subscription pay link, coupon scan) |
-| Staff access | `/Booking/admin` — booking admins table | `/php/` — `users` (Admin / Treasurer / Staff) |
-| Money in books | **Not wired to ERP** — verified inside booking DB only | Donations post to cash/bank book; many actions need **approval** |
+| Staff access | `/Booking/admin` - booking admins table | `/php/` - `users` (Admin / Treasurer / Staff) |
+| Money in books | **Not wired to ERP** - verified inside booking DB only | Donations post to cash/bank book; many actions need **approval** |
 | Tests | `booking/tests/run.php`, `ui_test.py` | `php/tests/*_test.php` |
 
 There is **no integration code** between them yet. This plan defines what to build.
 
 ---
 
-## 2. Devotee (public user) — login and booking
+## 2. Devotee (public user) - login and booking
 
 ### Is login required?
 
@@ -34,41 +34,41 @@ They identify themselves with:
 - **Name, mobile (required), optional email** on the booking form.
 - After submit: **booking number** (e.g. `SJT-2026-000123`) and a **private link** with `?t=<access_token>` (email/WhatsApp).
 - Later access:
-  - **Find my booking**: booking number + same mobile (must match exactly).
-  - Or reuse the **private link** (or browser session after lookup).
+ - **Find my booking**: booking number + same mobile (must match exactly).
+ - Or reuse the **private link** (or browser session after lookup).
 
-Implementation: `Controller::accessibleBooking()` — token or session flag `bk[booking_no]`.
+Implementation: `Controller::accessibleBooking()` - token or session flag `bk[booking_no]`.
 
 ### End-to-end devotee journey (current booking app)
 
 ```mermaid
 sequenceDiagram
-  participant D as Devotee browser
-  participant B as booking app
-  participant WA as WhatsApp API
+ participant D as Devotee browser
+ participant B as booking app
+ participant WA as WhatsApp API
 
-  D->>B: GET /book (steps 1–3)
-  D->>B: POST /book/review
-  B->>B: Server validate + price quote
-  D->>B: POST /book/confirm (agree + CSRF)
-  B->>B: Create booking (idempotent form_id)
-  B->>WA: booking_created (if configured)
-  alt total > 0 and payment pending
-    D->>B: GET /b/{no}/pay
-  else no payment / not required
-    D->>B: GET /b/{no} status
-  end
-  opt UPI manual
-    D->>B: Pay via QR / UPI app
-    D->>B: POST /b/{no}/payment (UTR)
-    B->>WA: payment_submitted
-  end
-  opt Razorpay enabled
-    D->>B: gateway order + checkout
-    B->>B: HMAC verify + markGatewayPaid
-  end
-  Note over B: Temple admin verifies UTR OR gateway auto-verifies
-  B->>WA: status update (confirmed or awaiting approval)
+ D->>B: GET /book (steps 1-3)
+ D->>B: POST /book/review
+ B->>B: Server validate + price quote
+ D->>B: POST /book/confirm (agree + CSRF)
+ B->>B: Create booking (idempotent form_id)
+ B->>WA: booking_created (if configured)
+ alt total > 0 and payment pending
+ D->>B: GET /b/{no}/pay
+ else no payment / not required
+ D->>B: GET /b/{no} status
+ end
+ opt UPI manual
+ D->>B: Pay via QR / UPI app
+ D->>B: POST /b/{no}/payment (UTR)
+ B->>WA: payment_submitted
+ end
+ opt Razorpay enabled
+ D->>B: gateway order + checkout
+ B->>B: HMAC verify + markGatewayPaid
+ end
+ Note over B: Temple admin verifies UTR OR gateway auto-verifies
+ B->>WA: status update (confirmed or awaiting approval)
 ```
 
 **Confirmed booking** (devotee-facing) only when:
@@ -86,7 +86,7 @@ Until then the UI says **request received**, not confirmed.
 
 ---
 
-## 3. Temple roles — booking admin vs ERP
+## 3. Temple roles - booking admin vs ERP
 
 ### Booking app (`/Booking/admin`)
 
@@ -97,7 +97,7 @@ Until then the UI says **request received**, not confirmed.
 
 Routes: most booking actions need `admin`; catalog/settings need `super` (`routes.php` + `Kernel.php`).
 
-**Separate login** from ERP — different username/password table.
+**Separate login** from ERP - different username/password table.
 
 ### ERP (`php/`)
 
@@ -123,7 +123,7 @@ Routes: most booking actions need `admin`; catalog/settings need `super` (`route
 
 ## 4. Cancellation and journal books (current vs target)
 
-### Today — booking only
+### Today - booking only
 
 1. Admin opens booking → **Cancel** → **reason required** → devotee notified (`BookingService::cancel`).
 2. Slot capacity freed; `booking_status = cancelled`.
@@ -132,10 +132,10 @@ Routes: most booking actions need `admin`; catalog/settings need `super` (`route
 
 Audit: booking `audit_log` + history on booking page.
 
-### Today — ERP journal behaviour (for later sync)
+### Today - ERP journal behaviour (for later sync)
 
 - **Cash book / day book / ledger**: updated when a donation/expense line is **Approved** (or immediately for a new donation).
-- **Cancel receipt**: receipt number kept; status cancelled **after approval**; money **stays in books** until a controlled reversal (`FEATURES.md` — corrections / cancellation workflow).
+- **Cancel receipt**: receipt number kept; status cancelled **after approval**; money **stays in books** until a controlled reversal (`FEATURES.md` - corrections / cancellation workflow).
 - **Correction**: original line kept; adjustment line after approval.
 
 ### Target behaviour (integrated)
@@ -157,14 +157,14 @@ Audit: booking `audit_log` + history on booking page.
 |---|---|---|---|
 | **UPI dynamic QR** | `upi_vpa`, `upi_verified` tick | Per-booking amount + booking no in URI | Admin **verifyPayment** against bank |
 | **UPI static QR** | Upload temple QR | Devotee types amount; booking no in remark | Admin verify |
-| **UTR submit** | Always (if amount due) | Form on pay page | **Never** auto — `awaiting_verification` only |
+| **UTR submit** | Always (if amount due) | Form on pay page | **Never** auto - `awaiting_verification` only |
 | **Razorpay** | `PAYMENT_GATEWAY=razorpay` + keys | Checkout on pay page | Server **HMAC** (`gatewayVerify` + webhook `payment.captured`) |
 
 Optional: gateway amount mismatch → stays `awaiting_verification` for manual review (`markGatewayPaid`).
 
 **Preview HTML** (`bookingPreview.html`) mimics UPI + UTR only; Razorpay is live-app only.
 
-Bank reconciliation in ERP already matches donations by **UPI reference** (90 days) or amount+date — Phase 3 should use the **same UTR** on the donation row for auto-match.
+Bank reconciliation in ERP already matches donations by **UPI reference** (90 days) or amount+date - Phase 3 should use the **same UTR** on the donation row for auto-match.
 
 ---
 
@@ -172,7 +172,7 @@ Bank reconciliation in ERP already matches donations by **UPI reference** (90 da
 
 ### 6.1 Identifier bridge
 
-Store on ERP side (new columns or side table — decide in Phase 2):
+Store on ERP side (new columns or side table - decide in Phase 2):
 
 - `booking_no`, `booking_invoice_no` (SJTB/…)
 - `booking_app_payment_id` / gateway id
@@ -209,7 +209,7 @@ Suggested policy:
 
 - **Verify payment in booking** = operational truth for seva.
 - **Post donation to ERP** automatically when booking payment → **paid** (same as manual donation entry), **if** amount ≤ Treasurer limit.
-- Above limit: create donation in **Waiting** approval in ERP (extend `approvals.subject_type` e.g. `booking_sync`) — *Phase 4 optional*.
+- Above limit: create donation in **Waiting** approval in ERP (extend `approvals.subject_type` e.g. `booking_sync`) - *Phase 4 optional*.
 
 Cancellations/refunds: always **ERP approval** (mirror receipt cancellation / correction).
 
@@ -219,7 +219,7 @@ Cancellations/refunds: always **ERP approval** (mirror receipt cancellation / co
 
 Each phase: **definition of done**, **tests**, **rollback**.
 
-### Phase 0 — Align catalog and ops (no integration)
+### Phase 0 - Align catalog and ops (no integration)
 
 | Task | Done when |
 |---|---|
@@ -232,7 +232,7 @@ Each phase: **definition of done**, **tests**, **rollback**.
 
 ---
 
-### Phase 1 — Booking live without ERP
+### Phase 1 - Booking live without ERP
 
 Deploy `booking/` to `/Booking`. ERP continues as today.
 
@@ -242,7 +242,7 @@ Deploy `booking/` to `/Booking`. ERP continues as today.
 
 ---
 
-### Phase 2 — Read-only link ERP ↔ booking
+### Phase 2 - Read-only link ERP ↔ booking
 
 | Task | Done when |
 |---|---|
@@ -252,14 +252,14 @@ Deploy `booking/` to `/Booking`. ERP continues as today.
 
 **Tests:**
 
-- `php/tests/` — new test: lookup by booking ref field (read-only).
-- Booking — unit test: bridge fields nullable.
+- `php/tests/` - new test: lookup by booking ref field (read-only).
+- Booking - unit test: bridge fields nullable.
 
 **No automatic posting yet.**
 
 ---
 
-### Phase 3 — Post to ERP when payment verified
+### Phase 3 - Post to ERP when payment verified
 
 Trigger: `BookingService::verifyPayment` and `markGatewayPaid` (payment_status → paid).
 
@@ -273,14 +273,14 @@ Trigger: `BookingService::verifyPayment` and `markGatewayPaid` (payment_status �
 **Tests:**
 
 - Booking: extend `run.php` case “verify → sync mocked ERP” (HTTP mock or test double).
-- ERP: new `booking_sync_test.php` — donation created with correct amount, mode UPI, purpose mapping.
+- ERP: new `booking_sync_test.php` - donation created with correct amount, mode UPI, purpose mapping.
 - Manual: verify booking → see line in **day book** same date.
 
 **Out of scope for Phase 3:** cancel reversal (Phase 4).
 
 ---
 
-### Phase 4 — Cancel, refund, journal reversal
+### Phase 4 - Cancel, refund, journal reversal
 
 Trigger: `cancel` + `refund` on paid bookings (and optionally `reject` after sync).
 
@@ -298,7 +298,7 @@ Trigger: `cancel` + `refund` on paid bookings (and optionally `reject` after syn
 
 ---
 
-### Phase 5 — Ceremony approval and staff workflows (optional polish)
+### Phase 5 - Ceremony approval and staff workflows (optional polish)
 
 | Task | Done when |
 |---|---|
@@ -310,7 +310,7 @@ Trigger: `cancel` + `refund` on paid bookings (and optionally `reject` after syn
 
 ---
 
-### Phase 6 — Razorpay production + recon
+### Phase 6 - Razorpay production + recon
 
 | Task | Done when |
 |---|---|
@@ -354,12 +354,12 @@ Automated:
 
 | Question | Answer today |
 |---|---|
-| Must devotee login? | **No** — mobile + booking no or private link |
-| Must staff login for booking? | **Yes** — booking admin |
-| Must staff login for ERP books? | **Yes** — `php/` users |
+| Must devotee login? | **No** - mobile + booking no or private link |
+| Must staff login for booking? | **Yes** - booking admin |
+| Must staff login for ERP books? | **Yes** - `php/` users |
 | How cancel? | **Admin only** in booking; reason; refund if paid; **ERP reversal in Phase 4** |
 | QR vs Razorpay? | Both supported in code; UPI needs admin verify unless Razorpay enabled |
-| Journal updated? | **Not yet** — booking is isolated; plan Phase 3–4 for cash book / ledger |
+| Journal updated? | **Not yet** - booking is isolated; plan Phase 3-4 for cash book / ledger |
 
 ---
 

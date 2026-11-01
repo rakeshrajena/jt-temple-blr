@@ -1,4 +1,4 @@
-# Shree Jagannath Temple — Admin (PHP 8)
+# Shree Jagannath Temple - Admin (PHP 8)
 
 Temple administration for Sarjapura, Bengaluru: inventory, food stock, deity vastra, donations, expenses, bank reconciliation, printable reports, and monthly seva subscriptions.
 
@@ -7,9 +7,9 @@ This is the PHP 8 port of the Flask app in `../python/`. It uses MySQL on the lo
 ## Run it
 
 1. Start Apache and MySQL in AMPPS.
-2. Open [http://localhost/jt_blr/jt-temple-blr/php/](http://localhost/jt_blr/jt-temple-blr/php/).
+2. Open [http://localhost/jt_blr/jt-temple-blr/crm/](http://localhost/jt_blr/jt-temple-blr/crm/).
 
-On this computer the first request creates the `sjt_temple_blr` database, the tables in `schema.sql`, and the demo records. On the hosting server, upload this `php` folder, including `storage`, and open `install.php`. Keep the server’s own `.env`. Do not upload the `.env` that sits next to this folder.
+On this computer the first request creates the `sjt_temple_blr` database, the tables in `schema.sql`, and the demo records. On the hosting server, upload this `crm` folder, including `storage`, and open `install.php`. Keep the server’s own `.env`. Do not upload the `.env` that sits next to this folder.
 
 `storage/install/books.jsonl` is the saved books. It is not in git. This copy has the gifts and no receipt generated yet. If devotees are already on the server, tick replace so that file is loaded. `storage/selections.json` is the form choices, including each puja purpose and its amount. Uploading the folder replaces that file. It is not loaded by the replace tick. Then remove `INSTALL_TOKEN` from the server `.env`. The full steps are in `docs/USER-GUIDE.md`.
 
@@ -74,17 +74,17 @@ The pay page records the payment immediately. A live gateway would verify the pa
 ## Project layout
 
 ```
-php/
-  index.php              Front controller
-  config.php             Database and app settings
-  schema.sql             MySQL tables
-  includes/              Auth, queries, PDFs, bank matching, seed data
-  views/                 Pages
-  static/                CSS and logo
-  storage/receipts/      Donation receipt PDFs
-  storage/coupons/       Coupon batch PDFs
-  storage/uploads/       Bank statements
-  storage/logs/          Notification log and error log
+crm/
+ index.php Front controller
+ config.php Database and app settings
+ schema.sql MySQL tables
+ includes/ Auth, queries, PDFs, bank matching, seed data
+ views/ Pages
+ static/ CSS and logo
+ storage/receipts/ Donation receipt PDFs
+ storage/coupons/ Coupon batch PDFs
+ storage/uploads/ Bank statements
+ storage/logs/ Notification log and error log
 ```
 
 `includes/` and `storage/` are not served as web pages.
