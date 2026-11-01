@@ -37,6 +37,7 @@ function env_local_override_keys(): array
         'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'DB_PASS',
         'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE',
         'BOOKING_APP_URL', 'BOOKING_ADMIN_URL', 'INSTALL_TOKEN',
+        'SMTP_ONLY_LOCAL_MTA', 'SMTP_PREFER_LOCAL_MTA', 'SMTP_SKIP_LOCAL_MTA',
     ];
 }
 

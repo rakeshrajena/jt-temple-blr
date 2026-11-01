@@ -1253,12 +1253,21 @@ table.data-table select {
 .settings-ob-subsection { padding: 14px 18px 8px; }
 .settings-ob-subsection h6 { margin: 0 0 6px; font-size: 13px; color: var(--maroon-deep); }
 .settings-ob-slots { padding: 12px 18px 18px; display: flex; flex-direction: column; gap: 12px; }
+.settings-ob-row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; white-space: nowrap; }
+.settings-ob-inline-form { display: inline; margin: 0; }
 .settings-ob-slot-card {
+  position: relative;
   margin: 0;
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: #fff;
+}
+.settings-ob-slot-remove {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  margin: 0;
 }
 .settings-ob-slot-actions {
   display: flex;

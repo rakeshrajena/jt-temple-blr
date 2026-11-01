@@ -21,6 +21,7 @@ if (is_file($localEnv)) {
         'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_PASSWORD',
         'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE',
         'APP_ENV', 'APP_DEBUG', 'APP_URL', 'ERP_APP_URL', 'GATEWAY_SSL_VERIFY', 'INSTALL_TOKEN',
+        'SMTP_ONLY_LOCAL_MTA', 'SMTP_PREFER_LOCAL_MTA', 'SMTP_SKIP_LOCAL_MTA', 'SMTP_DISABLE_PHP_MAIL',
     ]);
 }
 date_default_timezone_set(SJT\Core\Env::get('APP_TIMEZONE', 'Asia/Kolkata'));

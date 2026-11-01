@@ -46,7 +46,17 @@
           ]))) ?></small></td>
           <td><small><?php foreach ($bookingSlotsByService[$s['id']] ?? [] as $sl): ?><?= e($sl['label']) ?> (<?= $sl['capacity'] ?? '∞' ?>)<?= $sl['is_active'] ? '' : ' off' ?><br><?php endforeach; ?></small></td>
           <td><?php if ($s['is_active']): ?><span class="badge badge-green"><?= e(t('settings.ob_bookable')) ?></span><?php else: ?><span class="badge badge-amber"><?= e(t('settings.ob_disabled')) ?></span><?php endif; ?></td>
-          <td><?php if ($bookingCatalogCanEdit): ?><a class="btn btn-outline btn-sm" href="<?= e(booking_catalog_settings_service_url((int) $s['id'])) ?>"><?= e(t('common.update')) ?></a><?php endif; ?></td>
+          <td class="settings-ob-row-actions">
+            <?php if ($bookingCatalogCanEdit): ?>
+              <a class="btn btn-outline btn-sm" href="<?= e(booking_catalog_settings_service_url((int) $s['id'])) ?>"><?= e(t('common.update')) ?></a>
+              <form method="POST" action="<?= e(url('settings')) ?>" class="settings-ob-inline-form" onsubmit="return confirm(<?= e(json_encode(t('settings.ob_service_remove_confirm'), JSON_UNESCAPED_UNICODE)) ?>);">
+                <?= csrf_field() ?>
+                <input type="hidden" name="form" value="booking_service_delete">
+                <input type="hidden" name="id" value="<?= (int) $s['id'] ?>">
+                <button class="btn btn-outline btn-sm btn-danger" type="submit"><?= e(t('common.remove')) ?></button>
+              </form>
+            <?php endif; ?>
+          </td>
         </tr>
       <?php endforeach; ?>
     </table>
