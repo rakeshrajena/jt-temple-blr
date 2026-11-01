@@ -42,20 +42,25 @@ If the bank provides a merchant VPA, tick *Include merchant transaction referenc
 Changing the UPI ID, switching mode or uploading a new image **automatically un-verifies** the
 payment details until the test is repeated.
 
-### Optional online gateway (Razorpay)
-Only if the temple has an approved Razorpay account. In `.env`:
+### Devotee payments — Razorpay (default)
+
+In `.env`:
 ```
 PAYMENT_GATEWAY=razorpay
-RAZORPAY_KEY_ID=rzp_live_...
+RAZORPAY_KEY_ID=rzp_test_...   # or rzp_live_... in production
 RAZORPAY_KEY_SECRET=...
-RAZORPAY_WEBHOOK_SECRET=...
+RAZORPAY_WEBHOOK_SECRET=...    # recommended for production
+BOOKING_UPI_MANUAL=false       # devotees see Razorpay only
 ```
+
+Use **test keys** on staging first. Devotees see **Pay now** on the booking pay page (UPI, card, net banking via Razorpay).
+
 In the Razorpay dashboard: enable **automatic capture**, and add a webhook to
-`https://sjtbengaluru.org/Booking/webhooks/razorpay` for `payment.captured` and `order.paid`
-with the same secret. A "Pay online" button then appears next to the UPI QR; bookings paid this
-way are marked paid automatically after the server verifies Razorpay's signature.
-*This module is implemented to Razorpay's published API but could not be tested against a live
-Razorpay account; test it on staging with Razorpay test keys before enabling in production.*
+`https://sjtbengaluru.org/Booking/webhooks/payment` (or `/webhooks/razorpay`) for `payment.captured` and `order.paid`
+with the same webhook secret.
+
+To bring back the old **UPI QR + UTR** form for devotees, set `BOOKING_UPI_MANUAL=true` (Settings › UPI still applies).
+Staff can always **verify** or **record** payments in the admin booking screen regardless.
 
 ## 3. WhatsApp — `.env` + Settings › WhatsApp
 

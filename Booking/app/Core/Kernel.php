@@ -68,10 +68,10 @@ final class Kernel
 
     private function securityHeaders(Response $res, Request $req): void
     {
-        $gateway = Env::get('PAYMENT_GATEWAY') === 'razorpay';
-        $script = "'self'" . ($gateway ? ' https://checkout.razorpay.com' : '');
-        $frame = $gateway ? 'https://api.razorpay.com https://checkout.razorpay.com' : "'none'";
-        $connect = "'self'" . ($gateway ? ' https://lumberjack.razorpay.com https://api.razorpay.com' : '');
+        $csp = Container::onlinePay()->contentSecurityPolicy();
+        $script = "'self'" . ($csp['script'] ? ' ' . implode(' ', $csp['script']) : '');
+        $frame = $csp['frame'] ? implode(' ', $csp['frame']) : "'none'";
+        $connect = "'self'" . ($csp['connect'] ? ' ' . implode(' ', $csp['connect']) : '');
         $res->headers += [
             'Content-Security-Policy' => "default-src 'self'; script-src $script; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src $connect; frame-src $frame; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; object-src 'none'",
             'X-Content-Type-Options' => 'nosniff',

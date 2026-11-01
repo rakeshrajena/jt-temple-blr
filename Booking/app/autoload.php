@@ -9,10 +9,14 @@ declare(strict_types=1);
 
 spl_autoload_register(static function (string $class): void {
     $prefix = 'SJT\\';
-    if (str_starts_with($class, $prefix)) {
-        $file = APP_ROOT . '/app/' . str_replace('\\', '/', substr($class, strlen($prefix))) . '.php';
+    if (!str_starts_with($class, $prefix)) {
+        return;
+    }
+    $rel = str_replace('\\', '/', substr($class, strlen($prefix))) . '.php';
+    foreach ([APP_ROOT . '/app/' . $rel, APP_ROOT . '/online_pay/' . $rel] as $file) {
         if (is_file($file)) {
             require $file;
+            return;
         }
     }
 });

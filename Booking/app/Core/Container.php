@@ -12,6 +12,8 @@ use SJT\Service\BookingForm;
 use SJT\Service\BookingService;
 use SJT\Service\InvoiceRenderer;
 use SJT\Service\Notifier;
+use SJT\OnlinePay\GatewayFactory;
+use SJT\OnlinePay\OnlinePaymentService;
 use SJT\Service\PaymentGateway;
 use SJT\Service\UpiPayment;
 use SJT\Service\WhatsAppClient;
@@ -42,7 +44,12 @@ final class Container
     public static function whatsapp(): WhatsAppClient { return self::once('wa', fn () => new WhatsAppClient()); }
     public static function notifier(): Notifier { return self::once('notifier', fn () => new Notifier(App::db(), self::bookings(), App::settings(), self::whatsapp())); }
     public static function invoices(): InvoiceRenderer { return self::once('invoices', fn () => new InvoiceRenderer(self::bookings(), App::settings(), self::upi())); }
-    public static function gateway(): PaymentGateway { return self::once('gateway', fn () => new PaymentGateway(App::db())); }
+    public static function onlinePay(): OnlinePaymentService
+    {
+        return self::once('onlinePay', fn () => new OnlinePaymentService(App::db(), GatewayFactory::create()));
+    }
+
+    public static function gateway(): PaymentGateway { return self::once('gateway', fn () => new PaymentGateway(self::onlinePay())); }
 
     public static function service(): BookingService
     {

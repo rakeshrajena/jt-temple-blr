@@ -56,16 +56,20 @@ final class PublicController extends Controller
         $b = $this->accessibleBooking($req);
         $data = $this->bookingData($b);
         $upi = Container::upi();
+        $online = Container::onlinePay();
         $data['canPay'] = in_array($b['payment_status'], ['pending', 'failed'], true)
             && in_array($b['booking_status'], ['pending', 'confirmed'], true) && (int) $b['total_paise'] > 0;
-        $data['upiAvailable'] = $upi->available();
+        $data['showUpi'] = $data['canPay'] && $online::upiManualForDevotees() && $upi->available();
+        $data['upiAvailable'] = $data['showUpi'];
         $data['upiMode'] = $upi->mode();
-        $data['upiUri'] = $upi->mode() === 'dynamic' ? $upi->uri($b) : null;
-        $data['qrSvg'] = ($data['canPay'] && $data['upiAvailable'] && $data['upiUri']) ? $upi->qrSvg($data['upiUri']) : null;
-        $data['upiVpa'] = $upi->mode() === 'dynamic' ? $this->cfg()->get('upi_vpa') : null;
+        $data['upiUri'] = $data['showUpi'] && $upi->mode() === 'dynamic' ? $upi->uri($b) : null;
+        $data['qrSvg'] = ($data['showUpi'] && $data['upiUri']) ? $upi->qrSvg($data['upiUri']) : null;
+        $data['upiVpa'] = $data['showUpi'] && $upi->mode() === 'dynamic' ? $this->cfg()->get('upi_vpa') : null;
         $data['instructions'] = $this->cfg()->get('payment_instructions', '');
-        $data['gateway'] = Container::gateway()->enabled() && $data['canPay'];
-        $data['gatewayKey'] = $data['gateway'] ? Container::gateway()->keyId() : null;
+        $data['gateway'] = $online->enabled() && $data['canPay'];
+        $data['gatewayKey'] = $data['gateway'] ? $online->publicKey() : null;
+        $data['checkoutScriptUrl'] = $data['gateway'] ? $online->checkoutScriptUrl() : null;
+        $data['gatewayDriver'] = $online->driverId();
         $data['title'] = 'Pay for booking ' . $b['booking_no'];
         $data['errors'] = Session::get('pay_errors', []);
         $data['oldRef'] = Session::get('pay_ref', '');
@@ -77,6 +81,9 @@ final class PublicController extends Controller
 
     public function submitPayment(Request $req): Response
     {
+        if (!\SJT\OnlinePay\OnlinePaymentService::upiManualForDevotees()) {
+            throw new HttpException(404, 'Manual UPI reference submission is not available. Please pay online.');
+        }
         $b = $this->accessibleBooking($req);
         $this->throttle('pay:' . $b['booking_no'], 10, 3600);
         $this->throttle('pay-ip:' . $req->ip(), 30, 3600);
@@ -107,6 +114,9 @@ final class PublicController extends Controller
     public function qr(Request $req): Response
     {
         $b = $this->accessibleBooking($req);
+        if (!\SJT\OnlinePay\OnlinePaymentService::upiManualForDevotees()) {
+            throw new HttpException(404, 'No payment QR is available for this booking.');
+        }
         $upi = Container::upi();
         if (!$upi->available() || !in_array($b['payment_status'], ['pending', 'failed'], true)) {
             throw new HttpException(404, 'No payment QR is available for this booking.');
@@ -166,16 +176,14 @@ final class PublicController extends Controller
     public function gatewayVerify(Request $req): Response
     {
         $b = $this->accessibleBooking($req);
-        $gw = Container::gateway();
-        $orderId = $req->str('razorpay_order_id');
-        $paymentId = $req->str('razorpay_payment_id');
-        $sig = $req->str('razorpay_signature');
-        $payment = $orderId !== '' ? $gw->paymentForOrder($orderId) : null;
-        if (!$payment || (int) $payment['booking_id'] !== (int) $b['id'] || !$gw->checkoutSignatureValid($orderId, $paymentId, $sig)) {
+        $pay = Container::onlinePay();
+        $verified = $pay->verifyCheckoutResponse($req->post());
+        $payment = $verified ? $pay->paymentForOrder($verified->orderId) : null;
+        if (!$verified || !$payment || (int) $payment['booking_id'] !== (int) $b['id']) {
             Logger::warning('Gateway signature check failed', ['booking' => $b['booking_no']]);
             return Response::json(['error' => 'Payment could not be verified. If money was deducted, it will be reconciled by the temple office.'], 400);
         }
-        Container::service()->markGatewayPaid($payment, $paymentId, 'checkout');
+        Container::service()->markGatewayPaid($payment, $verified->paymentId, 'checkout');
         Session::set('just_paid', $b['booking_no']);
         return Response::json(['redirect' => url('/b/' . $b['booking_no'])]);
     }

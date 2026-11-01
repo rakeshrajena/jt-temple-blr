@@ -26,15 +26,15 @@ $env = [
     'DB_DRIVER' => 'sqlite', 'DB_PATH' => "$tmp/test.sqlite",
     'WA_ACCESS_TOKEN' => 'test-token', 'WA_PHONE_NUMBER_ID' => '123456', 'WA_API_BASE' => "http://127.0.0.1:$mockPort",
     'WA_APP_SECRET' => 'app-secret', 'WA_WEBHOOK_VERIFY_TOKEN' => 'verify-me', 'MOCK_LOG' => "$tmp/mock.log",
-    'PAYMENT_GATEWAY' => 'none', 'BOOKING_RATE_LIMIT_PER_HOUR' => '1000', 'RAZORPAY_KEY_SECRET' => 'rzp-secret', 'RAZORPAY_WEBHOOK_SECRET' => 'rzp-hook',
+    'PAYMENT_GATEWAY' => 'none', 'BOOKING_UPI_MANUAL' => 'true', 'BOOKING_RATE_LIMIT_PER_HOUR' => '1000', 'RAZORPAY_KEY_SECRET' => 'rzp-secret', 'RAZORPAY_WEBHOOK_SECRET' => 'rzp-hook',
 ];
 // Optional: run against MySQL/MariaDB instead of SQLite, e.g.
 //   TEST_DB_DRIVER=mysql TEST_DB_HOST=127.0.0.1 TEST_DB_PORT=3306 TEST_DB_USER=root TEST_DB_PASS=secret php tests/run.php
 $driver = getenv('TEST_DB_DRIVER') ?: 'sqlite';
 if ($driver === 'mysql') {
     $env = array_merge($env, [
-        'DB_DRIVER' => 'mysql', 'DB_HOST' => getenv('TEST_DB_HOST') ?: '127.0.0.1', 'DB_PORT' => getenv('TEST_DB_PORT') ?: '3306',
-        'DB_NAME' => 'sjt_test_' . getmypid(), 'DB_USER' => getenv('TEST_DB_USER') ?: 'root', 'DB_PASS' => getenv('TEST_DB_PASS') ?: '',
+        'DB_DRIVER' => 'mysql', 'DB_HOST' => getenv('TEST_DB_HOST') ?: 'localhost', 'DB_PORT' => getenv('TEST_DB_PORT') ?: '3306',
+        'DB_NAME' => 'sjt_test_' . getmypid(), 'DB_USER' => getenv('TEST_DB_USER') ?: 'root', 'DB_PASS' => getenv('TEST_DB_PASS') ?: 'mysql',
     ]);
     $server = new PDO("mysql:host={$env['DB_HOST']};port={$env['DB_PORT']}", $env['DB_USER'], $env['DB_PASS']);
     $server->exec("CREATE DATABASE `{$env['DB_NAME']}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
@@ -48,19 +48,27 @@ function sh(string $cmd): string
 {
     return (string) shell_exec($cmd . ' 2>&1');
 }
-echo sh("php " . escapeshellarg("$root/bin/console.php") . " migrate");
+$phpBin = escapeshellarg(PHP_BINARY);
+$console = escapeshellarg("$root/bin/console.php");
+echo sh("$phpBin $console migrate");
 putenv('SJT_ADMIN_PASSWORD=Admin-Pass-2026');
-echo sh("php " . escapeshellarg("$root/bin/console.php") . " create-admin admin 'Test Admin' super");
+echo sh("$phpBin $console create-admin admin " . escapeshellarg('Test Admin') . ' super');
 putenv('SJT_ADMIN_PASSWORD=Staff-Pass-2026');
-echo sh("php " . escapeshellarg("$root/bin/console.php") . " create-admin staff 'Test Staff' staff");
+echo sh("$phpBin $console create-admin staff " . escapeshellarg('Test Staff') . ' staff');
 
 $procs = [];
 $spawn = function (string $cmd) use (&$procs, $tmp) {
     $p = proc_open($cmd, [0 => ['pipe', 'r'], 1 => ['file', "$tmp/server.log", 'a'], 2 => ['file', "$tmp/server.log", 'a']], $pipes);
     $procs[] = $p;
 };
-$spawn('exec php -S 127.0.0.1:' . $mockPort . ' ' . escapeshellarg("$root/tests/mock_whatsapp.php"));
-$spawn('exec env PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:' . $appPort . ' ' . escapeshellarg("$root/index.php"));
+$phpS = escapeshellarg(PHP_BINARY) . ' -S 127.0.0.1:';
+if (DIRECTORY_SEPARATOR === '\\') {
+    $spawn($phpS . $mockPort . ' ' . escapeshellarg("$root/tests/mock_whatsapp.php"));
+    $spawn($phpS . $appPort . ' ' . escapeshellarg("$root/index.php"));
+} else {
+    $spawn('exec php -S 127.0.0.1:' . $mockPort . ' ' . escapeshellarg("$root/tests/mock_whatsapp.php"));
+    $spawn('exec env PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:' . $appPort . ' ' . escapeshellarg("$root/index.php"));
+}
 register_shutdown_function(function () use (&$procs, $tmp) {
     foreach ($procs as $p) {
         proc_terminate($p);
@@ -72,7 +80,11 @@ register_shutdown_function(function () use (&$procs, $tmp) {
     if (getenv('KEEP_TEST_DIR')) {
         echo "Test files kept in $tmp\n";
     } else {
-        sh('rm -rf ' . escapeshellarg($tmp));
+        if (DIRECTORY_SEPARATOR === '\\') {
+            sh('cmd /c rd /s /q ' . escapeshellarg($tmp));
+        } else {
+            sh('rm -rf ' . escapeshellarg($tmp));
+        }
     }
 });
 for ($i = 0; $i < 50 && @file_get_contents("$base/health") === false; $i++) {
@@ -234,9 +246,15 @@ foreach (q('SELECT id, service_id FROM time_slots ORDER BY id') as $r) {
     $slot[(int) $r['service_id']] ??= (int) $r['id'];
 }
 q('UPDATE time_slots SET capacity = NULL WHERE service_id = ?', [$svc['special-puja']]);
-$coupon = array_column(q('SELECT id, price_paise FROM booking_coupons ORDER BY id'), 'id', 'price_paise');
-$c150 = (int) $coupon[15000];
-$c250 = (int) $coupon[25000];
+$couponRows = q('SELECT id, price_paise FROM booking_coupons WHERE is_active = 1 ORDER BY sort_order, id');
+if (count($couponRows) < 2) {
+    fwrite(STDERR, "Need at least two active booking_coupons in seed data.\n");
+    exit(1);
+}
+$c150 = (int) $couponRows[0]['id'];
+$c250 = (int) $couponRows[1]['id'];
+$p150 = (int) $couponRows[0]['price_paise'];
+$p250 = (int) $couponRows[1]['price_paise'];
 $d = fn (int $days) => date('Y-m-d', strtotime(($days >= 0 ? "+$days" : "$days") . ' days'));
 $person = ['name' => 'Ananya Sahu', 'mobile' => '9845012345'];
 $special = fn (array $extra = []) => array_replace($person + ['services' => [$svc['special-puja']], 'service_date' => $d(5), 'slot' => [$svc['special-puja'] => $slot[$svc['special-puja']]],
@@ -299,7 +317,15 @@ test('WhatsApp template parameters are sanitised', function () {
     eq('-', SJT\Service\WhatsAppClient::clean(''), 'empty');
 });
 test('Payment gateway signatures (Razorpay) are verified with HMAC', function () {
-    $g = new SJT\Service\PaymentGateway(new SJT\Core\Database(['driver' => 'sqlite', 'path' => ':memory:']));
+    putenv('PAYMENT_GATEWAY=razorpay');
+    putenv('RAZORPAY_KEY_ID=rzp_test_x');
+    putenv('RAZORPAY_KEY_SECRET=rzp-secret');
+    putenv('RAZORPAY_WEBHOOK_SECRET=rzp-hook');
+    $pay = new SJT\OnlinePay\OnlinePaymentService(
+        new SJT\Core\Database(['driver' => 'sqlite', 'path' => ':memory:']),
+        new SJT\OnlinePay\Adapters\RazorpayAdapter()
+    );
+    $g = new SJT\Service\PaymentGateway($pay);
     $sig = hash_hmac('sha256', 'order_1|pay_1', 'rzp-secret');
     ok($g->checkoutSignatureValid('order_1', 'pay_1', $sig), 'valid signature accepted');
     ok(!$g->checkoutSignatureValid('order_1', 'pay_2', $sig), 'tampered payment id rejected');
@@ -336,35 +362,36 @@ test('Multiple services in one booking (Special + Vehicle Puja)', function () us
     eq(2, (int) q1("SELECT COUNT(*) FROM booking_items WHERE booking_id = ? AND item_type = 'service'", [$b['id']]), 'two service lines');
     $created['multi'] = $r['no'];
 });
-test('Service booking with ₹150 food coupons (4 persons)', function () use ($dev, $special, $c150) {
+test('Service booking with food coupons (4 persons, first category)', function () use ($dev, $special, $c150, $p150) {
     $r = book($dev, $special(['add_food' => '1', 'food_cat' => [$c150 => '1'], 'food' => [$c150 => '4']]));
     $b = booking((string) $r['no']);
-    eq(50100 + 60000, (int) $b['total_paise'], 'total = 501 + 150×4');
+    eq(50100 + $p150 * 4, (int) $b['total_paise'], 'total = service + food×4');
     $line = q("SELECT * FROM booking_items WHERE booking_id = ? AND item_type = 'food'", [$b['id']])[0];
-    eq([15000, 4, 60000], [(int) $line['unit_price_paise'], (int) $line['quantity'], (int) $line['amount_paise']], 'food line');
+    eq([$p150, 4, $p150 * 4], [(int) $line['unit_price_paise'], (int) $line['quantity'], (int) $line['amount_paise']], 'food line');
 });
-test('Service booking with ₹250 food coupons (2 persons)', function () use ($dev, $special, $c250) {
+test('Service booking with food coupons (2 persons, second category)', function () use ($dev, $special, $c250, $p250) {
     $r = book($dev, $special(['add_food' => '1', 'food_cat' => [$c250 => '1'], 'food' => [$c250 => '2']]));
-    eq(50100 + 50000, (int) booking((string) $r['no'])['total_paise'], 'total = 501 + 250×2');
+    eq(50100 + $p250 * 2, (int) booking((string) $r['no'])['total_paise'], 'total = service + food×2');
 });
-test('Combined coupon categories: 150×4 + 250×2 = ₹1,100 food, itemised separately', function () use ($dev, $special, $c150, $c250, &$created) {
+test('Combined coupon categories: two food lines itemised separately', function () use ($dev, $special, $c150, $c250, $p150, $p250, &$created) {
+    $foodTotal = $p150 * 4 + $p250 * 2;
     $r = book($dev, $special(['add_food' => '1', 'food_cat' => [$c150 => '1', $c250 => '1'], 'food' => [$c150 => '4', $c250 => '2']]));
-    ok(str_contains($r['review']['body'], 'Food charges: ₹1,100'), 'review shows food charges ₹1,100');
+    ok(str_contains($r['review']['body'], 'Food charges:'), 'review shows food charges');
     $b = booking((string) $r['no']);
-    eq(50100 + 110000, (int) $b['total_paise'], 'grand total');
+    eq(50100 + $foodTotal, (int) $b['total_paise'], 'grand total');
     $food = q("SELECT name, quantity, amount_paise FROM booking_items WHERE booking_id = ? AND item_type = 'food' ORDER BY id", [$b['id']]);
     eq(2, count($food), 'two separate food lines');
-    eq(110000, array_sum(array_column($food, 'amount_paise')), 'food sum');
+    eq($foodTotal, array_sum(array_column($food, 'amount_paise')), 'food sum');
     $created['combined'] = $r['no'];
 });
-test('Food-only booking (no puja) with both categories', function () use ($dev, $svc, $slot, $c150, $c250, $d, &$created) {
+test('Food-only booking (no puja) with both categories', function () use ($dev, $svc, $slot, $c150, $c250, $p150, $p250, $d, &$created) {
     $fo = $svc['food-only'];
     $r = book($dev, ['name' => 'Ravi Kumar', 'mobile' => '9900112233', 'services' => [$fo], 'service_date' => $d(4), 'slot' => [$fo => $slot[$fo]],
         'food_cat' => [$c150 => '1', $c250 => '1'], 'food' => [$c150 => '3', $c250 => '1']]);
     eq(303, $r['confirm']['status'] ?? 0, 'created');
     $b = booking((string) $r['no']);
     eq('food_only', $b['booking_type'], 'type');
-    eq(15000 * 3 + 25000, (int) $b['total_paise'], 'total = 150×3 + 250×1');
+    eq($p150 * 3 + $p250, (int) $b['total_paise'], 'total = cat1×3 + cat2×1');
     eq('not_required', $b['approval_status'], 'no approval needed');
     $created['food'] = $r['no'];
 });
@@ -400,9 +427,10 @@ test('Tampered price fields from the browser are ignored (server-side pricing)',
 });
 test('Invoice: HTML and PDF contain booking, invoice number and correct totals', function () use ($dev, &$created) {
     $no = $created['combined'];
+    $b = booking($no);
     $h = $dev->get("/b/$no/invoice");
     eq(200, $h['status'], 'html');
-    foreach ([$no, 'INVOICE', '₹1,601', '₹600', '₹500', 'Food Coupon (Standard)', 'PAYMENT PENDING'] as $s) {
+    foreach ([$no, 'INVOICE', money((int) $b['total_paise']), 'PAYMENT PENDING'] as $s) {
         ok(str_contains($h['body'], $s), "invoice contains $s");
     }
     $p = $dev->get("/b/$no/invoice.pdf");

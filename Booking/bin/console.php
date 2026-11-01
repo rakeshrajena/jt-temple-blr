@@ -130,7 +130,12 @@ try {
             $ok(!$pending, $pending ? 'pending migrations: ' . implode(', ', array_keys($pending)) : 'migrations up to date');
             $s = App::settings();
             $ok((int) App::db()->value("SELECT COUNT(*) FROM admins WHERE role = 'super' AND is_active = 1") > 0, 'senior administrator account exists');
-            $ok($s->bool('upi_verified') && Container::upi()->available(), 'UPI payment details verified and available');
+            $gw = Container::gateway();
+            if ($gw::upiManualForDevotees()) {
+                $ok($s->bool('upi_verified') && Container::upi()->available(), 'UPI payment details verified and available');
+            } else {
+                $ok($gw->enabled(), 'Razorpay gateway configured (PAYMENT_GATEWAY=razorpay and keys in .env)');
+            }
             $ok(Container::whatsapp()->configured(), 'WhatsApp API credentials present');
             $ok($s->bool('whatsapp_enabled'), 'WhatsApp notifications switched on');
             $ok((bool) $s->adminNumbers(), 'administrator WhatsApp number configured');

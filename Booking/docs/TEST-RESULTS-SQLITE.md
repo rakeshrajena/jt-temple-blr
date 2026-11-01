@@ -1,8 +1,8 @@
 # Automated test results (sqlite)
 
-Run: 2026-10-10 14:44 IST · PHP 8.3.6 · SQLite 3.45.1 · mock WhatsApp Cloud API
+Run: 2026-11-01 15:20 IST · PHP 8.2.27 · SQLite 3.39.2 · mock WhatsApp Cloud API
 
-**60 of 60 tests passed.**
+**58 of 60 tests passed.**
 
 | # | Test | Result |
 |---|------|--------|
@@ -16,9 +16,9 @@ Run: 2026-10-10 14:44 IST · PHP 8.3.6 · SQLite 3.45.1 · mock WhatsApp Cloud A
 | 8 | Payment gateway signatures (Razorpay) are verified with HMAC | PASS |
 | 9 | Individual service booking (Special Puja) — booking number, totals, pending status | PASS |
 | 10 | Multiple services in one booking (Special + Vehicle Puja) | PASS |
-| 11 | Service booking with ₹150 food coupons (4 persons) | PASS |
-| 12 | Service booking with ₹250 food coupons (2 persons) | PASS |
-| 13 | Combined coupon categories: 150×4 + 250×2 = ₹1,100 food, itemised separately | PASS |
+| 11 | Service booking with food coupons (4 persons, first category) | PASS |
+| 12 | Service booking with food coupons (2 persons, second category) | PASS |
+| 13 | Combined coupon categories: two food lines itemised separately | PASS |
 | 14 | Food-only booking (no puja) with both categories | PASS |
 | 15 | Food-only booking requires a coupon category and persons | PASS |
 | 16 | Food-only cannot be combined with another service | PASS |
@@ -37,7 +37,7 @@ Run: 2026-10-10 14:44 IST · PHP 8.3.6 · SQLite 3.45.1 · mock WhatsApp Cloud A
 | 29 | Invalid and reused UPI references are rejected | PASS |
 | 30 | Admin verifies payment → paid and confirmed, with audit trail | PASS |
 | 31 | Amount mismatch needs an explanatory note | PASS |
-| 32 | Admin rejects a payment → devotee can resubmit | PASS |
+| 32 | Admin rejects a payment → devotee can resubmit | FAIL: food-only confirmed after verification — expected 'confirmed', got 'pending' |
 | 33 | Ceremony needing approval: paid ≠ confirmed until approved | PASS |
 | 34 | Reschedule moves date and slot, checks capacity, is audited | PASS |
 | 35 | Cancel then refund a paid booking | PASS |
@@ -64,5 +64,5 @@ Run: 2026-10-10 14:44 IST · PHP 8.3.6 · SQLite 3.45.1 · mock WhatsApp Cloud A
 | 56 | Admin changes prices; new bookings use them, old bookings keep theirs | PASS |
 | 57 | Admin changes food coupon price | PASS |
 | 58 | Disabled services disappear from booking and are refused | PASS |
-| 59 | UPI QR only appears after payment details are verified | PASS |
+| 59 | UPI QR only appears after payment details are verified | FAIL: fallback message before verification |
 | 60 | Data persists: bookings, items, payments and audit are in the database | PASS |

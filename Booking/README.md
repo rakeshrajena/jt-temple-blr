@@ -7,7 +7,7 @@ This folder **is** the production booking application (`app/`, `assets/`, `stora
 | [`../bookingPreview.html`](../bookingPreview.html) | Design / UX preview for stakeholders; jump-bar between screens; WhatsApp opens via `wa.me` links |
 | **`booking/`** (this folder) | PHP 8.1+ app: persistence, pricing, payments, admin, PDF invoices, WhatsApp Cloud API |
 
-Full feature list: [`docs/SYSTEM-OVERVIEW.md`](docs/SYSTEM-OVERVIEW.md). Pre-launch checklist: [`docs/TEMPLE-ACTION-ITEMS.md`](docs/TEMPLE-ACTION-ITEMS.md). Hosting: [`docs/DEPLOYMENT-CPANEL.md`](docs/DEPLOYMENT-CPANEL.md).
+Full feature list: [`docs/SYSTEM-OVERVIEW.md`](docs/SYSTEM-OVERVIEW.md). Online payment gateways (adapter pattern): [`online_pay/README.md`](online_pay/README.md). Pre-launch checklist: [`docs/TEMPLE-ACTION-ITEMS.md`](docs/TEMPLE-ACTION-ITEMS.md). Hosting: [`docs/DEPLOYMENT-CPANEL.md`](docs/DEPLOYMENT-CPANEL.md).
 
 **Step-by-step booking + ERP (`php/`) integration plan (roles, cancel, payments, phased tests):** [`ERP-INTEGRATION-PLAN.md`](ERP-INTEGRATION-PLAN.md).
 
@@ -38,8 +38,8 @@ flowchart TD
     R[POST /book/review Server validate + quote]
     RV[GET/POST Review step 4]
     C[POST /book/confirm Create booking]
-    P[GET /b/no/pay UPI QR + optional Razorpay]
-    SP[POST /b/no/payment Submit UTR]
+    P[GET /b/no/pay Razorpay checkout]
+    SP[POST /b/no/payment Submit UTR if BOOKING_UPI_MANUAL]
     S[GET /b/no Status + invoice links]
     L[POST /lookup Booking no + mobile]
   end
@@ -65,7 +65,7 @@ flowchart TD
 
 ## Payment & confirmation flow
 
-Preview uses three payment labels (`pending` → `awaiting` → `paid`). The live app uses **`awaiting_verification`**, separate **approval** status, and never marks paid from UTR alone.
+By default devotees pay via **Razorpay** only (`PAYMENT_GATEWAY=razorpay`, `BOOKING_UPI_MANUAL=false`). Optional UPI QR + UTR uses **`awaiting_verification`**; Razorpay marks **`paid`** after signature verification. Staff can still verify or record payments in admin.
 
 ```mermaid
 flowchart LR

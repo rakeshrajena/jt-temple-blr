@@ -35,6 +35,7 @@ $r->get('/health', [P::class, 'health']);
 // ---- Webhooks (authenticated by signature, not CSRF)
 $r->get('/webhooks/whatsapp', [W::class, 'whatsappVerify']);
 $r->post('/webhooks/whatsapp', [W::class, 'whatsapp'], ['csrf' => false]);
+$r->post('/webhooks/payment', [W::class, 'payment'], ['csrf' => false]);
 $r->post('/webhooks/razorpay', [W::class, 'razorpay'], ['csrf' => false]);
 
 // ---- Administrator

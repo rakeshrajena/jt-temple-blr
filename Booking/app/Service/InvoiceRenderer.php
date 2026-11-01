@@ -19,7 +19,8 @@ final class InvoiceRenderer
         $id = (int) $b['id'];
         $verified = array_values(array_filter($this->bookings->payments($id), fn ($p) => in_array($p['status'], ['verified', 'refunded'], true)));
         $qr = null;
-        if (in_array($b['payment_status'], ['pending', 'failed'], true) && in_array($b['booking_status'], ['pending', 'confirmed'], true) && $this->upi->available()) {
+        if (in_array($b['payment_status'], ['pending', 'failed'], true) && in_array($b['booking_status'], ['pending', 'confirmed'], true)
+            && \SJT\OnlinePay\OnlinePaymentService::upiManualForDevotees() && $this->upi->available()) {
             $png = $this->upi->bookingQrPng($b);
             $qr = $png ? 'data:image/png;base64,' . base64_encode($png) : null;
         }
