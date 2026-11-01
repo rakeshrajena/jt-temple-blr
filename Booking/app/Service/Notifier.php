@@ -172,8 +172,21 @@ final class Notifier
             if (!$b) {
                 $res = ['ok' => false, 'id' => null, 'error' => 'Booking not found for this email.', 'retryable' => false];
             } else {
-                $err = $this->mailer->sendPayload($b, $n['recipient'], $payload);
-                $res = ['ok' => $err === null, 'id' => null, 'error' => $err, 'retryable' => $err !== null && str_contains((string) $err, 'mail server')];
+                try {
+                    $err = $this->mailer->sendPayload($b, $n['recipient'], $payload);
+                    $res = [
+                        'ok' => $err === null,
+                        'id' => null,
+                        'error' => $err,
+                        'retryable' => $err !== null && (
+                            str_contains((string) $err, 'mail server')
+                            || str_contains((string) $err, 'Could not reach')
+                        ),
+                    ];
+                } catch (\Throwable $e) {
+                    Logger::error('Booking email send crashed', ['notification' => $id, 'error' => $e->getMessage()]);
+                    $res = ['ok' => false, 'id' => null, 'error' => $e->getMessage(), 'retryable' => true];
+                }
             }
         } elseif (!$n['template']) {
             return false;

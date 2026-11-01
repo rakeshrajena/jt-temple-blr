@@ -54,7 +54,7 @@ $amount = money((int) $b['total_paise']);
     <div class="card inset stack pay-gateway">
       <h2 class="h3">Pay online</h2>
       <p>Pay securely with UPI, card or net banking. Your booking is updated automatically once the payment succeeds.</p>
-      <button type="button" class="btn btn-primary btn-lg" data-gateway-pay="<?= e(url('/b/' . $no . '/gateway/order')) ?>" data-gateway-verify="<?= e(url('/b/' . $no . '/gateway/verify')) ?>" data-gateway-sync="<?= e(url('/b/' . $no . '/gateway/sync')) ?>" data-csrf="<?= e(csrf_token()) ?>">Pay <?= e($amount) ?> now</button>
+      <button type="button" class="btn btn-primary btn-lg" data-busy="Opening secure payment" data-gateway-pay="<?= e(url('/b/' . $no . '/gateway/order')) ?>" data-gateway-verify="<?= e(url('/b/' . $no . '/gateway/verify')) ?>" data-gateway-sync="<?= e(url('/b/' . $no . '/gateway/sync')) ?>" data-csrf="<?= e(csrf_token()) ?>">Pay <?= e($amount) ?> now</button>
       <?php if (!empty($gatewaySyncPending)): ?>
       <p class="hint">If you already paid and see an error from the payment window, use the button below — we will check with the bank and update your booking.</p>
       <button type="button" class="btn btn-secondary" data-gateway-sync-only="<?= e(url('/b/' . $no . '/gateway/sync')) ?>" data-csrf="<?= e(csrf_token()) ?>">I paid — update my booking</button>
@@ -113,7 +113,7 @@ $amount = money((int) $b['total_paise']);
         <input id="payer_note" name="payer_note" maxlength="255">
       </div>
       <p class="hint">Submitting the reference does not confirm the booking by itself. The temple office checks every payment against its bank account.</p>
-      <button class="btn btn-primary btn-lg" type="submit" data-busy-text="Submitting…">Submit payment reference</button>
+      <button class="btn btn-primary btn-lg" type="submit" data-busy="Submitting your payment reference">Submit payment reference</button>
     </form>
     <?php endif; ?>
 

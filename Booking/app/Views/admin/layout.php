@@ -25,6 +25,7 @@ $isActive = fn (string $p) => $p === '/admin' ? $path === '/admin' : str_starts_
 <title><?= e(($title ?? 'Admin') . ' · Temple booking admin') ?></title>
 <link rel="icon" href="<?= e(asset('img/logo.svg')) ?>" type="image/svg+xml">
 <link rel="stylesheet" href="<?= e(asset('css/admin.css')) ?>">
+<script src="<?= e(asset('js/busy.js')) ?>" defer></script>
 <script src="<?= e(asset('js/app.js')) ?>" defer></script>
 </head>
 <body class="admin">
@@ -58,5 +59,6 @@ $isActive = fn (string $p) => $p === '/admin' ? $path === '/admin' : str_starts_
 <?php endforeach; ?>
 <?= $content ?>
 </main>
+<?php booking_busy_overlay(); ?>
 </body>
 </html>

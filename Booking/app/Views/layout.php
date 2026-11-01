@@ -13,6 +13,7 @@ $phone = setting('temple_phone');
 <meta name="robots" content="<?= str_starts_with(\SJT\Core\App::request()->path, '/b/') ? 'noindex, nofollow' : 'index, follow' ?>">
 <link rel="icon" href="<?= e(asset('img/logo.svg')) ?>" type="image/svg+xml">
 <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
+<script src="<?= e(asset('js/busy.js')) ?>" defer></script>
 <script src="<?= e(asset('js/app.js')) ?>" defer></script>
 </head>
 <body>
@@ -45,5 +46,6 @@ $phone = setting('temple_phone');
     <p><a href="<?= e(setting('temple_website', 'https://sjtbengaluru.org')) ?>">Temple website</a></p>
   </div>
 </footer>
+<?php booking_busy_overlay(); ?>
 </body>
 </html>

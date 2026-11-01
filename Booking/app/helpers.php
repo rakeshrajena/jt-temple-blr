@@ -156,3 +156,14 @@ function badge(string $kind, ?string $status): string
     $label = in_array($kind, ['booking', 'payment', 'approval'], true) ? status_label($kind, $st) : ucfirst(str_replace('_', ' ', $st));
     return '<span class="badge badge-' . $tone . '">' . e($label) . '</span>';
 }
+
+/** ERP-style full-screen loader (see assets/js/busy.js). */
+function booking_busy_overlay(): void
+{
+    echo '<div id="appBusy" class="busy-screen" hidden>'
+        . '<div class="busy-card" role="status" aria-live="polite">'
+        . '<img src="' . e(asset('img/logo.svg')) . '" alt="" class="busy-logo">'
+        . '<div class="busy-spin" aria-hidden="true"></div>'
+        . '<p id="appBusyMessage">Please wait…</p>'
+        . '</div></div>';
+}

@@ -382,9 +382,16 @@
   }
 
   // ---------------------------------------------------------------- optional online gateway (Razorpay)
+  function busyShow(text) {
+    if (window.jtBusy) window.jtBusy(text || 'Please wait');
+  }
+  function busyHide() {
+    if (window.jtBusyDone) window.jtBusyDone();
+  }
   function gatewaySyncFromEl(el, onOk, onFail) {
     var syncUrl = el.getAttribute('data-gateway-sync') || el.getAttribute('data-gateway-sync-only');
     if (!syncUrl) return onFail('Could not check payment status.');
+    busyShow('Confirming your payment');
     var body = new URLSearchParams({ _csrf: el.getAttribute('data-csrf') });
     fetch(syncUrl, { method: 'POST', body: body, credentials: 'same-origin' })
       .then(function (r) { return r.json().catch(function () { return { error: 'Server error while checking payment.' }; }); })
@@ -392,6 +399,7 @@
       .catch(function () { onFail('Network error while checking payment. Please try again.'); });
   }
   function gatewayVerifyFromEl(gw, resp, fail) {
+    busyShow('Confirming your payment');
     var v = new URLSearchParams(resp);
     v.append('_csrf', gw.getAttribute('data-csrf'));
     fetch(gw.getAttribute('data-gateway-verify'), { method: 'POST', body: v, credentials: 'same-origin' })
@@ -410,18 +418,24 @@
   if (gw) {
     gw.addEventListener('click', function () {
       var err = $('[data-gateway-error]');
-      function fail(m) { if (err) { err.textContent = m; err.hidden = false; } gw.disabled = false; }
+      function fail(m) {
+        busyHide();
+        if (err) { err.textContent = m; err.hidden = false; }
+        gw.disabled = false;
+      }
       gw.disabled = true;
       if (err) err.hidden = true;
+      busyShow(gw.getAttribute('data-busy') || 'Opening secure payment');
       var body = new URLSearchParams({ _csrf: gw.getAttribute('data-csrf') });
       fetch(gw.getAttribute('data-gateway-pay'), { method: 'POST', body: body, credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
         .then(function (o) {
           if (!o || o.error || !window.Razorpay) return fail((o && o.error) || 'Online payment is unavailable. Please try again or contact the temple office.');
+          busyHide();
           var rz = new window.Razorpay({
             key: o.key, order_id: o.order_id, amount: o.amount, currency: o.currency, name: o.name, description: o.description, prefill: o.prefill,
             handler: function (resp) { gatewayVerifyFromEl(gw, resp, fail); },
-            modal: { ondismiss: function () { gw.disabled = false; } }
+            modal: { ondismiss: function () { busyHide(); gw.disabled = false; } }
           });
           rz.open();
         }).catch(function () { fail('Online payment is unavailable. Please try again or contact the temple office.'); });
@@ -432,7 +446,9 @@
     gwSync.addEventListener('click', function () {
       var err = $('[data-gateway-error]');
       gwSync.disabled = true;
+      busyShow('Checking payment status');
       gatewaySyncFromEl(gwSync, function (url) { window.location = url; }, function (m) {
+        busyHide();
         if (err) { err.textContent = m; err.hidden = false; }
         gwSync.disabled = false;
       });

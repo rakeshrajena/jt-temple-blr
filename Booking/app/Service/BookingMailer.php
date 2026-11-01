@@ -58,12 +58,21 @@ final class BookingMailer
             }
         }
         $temple = trim($this->settings->get('temple_name', 'Shree Jagannatha Temple Bengaluru'));
-        $err = SmtpMail::send($smtp, $to, $subject, $body, $temple, $attachment);
+        // Booking-local SMTP (plain + optional PDF). ERP send_smtp_message() needs ERP db helpers and nested MIME some hosts reject.
+        $err = SmtpMail::send($smtp, $to, $subject, $body, $temple, $attachment, null);
         if ($err === null || $attachment === null) {
             return $err;
         }
         Logger::warning('Booking email with PDF refused; retrying without attachment', ['booking' => $b['booking_no'], 'error' => $err]);
-        return SmtpMail::send($smtp, $to, $subject, $body . "\r\n\r\n(Invoice PDF could not be attached; use the booking link above to download it.)", $temple, null);
+        return SmtpMail::send(
+            $smtp,
+            $to,
+            $subject,
+            $body . "\r\n\r\n(Invoice PDF could not be attached; use the booking link above to download it.)",
+            $temple,
+            null,
+            null,
+        );
     }
 
     public function bookingReceivedBody(array $b, array $ctx): string

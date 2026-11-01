@@ -51,7 +51,7 @@ $items = array_map(fn ($i) => $i, $q['items']);
     <?php if (!empty($errors['agree'])): ?><p class="field-error" role="alert"><?= e($errors['agree']) ?></p><?php endif; ?>
     <div class="step-nav">
       <a class="btn btn-secondary" href="<?= e(url('/book', ['edit' => 1])) ?>">Edit booking</a>
-      <button type="submit" class="btn btn-primary btn-lg" data-busy-text="Submitting…">Submit booking</button>
+      <button type="submit" class="btn btn-primary btn-lg" data-busy="Submitting your booking">Submit booking</button>
     </div>
   </form>
 </section>
