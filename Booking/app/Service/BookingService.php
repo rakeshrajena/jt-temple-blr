@@ -25,6 +25,7 @@ final class BookingService
         private Settings $settings,
         private Audit $audit,
         private Notifier $notifier,
+        private ErpJournalSync $erpJournal,
     ) {
     }
 
@@ -174,12 +175,14 @@ final class BookingService
 
     public function approve(array $b, array $actor, string $note = ''): array
     {
-        return $this->change($b, $actor, 'booking.approved', function (array $cur) {
+        $fresh = $this->change($b, $actor, 'booking.approved', function (array $cur) {
             if ($cur['approval_status'] !== 'pending' || !in_array($cur['booking_status'], ['pending', 'confirmed'], true)) {
                 throw new ValidationException(['action' => 'This booking is not awaiting approval.']);
             }
             return ['approval_status' => 'approved'];
         }, ['note' => $note], fn ($n) => 'Your booking has been approved by the temple office.' . ($n['booking_status'] === 'confirmed' ? ' It is now confirmed.' : ' It will be confirmed once payment is verified.') . ($note ? ' Note: ' . $note : ''));
+        $this->erpJournal->syncIfPaidAndConfirmed($fresh, $actor);
+        return $this->bookings->find((int) $b['id']);
     }
 
     public function reject(array $b, array $actor, string $reason): array
@@ -200,11 +203,31 @@ final class BookingService
         if (trim($reason) === '') {
             throw new ValidationException(['reason' => 'Please enter a reason for cancelling.']);
         }
+        if (!in_array($b['booking_status'], ['pending', 'confirmed'], true)) {
+            throw new ValidationException(['action' => 'This booking is already closed.']);
+        }
+        $paid = ($b['payment_status'] ?? '') === 'paid' && (int) ($b['total_paise'] ?? 0) > 0;
+        if ($paid && $this->erpJournal->tablesReady()) {
+            $result = $this->erpJournal->requestPaidCancellation($b, $actor, $reason);
+            if ($result['error']) {
+                throw new ValidationException(['reason' => $result['error']]);
+            }
+            if ($result['awaiting_approval']) {
+                $this->audit->log($actor, 'booking', $b['booking_no'], (int) $b['id'], 'booking.cancel_requested', ['reason' => $reason]);
+                $fresh = $this->bookings->find((int) $b['id']);
+                $this->notifier->statusUpdate(
+                    $fresh,
+                    'We have received your cancellation request. Accounts will review it (same as receipt cancellation in the temple ERP). Your booking stays confirmed until approval. Reason: ' . $reason,
+                    'Cancellation submitted for approval (' . $b['booking_no'] . ')',
+                );
+                return $fresh;
+            }
+        }
         return $this->change($b, $actor, 'booking.cancelled', function (array $cur) {
             if (!in_array($cur['booking_status'], ['pending', 'confirmed'], true)) {
                 throw new ValidationException(['action' => 'This booking is already closed.']);
             }
-            return ['booking_status' => 'cancelled'];
+            return ['booking_status' => 'cancelled', 'cancellation_status' => null];
         }, ['reason' => $reason], fn ($n) => 'Your booking has been cancelled. Reason: ' . $reason . ($n['payment_status'] === 'paid' ? ' The temple office will contact you about the refund.' : ''));
     }
 
@@ -325,7 +348,14 @@ final class BookingService
         });
         $fresh = $this->bookings->find((int) $b['id']);
         $this->notifier->statusUpdate($fresh, BookingDevoteeCopy::paymentReceivedCore($fresh, $amount, false, $ref));
-        return $fresh;
+        $donationId = $this->erpJournal->syncIfPaidAndConfirmed($fresh, $actor);
+        if ($donationId !== null) {
+            $this->audit->log($actor, 'booking', $fresh['booking_no'], (int) $fresh['id'], 'erp.journal_posted', [
+                'donation_id' => $donationId,
+                'source' => 'manual_payment_verify',
+            ]);
+        }
+        return $this->bookings->find((int) $b['id']);
     }
 
     /**
@@ -358,6 +388,8 @@ final class BookingService
         $fresh = $this->bookings->find($bookingId);
         if ($changed && $fresh['payment_status'] === 'paid') {
             $this->notifier->statusUpdate($fresh, BookingDevoteeCopy::paymentReceivedCore($fresh, (int) $fresh['total_paise'], true));
+            $this->erpJournal->syncIfPaidAndConfirmed($fresh, null);
+            $fresh = $this->bookings->find($bookingId);
         } elseif ($changed && $fresh['payment_status'] === 'awaiting_verification') {
             $this->notifier->statusUpdate($fresh, 'We received your online payment, but the amount paid does not match the amount due. The temple office will review it and contact you if needed.');
         }

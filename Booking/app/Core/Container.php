@@ -11,6 +11,7 @@ use SJT\Service\Availability;
 use SJT\Service\BookingForm;
 use SJT\Service\BookingMailer;
 use SJT\Service\BookingService;
+use SJT\Service\ErpJournalSync;
 use SJT\Service\InvoiceRenderer;
 use SJT\Service\Notifier;
 use SJT\OnlinePay\GatewayFactory;
@@ -53,10 +54,22 @@ final class Container
 
     public static function gateway(): PaymentGateway { return self::once('gateway', fn () => new PaymentGateway(self::onlinePay())); }
 
+    public static function erpJournal(): ErpJournalSync
+    {
+        return self::once('erpJournal', fn () => new ErpJournalSync(App::db(), self::bookings()));
+    }
+
     public static function service(): BookingService
     {
         return self::once('service', fn () => new BookingService(
-            App::db(), self::bookings(), self::catalog(), self::availability(), App::settings(), self::audit(), self::notifier()
+            App::db(),
+            self::bookings(),
+            self::catalog(),
+            self::availability(),
+            App::settings(),
+            self::audit(),
+            self::notifier(),
+            self::erpJournal(),
         ));
     }
 }

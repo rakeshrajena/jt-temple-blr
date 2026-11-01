@@ -2022,6 +2022,12 @@ function action_decide_approval(int $id): void
         if ($row['subject_type'] === 'receipt' && $decision === 'approve') {
             apply_receipt_cancellation((int) $row['subject_id']);
         }
+        if ($row['subject_type'] === 'receipt' && in_array($decision, ['send_back', 'reject'], true)) {
+            $rc = db_one('SELECT donation_id FROM receipt_cancellations WHERE id = ?', [(int) $row['subject_id']]);
+            if ($rc !== null && function_exists('booking_erp_after_receipt_cancel_denied')) {
+                booking_erp_after_receipt_cancel_denied((int) $rc['donation_id']);
+            }
+        }
         if ($row['subject_type'] === 'opening' && $decision === 'approve') {
             db_exec(
                 'UPDATE opening_balances

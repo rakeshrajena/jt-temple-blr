@@ -31,6 +31,11 @@ $actionUrl = url('/admin/bookings/' . $b['booking_no'] . '/action');
   <div><span class="muted small">Approval</span><?= badge('approval', $b['approval_status']) ?></div>
   <div><span class="muted small">Total</span><strong><?= e(money((int) $b['total_paise'])) ?></strong></div>
   <?php if ($b['payment_ref']): ?><div><span class="muted small">Payment ref</span><strong class="mono"><?= e($b['payment_ref']) ?></strong></div><?php endif; ?>
+  <?php if (!empty($b['erp_donation_id'])): ?>
+    <?php $erpRoot = class_exists(\SJT\Service\ErpStaffSession::class) ? \SJT\Service\ErpStaffSession::erpAppBasePath() : ''; ?>
+    <div><span class="muted small">ERP ledger</span><?php if ($erpRoot !== ''): ?><a href="<?= e($erpRoot . '/ledger') ?>" target="_blank" rel="noopener">Posted (donation #<?= (int) $b['erp_donation_id'] ?>) ↗</a><?php else: ?>Donation #<?= (int) $b['erp_donation_id'] ?><?php endif; ?></div>
+  <?php endif; ?>
+  <?php if (($b['cancellation_status'] ?? '') === 'awaiting_approval'): ?><div><span class="muted small">Cancellation</span><span class="badge badge-warn">Awaiting ERP approval</span></div><?php endif; ?>
 </div>
 
 <div class="cols">
@@ -150,13 +155,17 @@ $actionUrl = url('/admin/bookings/' . $b['booking_no'] . '/action');
     </details>
     <?php endif; ?>
 
+    <?php if (($b['cancellation_status'] ?? '') !== 'awaiting_approval'): ?>
     <?= $act('cancel', 'Cancel booking', 'danger') ?>
-      <form method="post" action="<?= e($actionUrl) ?>" class="form" data-confirm="Cancel this booking? The devotee will be notified.">
+      <form method="post" action="<?= e($actionUrl) ?>" class="form" data-confirm="<?= $pay === 'paid' && (int) $b['total_paise'] > 0 ? 'Submit cancellation for ERP accounts approval? The booking stays confirmed until a Treasurer or Admin approves the receipt cancellation.' : 'Cancel this booking? The devotee will be notified.' ?>">
         <?= $hidden('cancel') ?>
         <label>Reason (sent to the devotee) <input name="reason" required maxlength="255"></label><?= $err('reason') ?>
-        <button class="btn btn-danger" type="submit">Cancel booking</button>
+        <button class="btn btn-danger" type="submit"><?= $pay === 'paid' && (int) $b['total_paise'] > 0 ? 'Submit cancellation for approval' : 'Cancel booking' ?></button>
       </form>
     </details>
+    <?php else: ?>
+    <p class="muted small">Cancellation is waiting in Temple ERP → Approvals (receipt cancellation). The booking stays confirmed until it is approved.</p>
+    <?php endif; ?>
   <?php endif; ?>
 
   <?php if ($pay === 'paid' && in_array($b['booking_status'], ['cancelled', 'rejected'], true)): ?>

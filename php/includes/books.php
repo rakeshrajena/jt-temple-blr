@@ -116,6 +116,8 @@ function donation_movement(array $row): ?array
     $couponNote = trim((string) ($row['notes'] ?? ''));
     if (coupon_code_is_valid($couponNote)) {
         $particulars .= ' · ' . $couponNote;
+    } elseif ($couponNote !== '' && str_contains($couponNote, 'Online booking')) {
+        $particulars .= ' · ' . $couponNote;
     }
     return book_movement(
         (string) $row['donation_date'],
@@ -509,6 +511,8 @@ function donation_ledger_line(array $row): ?array
     }
     $couponNote = trim((string) ($row['notes'] ?? ''));
     if (coupon_code_is_valid($couponNote)) {
+        $particulars .= ' · ' . $couponNote;
+    } elseif ($couponNote !== '' && str_contains($couponNote, 'Online booking')) {
         $particulars .= ' · ' . $couponNote;
     }
     return [

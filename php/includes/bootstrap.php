@@ -15,6 +15,7 @@ require APP_ROOT . '/includes/staff_session.php';
 require APP_ROOT . '/includes/booking_link.php';
 require APP_ROOT . '/includes/booking_settings.php';
 require APP_ROOT . '/includes/booking_catalog.php';
+require APP_ROOT . '/includes/booking_ledger_sync.php';
 require APP_ROOT . '/includes/seed.php';
 require APP_ROOT . '/includes/install_check.php';
 require APP_ROOT . '/includes/reports.php';

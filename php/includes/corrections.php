@@ -271,6 +271,9 @@ function apply_receipt_cancellation(int $cancellationId): void
         throw new RuntimeException('That receipt cancellation was not found.');
     }
     db_exec('UPDATE donations SET receipt_cancelled = 1 WHERE id = ?', [(int) $row['donation_id']]);
+    if (function_exists('booking_erp_after_receipt_cancelled')) {
+        booking_erp_after_receipt_cancelled((int) $row['donation_id']);
+    }
 }
 
 /** @return list<array<string, mixed>> */
