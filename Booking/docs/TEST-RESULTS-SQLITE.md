@@ -1,8 +1,8 @@
 # Automated test results (sqlite)
 
-Run: 2026-11-01 16:31 IST · PHP 8.2.27 · SQLite 3.39.2 · mock WhatsApp Cloud API
+Run: 2026-11-01 18:24 IST · PHP 8.2.27 · SQLite 3.39.2 · mock WhatsApp Cloud API
 
-**59 of 61 tests passed.**
+**60 of 61 tests passed.**
 
 | # | Test | Result |
 |---|------|--------|
@@ -38,7 +38,7 @@ Run: 2026-11-01 16:31 IST · PHP 8.2.27 · SQLite 3.39.2 · mock WhatsApp Cloud 
 | 30 | Invalid and reused UPI references are rejected | PASS |
 | 31 | Admin verifies payment → paid and confirmed, with audit trail | PASS |
 | 32 | Amount mismatch needs an explanatory note | PASS |
-| 33 | Admin rejects a payment → devotee can resubmit | FAIL: food-only confirmed after verification — expected 'confirmed', got 'pending' |
+| 33 | Admin rejects a payment → devotee can resubmit | PASS |
 | 34 | Ceremony needing approval: paid ≠ confirmed until approved | PASS |
 | 35 | Reschedule moves date and slot, checks capacity, is audited | PASS |
 | 36 | Cancel then refund a paid booking | PASS |

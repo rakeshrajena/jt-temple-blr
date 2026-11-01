@@ -582,7 +582,9 @@ test('Admin rejects a payment → devotee can resubmit', function () use ($dev, 
     $t = $dev->csrf("/b/$no/pay");
     $dev->post("/b/$no/payment", ['_csrf' => $t, 'reference' => '111122224444']);
     eq('awaiting_verification', booking($no)['payment_status'], 'resubmitted');
-    adminAction($admin, $no, 'verify_payment', ['payment_id' => (int) q1("SELECT MAX(id) FROM payments WHERE reference = '111122224444'"), 'reference' => '111122224444', 'amount' => '700']);
+    $due = (int) booking($no)['total_paise'];
+    $amt = number_format($due / 100, $due % 100 === 0 ? 0 : 2, '.', '');
+    adminAction($admin, $no, 'verify_payment', ['payment_id' => (int) q1("SELECT MAX(id) FROM payments WHERE reference = '111122224444'"), 'reference' => '111122224444', 'amount' => $amt]);
     eq('confirmed', booking($no)['booking_status'], 'food-only confirmed after verification');
 });
 test('Ceremony needing approval: paid ≠ confirmed until approved', function () use ($dev, $admin, $svc, $slot, $d) {
@@ -846,8 +848,9 @@ test('Disabled services disappear from booking and are refused', function () use
     eq(422, book($dev, $f, false)['review']['status'], 'refused');
     q('UPDATE services SET is_active = 1 WHERE id = ?', [$svc['vehicle-puja']]);
 });
-test('UPI QR only appears after payment details are verified', function () use ($admin, $dev, &$created) {
-    $no = $created['combined'];
+test('UPI QR only appears after payment details are verified', function () use ($admin, $dev, $special, &$created) {
+    $r = book($dev, $special());
+    $no = (string) $r['no'];
     setSetting('upi_verified', '0');
     ok(str_contains($dev->get("/b/$no/pay")['body'], 'Online payment is not available yet'), 'fallback when UPI not verified and no gateway');
     $t = $admin->csrf('/admin/settings');
