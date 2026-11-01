@@ -32,9 +32,20 @@ python/receipts/*
 !python/uploads/.gitkeep
 !python/receipts/.gitkeep
 
-# Booking app (booking/) — secrets and runtime data
+# Booking app — secrets and runtime data (match Booking/ and booking/ for case-sensitive git)
+Booking/.env
+Booking/.env.*
+!Booking/.env.example
 booking/.env
 booking/.env.*
+!booking/.env.example
+Booking/storage/*.sqlite*
+Booking/storage/logs/*
+Booking/storage/sessions/*
+Booking/storage/cache/*
+Booking/storage/uploads/*
+Booking/storage/backups/*
+Booking/storage/install/*
 booking/storage/*.sqlite*
 booking/storage/logs/*
 booking/storage/sessions/*
@@ -42,12 +53,35 @@ booking/storage/cache/*
 booking/storage/uploads/*
 booking/storage/backups/*
 booking/storage/install/*
+!Booking/storage/**/.htaccess
+!Booking/storage/**/.gitignore
 !booking/storage/**/.htaccess
 !booking/storage/**/.gitignore
 
-# Local secrets
+# Temple ERP (php/) — local config with DB/SMTP secrets
+php/.env
+php/.env.*
+!php/env.example
+
+# Local secrets (any directory)
 .env
 .env.*
+!.env.example
+!**/.env.example
+!**/env.example
+
+# Credentials / keys (never commit)
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+*credentials*.json
+secrets.json
+**/id_rsa
+**/id_rsa.*
+**/.mysql_password
+sjt-booking-release.zip
 
 # OS and editor files
 Thumbs.db
