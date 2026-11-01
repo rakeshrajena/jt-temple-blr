@@ -16,7 +16,7 @@ final class Session
         if (ErpStaffSession::enabled()) {
             ErpStaffSession::applyBeforeStart($https);
         } else {
-            $dir = APP_ROOT . '/storage/sessions';
+            $dir = App::root() . '/storage/sessions';
             if (is_dir($dir) && is_writable($dir)) {
                 session_save_path($dir);
             }

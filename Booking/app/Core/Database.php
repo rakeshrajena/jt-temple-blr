@@ -40,7 +40,7 @@ final class Database
         $driver = Env::get('DB_DRIVER', 'mysql');
         $path = Env::get('DB_PATH', 'storage/database.sqlite');
         if ($driver === 'sqlite' && !str_starts_with($path, '/') && !preg_match('#^[A-Za-z]:[/\\\\]#', $path)) {
-            $path = APP_ROOT . '/' . $path;
+            $path = App::root() . '/' . $path;
         }
         return new self([
             'driver' => $driver,

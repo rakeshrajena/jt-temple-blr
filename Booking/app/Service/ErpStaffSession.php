@@ -49,11 +49,11 @@ final class ErpStaffSession
         if ($configured !== '') {
             return $configured;
         }
-        $sibling = dirname(APP_ROOT) . '/php/storage/sessions';
+        $sibling = ErpPaths::root() . '/storage/sessions';
         if (is_dir($sibling) || @mkdir($sibling, 0755, true)) {
             return $sibling;
         }
-        $local = APP_ROOT . '/storage/sessions';
+        $local = BOOKING_ROOT . '/storage/sessions';
         if (!is_dir($local)) {
             @mkdir($local, 0755, true);
         }

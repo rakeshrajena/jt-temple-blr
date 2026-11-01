@@ -17,7 +17,7 @@ final class View
 
     public static function partial(string $template, array $data = []): string
     {
-        $file = APP_ROOT . '/app/Views/' . $template . '.php';
+        $file = App::root() . '/app/Views/' . $template . '.php';
         if (!is_file($file)) {
             throw new \RuntimeException("View not found: $template");
         }

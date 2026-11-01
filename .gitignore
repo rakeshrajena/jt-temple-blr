@@ -1,24 +1,24 @@
 # Generated donation receipts and coupon PDFs
-php/storage/receipts/*
-php/storage/coupons/*
-!php/storage/receipts/.gitkeep
-!php/storage/coupons/.gitkeep
+crm/storage/receipts/*
+crm/storage/coupons/*
+!crm/storage/receipts/.gitkeep
+!crm/storage/coupons/.gitkeep
 
 # Uploaded bank statements
-php/storage/uploads/*
-!php/storage/uploads/.gitkeep
+crm/storage/uploads/*
+!crm/storage/uploads/.gitkeep
 
 # Expense bill copies
-php/storage/vouchers/*
-!php/storage/vouchers/.gitkeep
+crm/storage/vouchers/*
+!crm/storage/vouchers/.gitkeep
 
 # Runtime logs
-php/storage/logs/*
-!php/storage/logs/.gitkeep
+crm/storage/logs/*
+!crm/storage/logs/.gitkeep
 
 # Books copied onto the server by install.php. Kept off git because it holds the live records.
-php/storage/install/*
-!php/storage/install/.gitkeep
+crm/storage/install/*
+!crm/storage/install/.gitkeep
 
 # Python bytecode, virtualenv, and the local SQLite database
 python/**/__pycache__/
@@ -58,7 +58,10 @@ booking/storage/install/*
 !booking/storage/**/.htaccess
 !booking/storage/**/.gitignore
 
-# Temple ERP (php/) — local config with DB/SMTP secrets
+# Temple ERP (crm/) — local config with DB/SMTP secrets
+crm/.env
+crm/.env.*
+!crm/env.example
 php/.env
 php/.env.*
 !php/env.example

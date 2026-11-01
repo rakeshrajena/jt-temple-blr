@@ -16,7 +16,10 @@ use SJT\Repo\Settings;
  */
 final class UpiPayment
 {
-    public const STATIC_QR_FILE = APP_ROOT . '/storage/uploads/upi-qr.png';
+    public static function staticQrFile(): string
+    {
+        return BOOKING_ROOT . '/storage/uploads/upi-qr.png';
+    }
 
     public function __construct(private Settings $settings)
     {
@@ -33,7 +36,7 @@ final class UpiPayment
         if (!$this->settings->bool('upi_verified')) {
             return false;
         }
-        return $this->mode() === 'static' ? is_file(self::STATIC_QR_FILE) : $this->validVpa((string) $this->settings->get('upi_vpa'));
+        return $this->mode() === 'static' ? is_file(self::staticQrFile()) : $this->validVpa((string) $this->settings->get('upi_vpa'));
     }
 
     public function validVpa(string $vpa): bool
@@ -81,7 +84,7 @@ final class UpiPayment
     public function bookingQrPng(array $b): ?string
     {
         if ($this->mode() === 'static') {
-            return is_file(self::STATIC_QR_FILE) ? (string) file_get_contents(self::STATIC_QR_FILE) : null;
+            return is_file(self::staticQrFile()) ? (string) file_get_contents(self::staticQrFile()) : null;
         }
         $uri = $this->uri($b);
         return $uri ? $this->qrPng($uri) : null;
@@ -107,8 +110,8 @@ final class UpiPayment
         if (!$img) {
             return 'The image could not be read.';
         }
-        @mkdir(dirname(self::STATIC_QR_FILE), 0750, true);
-        imagepng($img, self::STATIC_QR_FILE, 6);
+        @mkdir(dirname(self::staticQrFile()), 0750, true);
+        imagepng($img, self::staticQrFile(), 6);
         imagedestroy($img);
         return null;
     }

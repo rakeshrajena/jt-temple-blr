@@ -307,7 +307,7 @@ final class AdminConfigController extends Controller
             'title' => 'Settings',
             's' => App::settings()->all(),
             'waConfigured' => Container::whatsapp()->configured(),
-            'staticQr' => is_file(\SJT\Service\UpiPayment::STATIC_QR_FILE),
+            'staticQr' => is_file(\SJT\Service\UpiPayment::staticQrFile()),
             'webhookUrl' => absolute_url('/webhooks/whatsapp'),
             'showUpiSettings' => OnlinePaymentService::showUpiAdminSettings(),
             'razorpayConfigured' => $online->enabled(),
@@ -457,10 +457,10 @@ final class AdminConfigController extends Controller
         }
         $upi = Container::upi();
         if ($upi->mode() === 'static') {
-            if (!is_file(\SJT\Service\UpiPayment::STATIC_QR_FILE)) {
+            if (!is_file(\SJT\Service\UpiPayment::staticQrFile())) {
                 throw new HttpException(404);
             }
-            return Response::file((string) file_get_contents(\SJT\Service\UpiPayment::STATIC_QR_FILE), 'image/png', 'qr.png', true);
+            return Response::file((string) file_get_contents(\SJT\Service\UpiPayment::staticQrFile()), 'image/png', 'qr.png', true);
         }
         $uri = $upi->uri(['booking_no' => 'TEST-' . date('His'), 'total_paise' => 100]);
         if (!$uri) {

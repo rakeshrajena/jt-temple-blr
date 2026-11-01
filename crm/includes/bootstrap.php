@@ -41,13 +41,28 @@ require APP_ROOT . '/includes/invitations.php';
 require APP_ROOT . '/includes/contributors.php';
 require APP_ROOT . '/includes/actions.php';
 
+date_default_timezone_set(TIMEZONE);
+ensure_storage();
+
+if (defined('JT_INSTALL_MINIMAL')) {
+    if (PHP_SAPI !== 'cli' && session_status() !== PHP_SESSION_ACTIVE) {
+        $sessDir = APP_ROOT . '/storage/sessions';
+        if (!is_dir($sessDir)) {
+            @mkdir($sessDir, 0755, true);
+        }
+        session_name(SESSION_NAME);
+        if (is_dir($sessDir) && is_writable($sessDir)) {
+            session_save_path($sessDir);
+        }
+        session_start();
+    }
+    return;
+}
+
 food_coupon_catalog_ensure_ready();
 online_booking_migrate_puja_purposes_from_choices();
 online_booking_normalize_service_food_rules();
 online_booking_normalize_service_slot_rules();
-
-date_default_timezone_set(TIMEZONE);
-ensure_storage();
 
 if (PHP_SAPI !== 'cli') {
     session_name(SESSION_NAME);

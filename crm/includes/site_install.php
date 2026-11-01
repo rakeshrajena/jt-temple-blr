@@ -2,12 +2,29 @@
 declare(strict_types=1);
 
 /**
- * Unified web setup: temple ERP (php/) schema + optional sibling Booking/ migrations.
- * Called from php/install.php and Booking/install.php.
+ * Unified web setup: temple ERP (crm/ or legacy php/) + sibling Booking/ migrations.
+ * Called from crm/install.php and Booking/install.php.
  */
 
 /** @param array{entry: string, php_root: string, booking_root: ?string} $opts */
 function site_install_http(array $opts): void
+{
+    try {
+        site_install_http_inner($opts);
+    } catch (Throwable $e) {
+        error_log('[jt_blr] site_install: ' . $e->getMessage());
+        if (!headers_sent()) {
+            header('Content-Type: text/plain; charset=utf-8', true, 500);
+        }
+        exit(
+            "Setup failed: " . $e->getMessage() . "\n\n"
+            . "If this mentions app/helpers.php under crm/, re-upload Booking/app/autoload.php and app/install_bootstrap.php.\n"
+        );
+    }
+}
+
+/** @param array{entry: string, php_root: string, booking_root: ?string} $opts */
+function site_install_http_inner(array $opts): void
 {
     $phpRoot = rtrim($opts['php_root'], '/\\');
     $entry = $opts['entry'];
@@ -15,9 +32,12 @@ function site_install_http(array $opts): void
 
     if (!is_file($phpRoot . '/includes/bootstrap.php')) {
         header('Content-Type: text/plain; charset=utf-8', true, 500);
-        exit('ERP install files are missing (php/includes/bootstrap.php).');
+        exit('ERP install files are missing (crm/includes/bootstrap.php).');
     }
 
+    if (!defined('JT_INSTALL_MINIMAL')) {
+        define('JT_INSTALL_MINIMAL', true);
+    }
     require $phpRoot . '/includes/bootstrap.php';
 
     header('Cache-Control: no-store');
@@ -31,7 +51,7 @@ function site_install_http(array $opts): void
     $ready = $serverProblems === [] && $dbError === null && strlen(env_value('INSTALL_TOKEN')) >= 16;
 
     if ($dbError === null && strlen(env_value('INSTALL_TOKEN')) < 16) {
-        $dbError = 'Add INSTALL_TOKEN to php/.env (or the parent .env). Use at least 16 random characters.';
+        $dbError = 'Add INSTALL_TOKEN to crm/.env (or the parent .env). Use at least 16 random characters.';
         $ready = false;
     }
 
@@ -57,7 +77,14 @@ function site_install_http(array $opts): void
         }
     }
 
-    $pendingBooking = $bookingReady ? site_install_booking_pending($bookingRoot) : [];
+    $pendingBooking = [];
+    if ($bookingReady) {
+        try {
+            $pendingBooking = site_install_booking_pending($bookingRoot);
+        } catch (Throwable $e) {
+            error_log('[jt_blr] site_install pending: ' . $e->getMessage());
+        }
+    }
     $error = $dbError;
     $erpResult = null;
     $bookingApplied = [];
@@ -124,19 +151,49 @@ function site_install_http(array $opts): void
         'bookingApplied' => $bookingApplied,
         'bookingAdminMsg' => $bookingAdminMsg,
         'bookingLockWritten' => $bookingLockWritten,
+        'erpRoot' => $phpRoot,
     ]);
 }
 
 function site_install_booking_dir(string $phpRoot): ?string
 {
     $parent = dirname($phpRoot);
+    $candidates = [];
     foreach (['Booking', 'booking'] as $name) {
-        $dir = $parent . DIRECTORY_SEPARATOR . $name;
-        if (is_dir($dir) && is_file($dir . '/app/autoload.php')) {
+        $candidates[] = $parent . DIRECTORY_SEPARATOR . $name;
+        $candidates[] = $phpRoot . DIRECTORY_SEPARATOR . $name;
+    }
+    foreach ($candidates as $dir) {
+        if (is_dir($dir) && is_file($dir . '/app/helpers.php') && is_file($dir . '/app/autoload.php')) {
             return $dir;
         }
     }
     return null;
+}
+
+function site_install_load_booking(string $bookingRoot): void
+{
+    static $loaded = false;
+    if ($loaded) {
+        return;
+    }
+    require_once $bookingRoot . '/app/install_bootstrap.php';
+    sjt_booking_install_bootstrap($bookingRoot);
+    $loaded = true;
+}
+
+/** @return array<string, string> */
+function site_install_booking_env(string $bookingRoot): array
+{
+    $path = $bookingRoot . '/.env';
+    if (!is_file($path)) {
+        return [];
+    }
+    $raw = file_get_contents($path);
+    if (!is_string($raw)) {
+        return [];
+    }
+    return function_exists('env_parse') ? env_parse($raw) : [];
 }
 
 /** @return list<string> */
@@ -149,7 +206,7 @@ function site_install_booking_problems(string $bookingRoot): array
         }
     }
     if (!is_file($bookingRoot . '/.env')) {
-        $problems[] = 'Missing Booking/.env — copy Booking/.env.example and use the same DB_* as php/.env.';
+        $problems[] = 'Missing Booking/.env — copy Booking/.env.example and use the same DB_* as crm/.env.';
     }
     foreach (['logs', 'sessions', 'uploads', 'cache', 'backups', 'install'] as $d) {
         $p = $bookingRoot . '/storage/' . $d;
@@ -160,19 +217,18 @@ function site_install_booking_problems(string $bookingRoot): array
             $problems[] = "Booking/storage/$d must be writable.";
         }
     }
-    if (is_file($bookingRoot . '/.env')) {
-        require_once $bookingRoot . '/app/autoload.php';
-        \SJT\Core\Env::load($bookingRoot . '/.env');
-        if ((string) \SJT\Core\Env::get('APP_URL', '') === '') {
+    $env = site_install_booking_env($bookingRoot);
+    if ($env !== []) {
+        if (trim($env['APP_URL'] ?? '') === '') {
             $problems[] = 'Set APP_URL in Booking/.env.';
         }
-        if ((string) \SJT\Core\Env::get('APP_KEY', '') === 'change-me-to-a-long-random-string'
-            || strlen((string) \SJT\Core\Env::get('APP_KEY', '')) < 32) {
+        $key = trim($env['APP_KEY'] ?? '');
+        if ($key === 'change-me-to-a-long-random-string' || strlen($key) < 32) {
             $problems[] = 'Set APP_KEY in Booking/.env (run: php bin/console.php key inside Booking/).';
         }
-        if (\SJT\Core\Env::get('DB_DRIVER', 'mysql') === 'mysql') {
+        if (($env['DB_DRIVER'] ?? 'mysql') === 'mysql') {
             foreach (['DB_NAME', 'DB_USER'] as $k) {
-                if ((string) \SJT\Core\Env::get($k, '') === '') {
+                if (trim($env[$k] ?? '') === '') {
                     $problems[] = "Booking/.env: $k is empty.";
                 }
             }
@@ -185,7 +241,7 @@ function site_install_booking_problems(string $bookingRoot): array
 function site_install_booking_pending(string $bookingRoot): array
 {
     try {
-        require_once $bookingRoot . '/app/autoload.php';
+        site_install_load_booking($bookingRoot);
         \SJT\Core\Env::load($bookingRoot . '/.env');
         $db = \SJT\Core\Database::fromEnv();
         return array_keys((new \SJT\Core\Migrator($db, $bookingRoot . '/migrations'))->pending());
@@ -197,7 +253,7 @@ function site_install_booking_pending(string $bookingRoot): array
 /** @return list<string> applied migration version ids */
 function site_install_booking_migrate(string $bookingRoot): array
 {
-    require_once $bookingRoot . '/app/autoload.php';
+    site_install_load_booking($bookingRoot);
     \SJT\Core\Env::load($bookingRoot . '/.env');
     $db = \SJT\Core\Database::fromEnv();
     return (new \SJT\Core\Migrator($db, $bookingRoot . '/migrations'))->migrate();
@@ -221,7 +277,7 @@ function site_install_booking_maybe_admin(string $bookingRoot, array $post): ?st
     if ($username === '' && $password === '') {
         return null;
     }
-    require_once $bookingRoot . '/app/autoload.php';
+    site_install_load_booking($bookingRoot);
     \SJT\Core\Env::load($bookingRoot . '/.env');
     $db = \SJT\Core\Database::fromEnv();
     $name = trim((string) ($post['admin_name'] ?? ''));
@@ -271,13 +327,12 @@ function site_install_render_page(array $ctx): void
 {
     $bookingUrl = '';
     $erpIndex = 'index.php';
-    if (!empty($ctx['bookingRoot']) && is_file($ctx['bookingRoot'] . '/.env')) {
-        require_once $ctx['bookingRoot'] . '/app/autoload.php';
-        \SJT\Core\Env::load($ctx['bookingRoot'] . '/.env');
-        $bookingUrl = rtrim((string) \SJT\Core\Env::get('APP_URL', ''), '/');
+    if (!empty($ctx['bookingRoot'])) {
+        $bookingUrl = rtrim(site_install_booking_env((string) $ctx['bookingRoot'])['APP_URL'] ?? '', '/');
     }
+    $erpFolder = basename((string) ($ctx['erpRoot'] ?? 'crm'));
     if (($ctx['entry'] ?? '') === 'booking') {
-        $erpIndex = '../php/index.php';
+        $erpIndex = '../' . $erpFolder . '/index.php';
     }
     ?>
 <!DOCTYPE html>
@@ -306,7 +361,7 @@ function site_install_render_page(array $ctx): void
 <body>
 <main>
   <h1>Set up temple ERP and online booking</h1>
-  <p>One setup key runs <strong>all</strong> database updates: ERP tables/columns (php/) and Booking migrations (001–008), on the <strong>same</strong> MySQL database.</p>
+  <p>One setup key runs <strong>all</strong> database updates: ERP tables/columns (<code><?= e($erpFolder) ?>/</code>) and Booking migrations (001–008), on the <strong>same</strong> MySQL database.</p>
 
   <?php if ($ctx['serverProblems'] !== []): ?>
     <div class="error">
@@ -344,8 +399,8 @@ function site_install_render_page(array $ctx): void
       <p><strong>Next steps</strong></p>
       <ul>
         <li>Sign in to <a href="<?= e($erpIndex) ?>">ERP</a><?php if ($bookingUrl !== ''): ?> and <a href="<?= e($bookingUrl . '/admin') ?>">online booking admin</a><?php endif; ?>.</li>
-        <li>Remove <code>INSTALL_TOKEN</code> from <code>php/.env</code> (and Booking/.env if set there).</li>
-        <li>Delete <code>php/install.php</code> and <code>Booking/install.php</code> on the server.</li>
+        <li>Remove <code>INSTALL_TOKEN</code> from <code><?= e($erpFolder) ?>/.env</code> (and Booking/.env if set there).</li>
+        <li>Delete <code><?= e($erpFolder) ?>/install.php</code> and <code>Booking/install.php</code> on the server.</li>
         <?php if ($bookingUrl !== ''): ?>
         <li>In Booking: <code>php bin/console.php check</code> and configure Razorpay/WhatsApp in <code>.env</code>.</li>
         <?php endif; ?>
@@ -354,7 +409,7 @@ function site_install_render_page(array $ctx): void
   <?php endif; ?>
 
   <?php if (!$ctx['bookingAvailable']): ?>
-    <div class="info"><p>No <code>Booking/</code> folder found next to <code>php/</code>. Only ERP setup will run.</p></div>
+    <div class="info"><p>No <code>Booking/</code> folder found next to ERP. Only ERP setup will run.</p></div>
   <?php elseif ($ctx['bookingProblems'] !== []): ?>
     <div class="error">
       <p><strong>Booking folder needs attention:</strong></p>

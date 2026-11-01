@@ -18,7 +18,7 @@ final class TempleLogo
 
     public static function erpRoot(): string
     {
-        return dirname(APP_ROOT) . DIRECTORY_SEPARATOR . 'php';
+        return ErpPaths::root();
     }
 
     public static function erpBrandDir(): string

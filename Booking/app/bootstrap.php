@@ -13,14 +13,15 @@ if (PHP_VERSION_ID < 80100) {
 }
 require APP_ROOT . '/app/autoload.php';
 
-SJT\Core\Env::load(APP_ROOT . '/.env');
+$bookingRoot = sjt_booking_root();
+SJT\Core\Env::load($bookingRoot . '/.env');
 date_default_timezone_set(SJT\Core\Env::get('APP_TIMEZONE', 'Asia/Kolkata'));
 mb_internal_encoding('UTF-8');
-SJT\Core\Logger::init(APP_ROOT . '/storage/logs');
+SJT\Core\Logger::init($bookingRoot . '/storage/logs');
 
 ini_set('display_errors', SJT\Core\App::debug() ? '1' : '0');
 ini_set('log_errors', '1');
-ini_set('error_log', APP_ROOT . '/storage/logs/php-errors.log');
+ini_set('error_log', $bookingRoot . '/storage/logs/php-errors.log');
 error_reporting(E_ALL);
 set_error_handler(function (int $no, string $msg, string $file, int $line): bool {
     if (!(error_reporting() & $no)) {

@@ -35,7 +35,9 @@ function booking_erp_ensure_link_schema(): void
     }
 }
 
-booking_erp_ensure_link_schema();
+if (!defined('JT_INSTALL_MINIMAL')) {
+    booking_erp_ensure_link_schema();
+}
 
 /** After ERP approves a receipt cancellation tied to an online booking, mark the booking cancelled. */
 function booking_erp_after_receipt_cancelled(int $donationId): void

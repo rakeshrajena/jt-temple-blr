@@ -51,7 +51,7 @@ final class App
 
     public static function publicPath(): string
     {
-        return APP_ROOT;
+        return defined('BOOKING_ROOT') ? BOOKING_ROOT : APP_ROOT;
     }
 
     public static function isProduction(): bool
