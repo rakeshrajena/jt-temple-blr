@@ -29,6 +29,7 @@ use SJT\Core\Database;
 use SJT\Core\Env;
 use SJT\Core\Migrator;
 use SJT\Service\Auth;
+use SJT\Service\StaffAccounts;
 
 header('Cache-Control: no-store');
 header('X-Robots-Tag: noindex, nofollow');
@@ -112,7 +113,7 @@ function install_shared_erp_hint(?Database $db): ?string
         $users = $db->value("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users'");
         $donors = $db->value("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'donors'");
         if ($users && $donors) {
-            return 'This database already has ERP tables (users, donors). Setup will add booking tables only. You do not need to upload the php/ ERP folder for booking to work.';
+            return 'This database already has ERP tables (users, donors). Setup will add booking tables only. Booking admin uses the same ERP user accounts (username and password). You do not need a separate booking-only admin unless you add one in ERP › Users.';
         }
     } catch (Throwable) {
     }
@@ -134,9 +135,7 @@ if ($problems === []) {
         $sharedHint = install_shared_erp_hint($db);
         $hasSuper = false;
         try {
-            // The admins table may not exist yet (migrations have not run),
-            // so this query is separate from the connection check above.
-            $hasSuper = (int) $db->value("SELECT COUNT(*) FROM admins WHERE role = 'super' AND is_active = 1") > 0;
+            $hasSuper = (new StaffAccounts($db))->seniorAdminExists();
         } catch (Throwable) {
             $hasSuper = false;
         }
@@ -175,19 +174,34 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && $problems === [] && $db)
                 if ($p = Auth::passwordProblem($password)) {
                     throw new RuntimeException($p);
                 }
-                if ($db->value('SELECT 1 FROM admins WHERE username = ?', [$username])) {
-                    throw new RuntimeException("Administrator '$username' already exists. Leave admin fields blank to run migrations only.");
+                $accounts = new StaffAccounts($db);
+                if ($accounts->findByUsername($username)) {
+                    throw new RuntimeException("User '$username' already exists (ERP or booking). Leave admin fields blank to run migrations only.");
                 }
-                $db->insert('admins', [
-                    'username' => $username,
-                    'name' => $name !== '' ? $name : $username,
-                    'password_hash' => Auth::hash($password),
-                    'role' => $role,
-                    'is_active' => 1,
-                    'failed_logins' => 0,
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ]);
+                $ts = date('Y-m-d H:i:s');
+                if ($accounts->usesErpUsers()) {
+                    $db->insert('users', [
+                        'username' => $username,
+                        'full_name' => $name !== '' ? $name : $username,
+                        'password_hash' => Auth::hash($password),
+                        'role' => StaffAccounts::erpRoleFromBookingSuper($role === 'super'),
+                        'is_active' => 1,
+                        'failed_logins' => 0,
+                        'created_at' => $ts,
+                        'updated_at' => $ts,
+                    ]);
+                } else {
+                    $db->insert('admins', [
+                        'username' => $username,
+                        'name' => $name !== '' ? $name : $username,
+                        'password_hash' => Auth::hash($password),
+                        'role' => $role,
+                        'is_active' => 1,
+                        'failed_logins' => 0,
+                        'created_at' => $ts,
+                        'updated_at' => $ts,
+                    ]);
+                }
                 $msg .= " Created administrator '$username' ($role).";
                 $hasSuper = $role === 'super' || $hasSuper;
             }

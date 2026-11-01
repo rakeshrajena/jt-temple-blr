@@ -189,6 +189,17 @@ input[type=checkbox] { width: 26px; height: 26px; flex: none; margin: 2px 0 0; a
 .service-panel { border-top: 2px dashed var(--line); padding-top: 14px; margin-top: 8px; }
 .service-panel h3 { font-size: 1.1rem; }
 .js .service-panel[data-inactive] { display: none; }
+.js .service-panel.panel-unavailable {
+  padding: 12px 14px; margin: 0 0 16px; border-radius: 12px;
+  background: var(--bad-bg); border: 2px solid rgba(163, 34, 30, .25);
+}
+.js .step-availability-blocked .grid-2 > .field:not(:has(#service_date)),
+.js .step-availability-blocked .wa-opt,
+.js .step-availability-blocked .service-panel.panel-unavailable,
+.js .step-availability-blocked > .field:last-of-type { opacity: .92; }
+input:disabled, select:disabled, textarea:disabled, button:disabled {
+  cursor: not-allowed; opacity: .72; background: #f3ece0;
+}
 .service-panel .slot-note { font-size: .9rem; color: var(--muted); }
 
 .coupons { display: grid; gap: 12px; }
@@ -273,3 +284,18 @@ dl.kv dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
 /* Fieldset legends render on the border by default; keep step headings inside the card. */
 fieldset.card > legend { float: left; width: 100%; padding-top: 2px; }
 fieldset.card > legend + * { clear: both; }
+
+/* Availability alert when a chosen date is closed or full */
+.avail-dialog {
+  border: 0; padding: 0; max-width: min(520px, calc(100vw - 32px));
+  border-radius: var(--radius); box-shadow: 0 12px 40px rgba(40, 20, 10, .25);
+  background: var(--paper);
+}
+.avail-dialog::backdrop { background: rgba(42, 27, 18, .55); }
+.avail-dialog-inner { padding: 22px 20px 20px; }
+.avail-dialog-inner h2 { color: var(--bad); margin-bottom: .75em; }
+.avail-dialog-body { margin-bottom: 1.25em; font-size: 1.05rem; line-height: 1.5; }
+.avail-dialog-body p { margin: 0 0 .65em; }
+.avail-dialog-body ul { margin: 0; padding-left: 1.25em; }
+.avail-dialog-body li { margin-bottom: .5em; }
+.avail-dialog-inner form { margin: 0; text-align: center; }

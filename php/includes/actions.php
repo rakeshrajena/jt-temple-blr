@@ -64,6 +64,10 @@ function dispatch_request(): void
         action_food_coupons($method);
         return;
     }
+    if ($path === 'food/coupons/catalog' && $method === 'POST') {
+        action_food_coupon_catalog_save();
+        return;
+    }
     if ($path === 'coupons/scan' && ($method === 'GET' || $method === 'POST')) {
         action_coupon_scan($method);
         return;
@@ -292,6 +296,10 @@ function dispatch_request(): void
     }
     if ($path === 'users') {
         action_users($method);
+        return;
+    }
+    if ($path === 'settings/booking-service') {
+        action_settings_booking_service($method);
         return;
     }
     if ($path === 'settings') {
@@ -594,6 +602,19 @@ function action_food(string $method): void
         ),
         'writeOffLimit' => STOCK_WRITE_OFF_LIMIT,
     ]);
+}
+
+function action_food_coupon_catalog_save(): void
+{
+    login_required();
+    $role = (string) ($_SESSION['role'] ?? '');
+    if (!food_coupon_catalog_can_edit($role)) {
+        flash('error', t('shell.admin_only'));
+        redirect(url('settings') . '#ob-prasadam');
+    }
+    $result = food_coupon_catalog_save_from_post();
+    flash($result['error'] !== null ? 'error' : 'success', $result['error'] ?? 'Online booking menu saved. New prices apply to new bookings only.');
+    redirect(url('settings') . '#ob-prasadam');
 }
 
 function action_food_coupons(string $method): void
@@ -3010,9 +3031,56 @@ function action_localization(string $method): void
     ]);
 }
 
+function action_settings_booking_service(string $method): void
+{
+    admin_required();
+    $bookingActor = (string) (current_user()['full_name'] ?? current_user()['username'] ?? 'erp');
+    if ($method === 'POST') {
+        settings_process_booking_post($bookingActor);
+    }
+    if ($method !== 'GET') {
+        http_response_code(405);
+        return;
+    }
+    if (!booking_module_installed()) {
+        flash('error', 'Online booking is not installed on this database.');
+        redirect(url('settings') . '#online-booking');
+    }
+    $canEdit = booking_catalog_can_manage();
+    $id = (int) ($_GET['id'] ?? 0);
+    $s = $id > 0 ? booking_catalog_service($id) : null;
+    if ($id > 0 && !$s) {
+        flash('error', 'Service not found.');
+        redirect(url('settings') . '#ob-services');
+    }
+    if (!$s) {
+        $s = [
+            'id' => 0, 'code' => '', 'name' => '', 'description' => '', 'price_paise' => 0, 'requires_approval' => false,
+            'requires_slot' => true, 'collect_participants' => false, 'max_participants' => 50, 'allow_food' => true,
+            'is_food_only' => false, 'is_combinable' => true, 'daily_capacity' => null, 'lead_days' => null,
+            'fields' => [], 'is_active' => true, 'sort_order' => 100,
+        ];
+    }
+    render('settings_booking_service', [
+        'title' => $id > 0 ? t('settings.ob_service_edit') : t('settings.ob_service_add'),
+        'pageTitle' => $id > 0 ? t('settings.ob_service_edit') . ': ' . $s['name'] : t('settings.ob_service_add'),
+        'active' => 'settings',
+        's' => $s,
+        'slots' => $id > 0 ? booking_catalog_slots($id, false) : [],
+        'bookingCatalogCanEdit' => $canEdit,
+    ]);
+}
+
 function action_settings(string $method): void
 {
     admin_required();
+    $bookingActor = (string) (current_user()['full_name'] ?? current_user()['username'] ?? 'erp');
+    if ($method === 'POST') {
+        $form = is_string($_POST['form'] ?? null) ? trim($_POST['form']) : '';
+        if ($form !== '' && str_starts_with($form, 'booking_')) {
+            settings_process_booking_post($bookingActor);
+        }
+    }
     if ($method === 'POST' && post_string('form', 20) === 'selections') {
         $key = post_string('choice_key', 40);
         $op = post_string('op', 10);
@@ -3095,12 +3163,41 @@ function action_settings(string $method): void
     $settings = load_messaging_settings();
     $settings['password_saved'] = $settings['smtp_password'] !== '' ? '1' : '';
     unset($settings['smtp_password']);
+    $bookingOn = booking_module_installed();
+    $prasadamOn = food_coupon_catalog_table_exists();
+    $availDate = date('Y-m-d');
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($_GET['avail_date'] ?? ''))) {
+        $availDate = (string) $_GET['avail_date'];
+    }
+    $bookingSlotsByService = [];
+    if ($bookingOn) {
+        foreach (booking_catalog_slots(null, false) as $slotRow) {
+            $bookingSlotsByService[$slotRow['service_id']][] = $slotRow;
+        }
+    }
     render('settings', [
         'title' => t('page.settings'),
         'pageTitle' => t('page.settings'),
         'active' => 'settings',
         'settings' => $settings,
         'selectionCatalog' => selection_catalog(),
+        'bookingSettingsEnabled' => $bookingOn,
+        'bookingPanelEnabled' => $bookingOn || $prasadamOn,
+        'bs' => $bookingOn ? booking_settings_all() : [],
+        'benv' => $bookingOn ? booking_env_flags() : [],
+        'bsCanEdit' => booking_settings_can_edit(current_user()['role']),
+        'bookingAdminUrl' => $bookingOn ? booking_admin_url() : '',
+        'prasadamCatalogEnabled' => food_coupon_catalog_table_exists(),
+        'prasadamCanEdit' => food_coupon_catalog_can_edit((string) (current_user()['role'] ?? '')),
+        'prasadamCatalogRows' => food_coupon_catalog_table_exists() ? food_coupon_catalog_editor_rows() : [],
+        'bookingCatalogCanEdit' => booking_catalog_can_manage(),
+        'bookingServices' => $bookingOn ? booking_catalog_services(false) : [],
+        'bookingSlotsByService' => $bookingSlotsByService,
+        'bookingPricesReviewed' => $bookingOn && booking_catalog_prices_reviewed(),
+        'bookingBlocked' => $bookingOn ? booking_catalog_blocked_dates(date('Y-m-d')) : [],
+        'bookingServicesActive' => $bookingOn ? booking_catalog_services(false) : [],
+        'bookingAvailDate' => $availDate,
+        'bookingDayView' => $bookingOn ? booking_catalog_day_view($availDate) : [],
     ]);
 }
 

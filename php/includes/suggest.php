@@ -133,3 +133,9 @@ function suggest_location_catalog(): array
     }
     return $rows;
 }
+
+/** @return list<array{name: string, amount: string, tag: string}> */
+function suggest_coupon_name_catalog(): array
+{
+    return online_booking_offer_suggestions();
+}

@@ -10,6 +10,7 @@ use SJT\Core\Request;
 use SJT\Core\Response;
 use SJT\Core\Session;
 use SJT\Core\View;
+use SJT\Service\ErpStaffSession;
 
 abstract class Controller
 {
@@ -21,7 +22,15 @@ abstract class Controller
 
     protected function adminView(string $template, array $data = [], int $status = 200): Response
     {
-        $data += ['admin' => Container::auth()->user()];
+        $sso = ErpStaffSession::enabled();
+        $data += [
+            'admin' => Container::auth()->user(),
+            'erp_sso' => $sso,
+            'erp_home_url' => $sso ? ErpStaffSession::erpAppBasePath() . '/index.php' : null,
+            'erp_logout_url' => $sso ? ErpStaffSession::erpLogoutUrl() : null,
+            'erp_food_coupons_url' => ErpStaffSession::erpFoodCouponsUrl(),
+            'erp_booking_settings_url' => ErpStaffSession::enabled() ? ErpStaffSession::erpOnlineBookingSettingsUrl() : null,
+        ];
         return $this->view('admin/' . $template, $data, $status, 'admin/layout');
     }
 

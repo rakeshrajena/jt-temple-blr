@@ -54,7 +54,11 @@ $amount = money((int) $b['total_paise']);
     <div class="card inset stack pay-gateway">
       <h2 class="h3">Pay online</h2>
       <p>Pay securely with UPI, card or net banking. Your booking is updated automatically once the payment succeeds.</p>
-      <button type="button" class="btn btn-primary btn-lg" data-gateway-pay="<?= e(url('/b/' . $no . '/gateway/order')) ?>" data-gateway-verify="<?= e(url('/b/' . $no . '/gateway/verify')) ?>" data-csrf="<?= e(csrf_token()) ?>">Pay <?= e($amount) ?> now</button>
+      <button type="button" class="btn btn-primary btn-lg" data-gateway-pay="<?= e(url('/b/' . $no . '/gateway/order')) ?>" data-gateway-verify="<?= e(url('/b/' . $no . '/gateway/verify')) ?>" data-gateway-sync="<?= e(url('/b/' . $no . '/gateway/sync')) ?>" data-csrf="<?= e(csrf_token()) ?>">Pay <?= e($amount) ?> now</button>
+      <?php if (!empty($gatewaySyncPending)): ?>
+      <p class="hint">If you already paid and see an error from the payment window, use the button below — we will check with the bank and update your booking.</p>
+      <button type="button" class="btn btn-secondary" data-gateway-sync-only="<?= e(url('/b/' . $no . '/gateway/sync')) ?>" data-csrf="<?= e(csrf_token()) ?>">I paid — update my booking</button>
+      <?php endif; ?>
       <p class="field-error" data-gateway-error hidden role="alert"></p>
     </div>
     <?php if (!empty($checkoutScriptUrl)): ?><script src="<?= e($checkoutScriptUrl) ?>" defer></script><?php endif; ?>

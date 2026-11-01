@@ -78,6 +78,19 @@ try {
     }
     check($vastra !== null && $vastra['color'] === 'Saffron', 'a vastra name brings its color when there is only one');
     check(has_name(suggest_vastra_colors(), 'Saffron'), 'a vastra color is offered');
+
+    $couponNames = suggest_coupon_name_catalog();
+    check(is_array($couponNames), 'coupon name catalog is an array');
+    $priced = false;
+    foreach ($couponNames as $row) {
+        $tag = (string) ($row['tag'] ?? '');
+        if ($tag === 'prasadam' || $tag === 'service') {
+            check(isset($row['amount']) && (float) $row['amount'] > 0, 'online booking catalog suggestion includes a price');
+            $priced = true;
+            break;
+        }
+    }
+    check($priced || $couponNames === [], 'coupon catalog rows use online booking tags or stay empty');
 } finally {
     $pdo->rollBack();
 }

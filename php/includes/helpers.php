@@ -101,6 +101,14 @@ function require_csrf(): void
     $sent = $_POST['csrf'] ?? '';
     $known = $_SESSION['csrf'] ?? '';
     if (!is_string($sent) || !is_string($known) || $known === '' || !hash_equals($known, $sent)) {
+        if (function_exists('staff_session_clear_legacy_cookies')) {
+            staff_session_clear_legacy_cookies();
+        }
+        if (request_path() === 'login' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+            flash('error', 'Your sign-in session expired or was reset (this can happen once after an update). Please try again.');
+            $next = is_string($_GET['next'] ?? null) ? (string) $_GET['next'] : '';
+            redirect(url('login', $next !== '' ? ['next' => $next] : []));
+        }
         http_response_code(419);
         echo 'Invalid form token. Go back and submit the form again.';
         exit;
@@ -238,6 +246,10 @@ function safe_next(?string $next): string
     $script = app_script();
     $dir = app_dir_url();
     $allowed = $path === $script || $path === $dir || $path === $dir . '/' || str_starts_with($path, $dir . '/');
+    $bookingBase = function_exists('staff_booking_base_path') ? staff_booking_base_path() : '';
+    if ($bookingBase !== '' && (str_starts_with($path, $bookingBase . '/') || $path === $bookingBase)) {
+        $allowed = true;
+    }
     if (!$allowed) {
         return url('');
     }
@@ -287,7 +299,7 @@ function random_token(int $bytes = 24): string
 
 function ensure_storage(): void
 {
-    foreach (['uploads', 'receipts', 'coupons', 'logs', 'vouchers', 'brand', 'invitations', 'install'] as $dir) {
+    foreach (['uploads', 'receipts', 'coupons', 'logs', 'vouchers', 'brand', 'invitations', 'install', 'sessions'] as $dir) {
         $path = APP_ROOT . '/storage/' . $dir;
         if (!is_dir($path) && !mkdir($path, 0755, true) && !is_dir($path)) {
             throw new RuntimeException('Could not create storage directory: ' . $dir);

@@ -32,3 +32,12 @@ BOOKING_UPI_MANUAL=false
    `POST /webhooks/payment` (provider-specific paths like `/webhooks/razorpay` remain as aliases).
 
 HTTP routes and admin booking screens stay unchanged; they use `gateway_order_id` / `gateway_payment_id` columns generically.
+
+### Payment captured at provider but booking still “pending”
+
+1. **Checkout verify** (`POST …/gateway/verify`) — HMAC from Razorpay popup (primary).
+2. **Auto reconcile** — if verify fails, the app calls Razorpay’s API (`fetchCapturedPaymentsForOrder`) via the same verify response or **`POST …/gateway/sync`**.
+3. **Pay page** — **“I paid — update my booking”** when an initiated gateway order exists.
+4. **Webhook** (`POST …/webhooks/payment`) — recommended on production when `RAZORPAY_WEBHOOK_SECRET` is set.
+
+Staff can still verify/record payment in admin if all automated paths fail.

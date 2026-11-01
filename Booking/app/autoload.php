@@ -13,7 +13,13 @@ spl_autoload_register(static function (string $class): void {
         return;
     }
     $rel = str_replace('\\', '/', substr($class, strlen($prefix))) . '.php';
-    foreach ([APP_ROOT . '/app/' . $rel, APP_ROOT . '/online_pay/' . $rel] as $file) {
+    $candidates = [APP_ROOT . '/app/' . $rel];
+    // SJT\OnlinePay\* classes live under online_pay/ (not online_pay/OnlinePay/).
+    $op = 'OnlinePay/';
+    if (str_starts_with($rel, $op)) {
+        $candidates[] = APP_ROOT . '/online_pay/' . substr($rel, strlen($op));
+    }
+    foreach ($candidates as $file) {
         if (is_file($file)) {
             require $file;
             return;

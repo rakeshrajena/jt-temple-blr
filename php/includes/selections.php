@@ -71,10 +71,11 @@ function selection_catalog(): array
             'required' => ['General'],
         ],
         'puja_purposes' => [
-            'label' => 'Puja purpose',
-            'modules' => 'Coupons. The coupon name and the purpose offer these names. Choosing a coupon name fills the amount. Choosing a purpose does not. Quantity 1 does not wait for approval.',
+            'label' => 'Puja purpose (legacy file)',
+            'modules' => 'No longer edited here. Coupon and booking offerings live under Settings › Online booking › Catalog & pricing.',
             'kind' => 'priced',
             'required' => [],
+            'settings_ui' => false,
         ],
         'plans' => [
             'label' => 'Subscription plan',
@@ -725,16 +726,8 @@ function save_selections(array $posted): ?string
 function puja_purposes(): array
 {
     $rows = [];
-    foreach (load_selections()['puja_purposes'] ?? [] as $row) {
-        if (!is_array($row)) {
-            continue;
-        }
-        $name = trim((string) ($row['name'] ?? ''));
-        $amount = round((float) ($row['amount'] ?? 0), 2);
-        if ($name === '' || $amount < 0.01) {
-            continue;
-        }
-        $rows[] = ['name' => $name, 'amount' => number_format($amount, 2, '.', '')];
+    foreach (online_booking_offer_suggestions() as $row) {
+        $rows[] = ['name' => $row['name'], 'amount' => $row['amount']];
     }
     return $rows;
 }

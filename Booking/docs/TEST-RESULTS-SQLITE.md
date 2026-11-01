@@ -1,8 +1,8 @@
 # Automated test results (sqlite)
 
-Run: 2026-11-01 15:20 IST · PHP 8.2.27 · SQLite 3.39.2 · mock WhatsApp Cloud API
+Run: 2026-11-01 16:31 IST · PHP 8.2.27 · SQLite 3.39.2 · mock WhatsApp Cloud API
 
-**58 of 60 tests passed.**
+**59 of 61 tests passed.**
 
 | # | Test | Result |
 |---|------|--------|
@@ -33,36 +33,37 @@ Run: 2026-11-01 15:20 IST · PHP 8.2.27 · SQLite 3.39.2 · mock WhatsApp Cloud 
 | 25 | Past dates and dates beyond the booking window are rejected | PASS |
 | 26 | Blocked (unavailable) dates are rejected with the reason | PASS |
 | 27 | Full time slot cannot be overbooked | PASS |
-| 28 | Submitting a UPI reference does NOT mark the booking paid | PASS |
-| 29 | Invalid and reused UPI references are rejected | PASS |
-| 30 | Admin verifies payment → paid and confirmed, with audit trail | PASS |
-| 31 | Amount mismatch needs an explanatory note | PASS |
-| 32 | Admin rejects a payment → devotee can resubmit | FAIL: food-only confirmed after verification — expected 'confirmed', got 'pending' |
-| 33 | Ceremony needing approval: paid ≠ confirmed until approved | PASS |
-| 34 | Reschedule moves date and slot, checks capacity, is audited | PASS |
-| 35 | Cancel then refund a paid booking | PASS |
-| 36 | Other Temple Services: free request, admin sets charges, devotee then pays | PASS |
-| 37 | Cancelled bookings free their slot | PASS |
-| 38 | Not configured: booking saved, failure logged for follow-up | PASS |
-| 39 | Enabled: devotee + admin receive template messages; status "sent" | PASS |
-| 40 | Provider rejection: booking still saved, error recorded, no retry for permanent errors | PASS |
-| 41 | Temporary provider failure is scheduled for automatic retry | PASS |
-| 42 | Status-change messages are sent (payment verified) | PASS |
-| 43 | Delivery webhook: valid signature updates status; invalid is refused | PASS |
-| 44 | Dashboard pages require login | PASS |
-| 45 | Staff cannot open senior-admin pages | PASS |
-| 46 | Wrong passwords lock the account after 5 attempts | PASS |
-| 47 | Forms without a valid CSRF token are refused | PASS |
-| 48 | Bookings cannot be opened without the private link or lookup | PASS |
-| 49 | Script injection is rejected in names and escaped everywhere else | PASS |
-| 50 | SQL-injection style input is treated as plain text | PASS |
-| 51 | Array / malformed parameters do not crash the app | PASS |
-| 52 | Booking lookup is rate limited | PASS |
-| 53 | Security headers are sent | PASS |
-| 54 | CSV exports (bookings, items, payments) download with correct totals | PASS |
-| 55 | Daily / weekly / monthly summaries match verified payments | PASS |
-| 56 | Admin changes prices; new bookings use them, old bookings keep theirs | PASS |
-| 57 | Admin changes food coupon price | PASS |
-| 58 | Disabled services disappear from booking and are refused | PASS |
-| 59 | UPI QR only appears after payment details are verified | FAIL: fallback message before verification |
-| 60 | Data persists: bookings, items, payments and audit are in the database | PASS |
+| 28 | Per-day max bookings per service is enforced | PASS |
+| 29 | Submitting a UPI reference does NOT mark the booking paid | PASS |
+| 30 | Invalid and reused UPI references are rejected | PASS |
+| 31 | Admin verifies payment → paid and confirmed, with audit trail | PASS |
+| 32 | Amount mismatch needs an explanatory note | PASS |
+| 33 | Admin rejects a payment → devotee can resubmit | FAIL: food-only confirmed after verification — expected 'confirmed', got 'pending' |
+| 34 | Ceremony needing approval: paid ≠ confirmed until approved | PASS |
+| 35 | Reschedule moves date and slot, checks capacity, is audited | PASS |
+| 36 | Cancel then refund a paid booking | PASS |
+| 37 | Other Temple Services: free request, admin sets charges, devotee then pays | PASS |
+| 38 | Cancelled bookings free their slot | PASS |
+| 39 | Not configured: booking saved, failure logged for follow-up | PASS |
+| 40 | Enabled: devotee + admin receive template messages; status "sent" | PASS |
+| 41 | Provider rejection: booking still saved, error recorded, no retry for permanent errors | PASS |
+| 42 | Temporary provider failure is scheduled for automatic retry | PASS |
+| 43 | Status-change messages are sent (payment verified) | PASS |
+| 44 | Delivery webhook: valid signature updates status; invalid is refused | PASS |
+| 45 | Dashboard pages require login | PASS |
+| 46 | Staff cannot open senior-admin pages | PASS |
+| 47 | Wrong passwords lock the account after 5 attempts | PASS |
+| 48 | Forms without a valid CSRF token are refused | PASS |
+| 49 | Bookings cannot be opened without the private link or lookup | PASS |
+| 50 | Script injection is rejected in names and escaped everywhere else | PASS |
+| 51 | SQL-injection style input is treated as plain text | PASS |
+| 52 | Array / malformed parameters do not crash the app | PASS |
+| 53 | Booking lookup is rate limited | PASS |
+| 54 | Security headers are sent | PASS |
+| 55 | CSV exports (bookings, items, payments) download with correct totals | PASS |
+| 56 | Daily / weekly / monthly summaries match verified payments | PASS |
+| 57 | Admin changes prices; new bookings use them, old bookings keep theirs | PASS |
+| 58 | Food coupon catalog price drives booking totals | PASS |
+| 59 | Disabled services disappear from booking and are refused | PASS |
+| 60 | UPI QR only appears after payment details are verified | FAIL: QR PNG download |
+| 61 | Data persists: bookings, items, payments and audit are in the database | PASS |

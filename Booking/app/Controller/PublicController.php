@@ -12,6 +12,7 @@ use SJT\Core\Response;
 use SJT\Core\Session;
 use SJT\Core\ValidationException;
 use SJT\Service\Status;
+use SJT\Service\TempleLogo;
 use SJT\Service\Validator;
 
 final class PublicController extends Controller
@@ -22,6 +23,24 @@ final class PublicController extends Controller
             'services' => Container::catalog()->services(),
             'coupons' => Container::catalog()->coupons(),
         ]);
+    }
+
+    /** Same logo file as ERP Settings (php/storage/brand). */
+    public function brandLogo(Request $req): Response
+    {
+        $path = TempleLogo::filePath();
+        if ($path === null) {
+            throw new HttpException(404);
+        }
+        $mime = match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+            'png' => 'image/png',
+            'jpg', 'jpeg' => 'image/jpeg',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            'svg' => 'image/svg+xml',
+            default => 'application/octet-stream',
+        };
+        return Response::file((string) file_get_contents($path), $mime, 'temple-logo.' . pathinfo($path, PATHINFO_EXTENSION), true);
     }
 
     public function health(Request $req): Response
@@ -70,6 +89,7 @@ final class PublicController extends Controller
         $data['gatewayKey'] = $data['gateway'] ? $online->publicKey() : null;
         $data['checkoutScriptUrl'] = $data['gateway'] ? $online->checkoutScriptUrl() : null;
         $data['gatewayDriver'] = $online->driverId();
+        $data['gatewaySyncPending'] = $data['gateway'] && $online->hasOpenGatewayAttempt((int) $b['id']);
         $data['title'] = 'Pay for booking ' . $b['booking_no'];
         $data['errors'] = Session::get('pay_errors', []);
         $data['oldRef'] = Session::get('pay_ref', '');
@@ -164,7 +184,7 @@ final class PublicController extends Controller
             $o = $gw->order($b);
         } catch (\Throwable $e) {
             Logger::error('Gateway order failed', ['booking' => $b['booking_no'], 'error' => $e->getMessage()]);
-            return Response::json(['error' => 'Online payment is temporarily unavailable. Please use the UPI QR code.'], 502);
+            return Response::json(['error' => 'Online payment is temporarily unavailable. Please try again or contact the temple office.'], 502);
         }
         return Response::json([
             'key' => $gw->keyId(), 'order_id' => $o['order_id'], 'amount' => $o['amount'], 'currency' => 'INR',
@@ -176,14 +196,48 @@ final class PublicController extends Controller
     public function gatewayVerify(Request $req): Response
     {
         $b = $this->accessibleBooking($req);
-        $pay = Container::onlinePay();
-        $verified = $pay->verifyCheckoutResponse($req->post());
-        $payment = $verified ? $pay->paymentForOrder($verified->orderId) : null;
-        if (!$verified || !$payment || (int) $payment['booking_id'] !== (int) $b['id']) {
-            Logger::warning('Gateway signature check failed', ['booking' => $b['booking_no']]);
-            return Response::json(['error' => 'Payment could not be verified. If money was deducted, it will be reconciled by the temple office.'], 400);
+        if ($b['payment_status'] === 'paid') {
+            return Response::json(['redirect' => url('/b/' . $b['booking_no'])]);
         }
-        Container::service()->markGatewayPaid($payment, $verified->paymentId, 'checkout');
+        $pay = Container::onlinePay();
+        $verified = $pay->verifyCheckoutResponse($req->post);
+        if ($verified) {
+            $payment = $pay->paymentForOrder($verified->orderId);
+            if ($payment && (int) $payment['booking_id'] === (int) $b['id']) {
+                Container::service()->markGatewayPaid($payment, $verified->paymentId, 'checkout');
+                Session::set('just_paid', $b['booking_no']);
+                return Response::json(['redirect' => url('/b/' . $b['booking_no'])]);
+            }
+        }
+        Logger::warning('Gateway checkout verify failed; attempting provider reconcile', ['booking' => $b['booking_no']]);
+        return $this->jsonGatewaySync($b, $pay, 'checkout-fallback');
+    }
+
+    /** Recover when Razorpay captured money but browser verify failed (network, server error, closed tab). */
+    public function gatewaySync(Request $req): Response
+    {
+        $b = $this->accessibleBooking($req);
+        $this->throttle('gwsync:' . $b['booking_no'], 20, 3600);
+        return $this->jsonGatewaySync($b, Container::onlinePay(), 'sync');
+    }
+
+    private function jsonGatewaySync(array $b, \SJT\OnlinePay\OnlinePaymentService $pay, string $source): Response
+    {
+        if ($b['payment_status'] === 'paid') {
+            return Response::json(['redirect' => url('/b/' . $b['booking_no'])]);
+        }
+        if (!$pay->enabled()) {
+            return Response::json(['error' => 'Online payment is not available.'], 400);
+        }
+        $r = $pay->reconcileBooking($b);
+        if (!$r['ok'] || empty($r['payment']) || empty($r['payment_id'])) {
+            $msg = $r['message'] ?? 'Payment could not be verified yet.';
+            if ($source === 'checkout-fallback') {
+                $msg = 'Your payment may still have gone through. ' . $msg;
+            }
+            return Response::json(['error' => $msg, 'retry_sync' => true], $source === 'sync' ? 404 : 400);
+        }
+        Container::service()->markGatewayPaid($r['payment'], (string) $r['payment_id'], $source === 'sync' ? 'reconcile' : 'checkout');
         Session::set('just_paid', $b['booking_no']);
         return Response::json(['redirect' => url('/b/' . $b['booking_no'])]);
     }

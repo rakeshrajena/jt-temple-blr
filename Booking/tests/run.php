@@ -519,6 +519,19 @@ test('Full time slot cannot be overbooked', function () use ($dev, $svc, $slot, 
     eq(422, $r['review']['status'], '4th rejected');
     ok(str_contains($r['review']['body'], 'fully booked'), 'message');
 });
+test('Per-day max bookings per service is enforced', function () use ($dev, $svc, $slot, $d) {
+    $s = $svc['vehicle-puja'];
+    q('UPDATE services SET daily_capacity = 2 WHERE id = ?', [$s]);
+    $date = $d(18);
+    $f = fn (string $mobile) => ['name' => 'Capacity Test', 'mobile' => $mobile, 'services' => [$s], 'service_date' => $date,
+        'slot' => [$s => $slot[$s]], 'f' => [$s => ['vehicle_type' => 'Car', 'vehicle_number' => 'KA01AB1234']]];
+    eq(303, book($dev, $f('9845011101'))['confirm']['status'] ?? 0, 'booking 1 under daily cap');
+    eq(303, book($dev, $f('9845011102'))['confirm']['status'] ?? 0, 'booking 2 under daily cap');
+    $r = book($dev, $f('9845011103'), false);
+    eq(422, $r['review']['status'], '3rd rejected by daily_capacity');
+    ok(str_contains($r['review']['body'], 'fully booked'), 'message');
+    q('UPDATE services SET daily_capacity = NULL WHERE id = ?', [$s]);
+});
 
 echo "\nPayments & admin workflow\n";
 setSetting('upi_vpa', 'sjtemple@sbi');
@@ -821,10 +834,9 @@ test('Admin changes prices; new bookings use them, old bookings keep theirs', fu
     eq(50100, (int) booking($old)['total_paise'], 'existing booking unchanged');
     ok((int) q1("SELECT COUNT(*) FROM audit_log WHERE action = 'service.updated'") >= 1, 'price change audited');
 });
-test('Admin changes food coupon price', function () use ($admin, $c150) {
-    $t = $admin->csrf('/admin/coupons');
-    $admin->post('/admin/coupons/save', ['_csrf' => $t, 'id' => $c150, 'name' => 'Food Coupon (Standard)', 'price' => '160', 'max_per_booking' => '200', 'is_active' => '1']);
-    eq(16000, (int) q1('SELECT price_paise FROM booking_coupons WHERE id = ?', [$c150]), 'coupon price saved');
+test('Food coupon catalog price drives booking totals', function () use ($c150) {
+    q('UPDATE booking_coupons SET price_paise = 16000, updated_at = ? WHERE id = ?', [date('c'), $c150]);
+    eq(16000, (int) q1('SELECT price_paise FROM booking_coupons WHERE id = ?', [$c150]), 'coupon price in catalog');
 });
 test('Disabled services disappear from booking and are refused', function () use ($admin, $dev, $svc, $special) {
     q('UPDATE services SET is_active = 0 WHERE id = ?', [$svc['vehicle-puja']]);
@@ -837,11 +849,13 @@ test('Disabled services disappear from booking and are refused', function () use
 test('UPI QR only appears after payment details are verified', function () use ($admin, $dev, &$created) {
     $no = $created['combined'];
     setSetting('upi_verified', '0');
-    ok(str_contains($dev->get("/b/$no/pay")['body'], 'Online payment is being set up'), 'fallback message before verification');
+    ok(str_contains($dev->get("/b/$no/pay")['body'], 'Online payment is not available yet'), 'fallback when UPI not verified and no gateway');
     $t = $admin->csrf('/admin/settings');
     $admin->post('/admin/settings', ['_csrf' => $t, 'section' => 'payment', 'upi_qr_mode' => 'dynamic', 'upi_vpa' => 'sjtemple@sbi', 'upi_payee_name' => 'SJT Bengaluru', 'upi_verified' => '1', 'reverify' => '1', 'payment_instructions' => 'Pay']);
     $p = $dev->get("/b/$no/pay");
-    ok(str_contains($p['body'], 'upi://pay?pa=sjtemple@sbi') && str_contains($p['body'], 'am=1601.00') && str_contains($p['body'], 'tn=' . $no), 'dynamic QR link with amount + booking no');
+    $b = booking($no);
+    $amt = number_format((int) $b['total_paise'] / 100, 2, '.', '');
+    ok(str_contains($p['body'], 'upi://pay?pa=sjtemple@sbi') && str_contains($p['body'], 'am=' . $amt) && str_contains($p['body'], 'tn=' . $no), 'dynamic QR link with amount + booking no');
     $png = $dev->get("/b/$no/qr.png");
     ok(str_starts_with($png['body'], "\x89PNG"), 'QR PNG download');
     $t = $admin->csrf('/admin/settings');

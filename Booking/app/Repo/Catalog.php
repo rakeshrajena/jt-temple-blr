@@ -8,8 +8,16 @@ use SJT\Core\Database;
 /** Services, food coupons, time slots and blocked dates. */
 final class Catalog
 {
+    private CouponCatalog $couponsSource;
+
     public function __construct(private Database $db)
     {
+        $this->couponsSource = new CouponCatalog($db);
+    }
+
+    public function couponCatalog(): CouponCatalog
+    {
+        return $this->couponsSource;
     }
 
     public function services(bool $activeOnly = true): array
@@ -41,24 +49,12 @@ final class Catalog
 
     public function coupons(bool $activeOnly = true): array
     {
-        $rows = $this->db->all('SELECT * FROM booking_coupons' . ($activeOnly ? ' WHERE is_active = 1' : '') . ' ORDER BY sort_order, id');
-        foreach ($rows as &$r) {
-            $r['id'] = (int) $r['id'];
-            $r['price_paise'] = (int) $r['price_paise'];
-            $r['max_per_booking'] = (int) $r['max_per_booking'];
-            $r['is_active'] = (bool) (int) $r['is_active'];
-        }
-        return $rows;
+        return $this->couponsSource->rows($activeOnly);
     }
 
     public function coupon(int $id): ?array
     {
-        foreach ($this->coupons(false) as $c) {
-            if ($c['id'] === $id) {
-                return $c;
-            }
-        }
-        return null;
+        return $this->couponsSource->find($id);
     }
 
     public function slots(?int $serviceId = null, bool $activeOnly = true): array

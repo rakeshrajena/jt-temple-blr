@@ -43,6 +43,9 @@ $css = (string) @file_get_contents(\SJT\Core\App::publicPath() . '/assets/css/in
   <table class="head">
     <tr>
       <td class="temple">
+        <?php if (!empty($logo_url)): ?>
+        <img class="t-logo" src="<?= e($logo_url) ?>" alt="" width="52" height="52">
+        <?php endif; ?>
         <div class="t-name"><?= e($temple['name']) ?></div>
         <?php if ($temple['address']): ?><div><?= e($temple['address']) ?></div><?php endif; ?>
         <?php if ($temple['phone']): ?><div>Phone: <?= e($temple['phone']) ?></div><?php endif; ?>

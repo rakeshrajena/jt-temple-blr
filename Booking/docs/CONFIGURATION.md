@@ -42,6 +42,16 @@ If the bank provides a merchant VPA, tick *Include merchant transaction referenc
 Changing the UPI ID, switching mode or uploading a new image **automatically un-verifies** the
 payment details until the test is repeated.
 
+### Invoice logo (same as ERP)
+
+Booking invoices (HTML + PDF) use the **same logo as ERP** billing and **Settings › Name, place, and logo**:
+
+- Uploaded logo: `php/storage/brand/` (key `brand_logo` in ERP `app_settings`)
+- Print-optimised PNG: `php/storage/brand/logo-print.png` (used in PDF when present)
+- Default: `php/static/logo.svg`
+
+No separate upload in Booking admin. Change the logo once in ERP Settings; redeploy both apps with the shared `php/storage/brand` folder on the server.
+
 ### Devotee payments — Razorpay (default)
 
 In `.env`:
@@ -59,8 +69,11 @@ In the Razorpay dashboard: enable **automatic capture**, and add a webhook to
 `https://sjtbengaluru.org/Booking/webhooks/payment` (or `/webhooks/razorpay`) for `payment.captured` and `order.paid`
 with the same webhook secret.
 
-To bring back the old **UPI QR + UTR** form for devotees, set `BOOKING_UPI_MANUAL=true` (Settings › UPI still applies).
-Staff can always **verify** or **record** payments in the admin booking screen regardless.
+With `BOOKING_UPI_MANUAL=false`, Booking admin **Settings › Online payment** shows Razorpay status only (no temple UPI ID form).
+
+To bring back the old **UPI QR + UTR** form for devotees, set `BOOKING_UPI_MANUAL=true` — the UPI settings form returns under Settings.
+
+Staff can always **verify** or **record** payments on individual bookings in admin regardless of gateway.
 
 ## 3. WhatsApp — `.env` + Settings › WhatsApp
 
@@ -107,9 +120,8 @@ Each must be a WhatsApp-enabled mobile number.
 
 Price changes apply only to new bookings; existing bookings and invoices keep their price.
 
-## 6. Food / prasadam coupons — Food coupons
-Edit name, price per person, maximum persons per booking, availability and order.
-Add more categories if needed. Defaults: *Food Coupon (Standard)* ₹150, *Food Coupon (Special)* ₹250.
+## 6. Food / prasadam coupons
+Managed in **Temple ERP › Settings › Online booking › Prasadam menu**. Printed serial coupons (CU-…) are under **Temple ERP › Coupons**. Other booking configuration (contact, rules, WhatsApp templates, Razorpay status) is under **Temple ERP › Settings › Online booking**.
 
 ## 7. Availability, dates and time slots
 - **Time slots** (per service): open the service › *Time slots*. Each slot has a label shown to

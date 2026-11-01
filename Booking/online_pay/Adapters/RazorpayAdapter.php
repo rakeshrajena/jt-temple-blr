@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace SJT\OnlinePay\Adapters;
 
+use SJT\Core\App;
 use SJT\Core\Env;
 use SJT\Core\Logger;
 use SJT\OnlinePay\Contract\GatewayAdapter;
@@ -99,26 +100,76 @@ final class RazorpayAdapter implements GatewayAdapter
         ];
     }
 
+    public function fetchCapturedPaymentsForOrder(string $orderId): array
+    {
+        if ($orderId === '') {
+            return [];
+        }
+        $res = $this->api('GET', '/v1/orders/' . rawurlencode($orderId) . '/payments', []);
+        $out = [];
+        foreach ($res['items'] ?? [] as $p) {
+            if (($p['status'] ?? '') !== 'captured') {
+                continue;
+            }
+            $pid = (string) ($p['id'] ?? '');
+            if ($pid === '') {
+                continue;
+            }
+            $out[] = new WebhookCapture($orderId, $pid, (int) ($p['amount'] ?? 0));
+        }
+        return $out;
+    }
+
     /** @return array<string, mixed> */
     private function api(string $method, string $path, array $body): array
     {
         $ch = curl_init('https://api.razorpay.com' . $path);
-        curl_setopt_array($ch, [
+        $keyId = trim((string) Env::get('RAZORPAY_KEY_ID'));
+        $keySecret = trim((string) Env::get('RAZORPAY_KEY_SECRET'));
+        $opts = [
             CURLOPT_CUSTOMREQUEST => $method,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_TIMEOUT => 15,
-            CURLOPT_USERPWD => Env::get('RAZORPAY_KEY_ID') . ':' . Env::get('RAZORPAY_KEY_SECRET'),
+            CURLOPT_USERPWD => $keyId . ':' . $keySecret,
             CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-            CURLOPT_POSTFIELDS => json_encode($body),
-        ]);
+        ];
+        if ($method !== 'GET' && $body !== []) {
+            $opts[CURLOPT_POSTFIELDS] = json_encode($body);
+        }
+        curl_setopt_array($ch, $opts);
+        self::applyOutboundTls($ch);
         $raw = curl_exec($ch);
         $err = curl_error($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         curl_close($ch);
         if ($raw === false) {
             Logger::error('Razorpay API network error', ['error' => $err]);
             return ['error' => ['description' => 'Network error']];
         }
-        return json_decode((string) $raw, true) ?: [];
+        $decoded = json_decode((string) $raw, true) ?: [];
+        if ($code >= 400 && empty($decoded['error']['description'])) {
+            $decoded['error'] = ['description' => 'HTTP ' . $code];
+        }
+        return $decoded;
+    }
+
+    /** AMPPS / some Windows PHP builds lack a trusted CA bundle; production always verifies TLS. */
+    private static function applyOutboundTls(\CurlHandle $ch): void
+    {
+        $verify = Env::bool('GATEWAY_SSL_VERIFY', true);
+        if (App::isProduction()) {
+            $verify = true;
+        }
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $verify);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $verify ? 2 : 0);
+        if ($verify) {
+            foreach ([ini_get('curl.cainfo'), ini_get('openssl.cafile')] as $ca) {
+                if (is_string($ca) && $ca !== '' && is_file($ca)) {
+                    curl_setopt($ch, CURLOPT_CAINFO, $ca);
+                    break;
+                }
+            }
+        }
     }
 }

@@ -8,7 +8,8 @@ table { border-collapse: collapse; width: 100%; }
 td, th { vertical-align: top; }
 .head td { padding: 0; }
 .temple { width: 58%; border-left: 5px solid #7a1d1d; padding-left: 10px !important; line-height: 1.45; }
-.t-name { font-size: 15pt; font-weight: bold; color: #7a1d1d; margin-bottom: 2px; }
+.t-logo { float: left; width: 52px; height: 52px; object-fit: contain; margin: 0 10px 6px 0; }
+.t-name { font-size: 15pt; font-weight: bold; color: #7a1d1d; margin-bottom: 2px; clear: none; overflow: hidden; }
 .doc { text-align: right; }
 .doc-title { font-size: 20pt; font-weight: bold; letter-spacing: 3px; color: #7a1d1d; }
 .meta { width: auto; margin-left: auto; margin-top: 6px; }

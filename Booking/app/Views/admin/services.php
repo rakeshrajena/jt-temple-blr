@@ -31,4 +31,4 @@
   <?php endforeach; ?></tbody>
 </table>
 </div>
-<p class="muted small">Food coupon prices are on the <a href="<?= e(url('/admin/coupons')) ?>">Food coupons</a> page. Price changes apply to new bookings only.</p>
+<p class="muted small">When ERP SSO is on, manage services in <a href="<?= e(class_exists(\SJT\Service\ErpStaffSession::class) ? \SJT\Service\ErpStaffSession::erpBookingServicesUrl() : '#') ?>">Temple ERP › Settings › Online booking › Services</a>. Food / prasadam menu: <a href="<?= e($erp_food_coupons_url ?? '#') ?>">Prasadam menu</a>.</p>

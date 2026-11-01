@@ -20,9 +20,9 @@ Use one database (e.g. **`sjt_temple_blr`**) for both apps. Point booking `.env`
    - **Browser:** open `https://your-site/Booking/install.php`, or
    - **SSH:** `php bin/console.php migrate` and `php bin/console.php create-admin …`
 3. After web setup: delete `install.php` and remove `INSTALL_TOKEN` from `.env`.
-4. Booking adds its own tables (`bookings`, `services`, `admins`, `booking_coupons`, …) and `schema_migrations`. It does **not** replace ERP `users` or ERP `food_coupons` (serial codes). Prasadam **catalog** for online booking lives in **`booking_coupons`**.
+4. Booking adds its own tables (`bookings`, `services`, …) and `schema_migrations`. ERP **`food_coupons`** are printed serial codes; the **online prasadam menu** is **`food_coupon_catalog`** (edited in ERP › Temple › Coupons). Legacy standalone DBs still use **`booking_coupons`**.
 
-Logins stay separate: ERP `users` vs booking `admins`.
+Booking admin uses the **same** database table as ERP: `users` (one username/password for both). Legacy booking-only installs migrate `admins` → `users` on migrate.
 
 ---
 

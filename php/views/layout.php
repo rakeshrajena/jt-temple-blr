@@ -33,22 +33,31 @@ $icon = static function (string $name): string {
         'mail' => '<rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="m4 7 8 6 8-6"/>',
         'gear' => '<circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6 6l1.6 1.6M16.4 16.4 18 18M18 6l-1.6 1.6M7.6 16.4 6 18"/>',
         'globe' => '<circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c2.2 2.4 3.3 5.2 3.3 8s-1.1 5.6-3.3 8c-2.2-2.4-3.3-5.2-3.3-8s1.1-5.6 3.3-8z"/>',
+        'calendar' => '<rect x="4" y="5.5" width="16" height="14" rx="2"/><path d="M8 4v3M16 4v3M4 10h16"/>',
     ];
     $path = $paths[$name] ?? $paths['grid'];
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $path . '</svg>';
 };
+
+$templeNav = [
+    ['inventory', 'box', t('nav.inventory'), 'inventory'],
+    ['food', 'leaf', t('nav.food'), 'food'],
+    ['coupons', 'ticket', t('nav.coupons'), 'food/coupons'],
+    ['vastra', 'cloth', t('nav.vastra'), 'vastra'],
+];
+if (booking_module_installed()) {
+    $bookingHref = booking_admin_url();
+    if ($bookingHref !== '') {
+        $templeNav[] = ['bookings', 'calendar', t('nav.online_bookings'), '', $bookingHref];
+    }
+}
 
 $sections = [
     t('nav.section.overview') => [
         ['demo', 'star', t('nav.overview'), 'demo'],
         ['dashboard', 'grid', t('nav.dashboard'), ''],
     ],
-    t('nav.section.temple') => [
-        ['inventory', 'box', t('nav.inventory'), 'inventory'],
-        ['food', 'leaf', t('nav.food'), 'food'],
-        ['coupons', 'ticket', t('nav.coupons'), 'food/coupons'],
-        ['vastra', 'cloth', t('nav.vastra'), 'vastra'],
-    ],
+    t('nav.section.temple') => $templeNav,
     t('nav.section.finance') => [
         ['donations', 'hands', t('nav.donations'), 'donations'],
         ['receipts', 'receipt', t('nav.receipts'), 'receipts'],
@@ -71,7 +80,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><?= e($title) ?> — <?= e(app_display_name()) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=43">
+  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=46">
 </head>
 <body data-table-filter-label="<?= e(t('ui.table_filter')) ?>" data-table-filter-count="<?= e(t('ui.table_filter_count')) ?>">
   <div class="app-shell">
@@ -85,8 +94,12 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
       </div>
       <?php foreach ($sections as $section => $links): ?>
         <div class="nav-label"><?= e($section) ?></div>
-        <?php foreach ($links as [$key, $glyph, $label, $route]): ?>
-          <a class="nav-link<?= $active === $key ? ' active' : '' ?>" href="<?= e(url($route)) ?>"><?= $icon($glyph) ?> <?= e($label) ?></a>
+        <?php foreach ($links as $link): ?>
+          <?php
+            [$key, $glyph, $label, $route] = $link;
+            $href = isset($link[4]) && is_string($link[4]) && $link[4] !== '' ? $link[4] : url($route);
+          ?>
+          <a class="nav-link<?= $active === $key ? ' active' : '' ?>" href="<?= e($href) ?>"><?= $icon($glyph) ?> <?= e($label) ?></a>
         <?php endforeach; ?>
       <?php endforeach; ?>
       <div class="nav-label"><?= e(t('nav.section.administration')) ?></div>
@@ -144,7 +157,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
       });
     });
   </script>
-  <script src="<?= e(asset('js/suggest.js')) ?>?v=3"></script>
+  <script src="<?= e(asset('js/suggest.js')) ?>?v=5"></script>
   <script src="<?= e(asset('js/reveal.js')) ?>?v=1"></script>
   <script src="<?= e(asset('js/help_tip.js')) ?>?v=1"></script>
   <script src="<?= e(asset('js/table_filter.js')) ?>?v=1"></script>

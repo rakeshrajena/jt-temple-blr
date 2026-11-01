@@ -4,11 +4,15 @@ declare(strict_types=1);
 namespace SJT\Controller;
 
 use SJT\Core\App;
+use SJT\Core\Env;
 use SJT\Core\Container;
 use SJT\Core\HttpException;
 use SJT\Core\Request;
 use SJT\Core\Response;
 use SJT\Service\Auth;
+use SJT\OnlinePay\OnlinePaymentService;
+use SJT\Service\ErpStaffSession;
+use SJT\Service\StaffAccounts;
 use SJT\Service\Validator;
 
 /** Services, prices, coupons, slots, blocked dates, settings and users. */
@@ -20,6 +24,9 @@ final class AdminConfigController extends Controller
 
     public function availability(Request $req): Response
     {
+        if (ErpStaffSession::enabled()) {
+            return Response::redirect(ErpStaffSession::erpBookingAvailabilityUrl(), true);
+        }
         $date = Validator::date($req->str('date')) ?? today();
         return $this->adminView('availability', [
             'title' => 'Availability',
@@ -47,6 +54,9 @@ final class AdminConfigController extends Controller
 
     public function block(Request $req): Response
     {
+        if (ErpStaffSession::enabled()) {
+            return Response::redirect(ErpStaffSession::erpBookingAvailabilityUrl(), true);
+        }
         $from = Validator::date($req->str('from'));
         $to = Validator::date($req->str('to')) ?? $from;
         $sid = $req->int('service_id') ?: null;
@@ -74,6 +84,9 @@ final class AdminConfigController extends Controller
 
     public function unblock(Request $req): Response
     {
+        if (ErpStaffSession::enabled()) {
+            return Response::redirect(ErpStaffSession::erpBookingAvailabilityUrl(), true);
+        }
         $id = $req->int('id');
         $row = App::db()->one('SELECT * FROM blocked_dates WHERE id = ?', [$id]);
         if ($row) {
@@ -88,6 +101,9 @@ final class AdminConfigController extends Controller
 
     public function services(Request $req): Response
     {
+        if (ErpStaffSession::enabled()) {
+            return Response::redirect(ErpStaffSession::erpBookingServicesUrl(), true);
+        }
         $slots = [];
         foreach (Container::catalog()->slots(null, false) as $s) {
             $slots[$s['service_id']][] = $s;
@@ -102,6 +118,10 @@ final class AdminConfigController extends Controller
 
     public function serviceForm(Request $req): Response
     {
+        if (ErpStaffSession::enabled()) {
+            $id = (int) $req->param('id');
+            return Response::redirect(ErpStaffSession::erpBookingServiceEditUrl($id), true);
+        }
         $id = (int) $req->param('id');
         $s = $id ? Container::catalog()->service($id) : null;
         if ($id && !$s) {
@@ -122,6 +142,9 @@ final class AdminConfigController extends Controller
 
     public function serviceSave(Request $req): Response
     {
+        if (ErpStaffSession::enabled()) {
+            return Response::redirect(ErpStaffSession::erpBookingServicesUrl(), true);
+        }
         $id = $req->int('id');
         $old = $id ? Container::catalog()->service($id) : null;
         if ($id && !$old) {
@@ -204,6 +227,9 @@ final class AdminConfigController extends Controller
 
     public function slotSave(Request $req): Response
     {
+        if (ErpStaffSession::enabled()) {
+            return Response::redirect(ErpStaffSession::erpBookingServicesUrl(), true);
+        }
         $sid = $req->int('service_id');
         $svc = Container::catalog()->service($sid);
         if (!$svc) {
@@ -240,46 +266,25 @@ final class AdminConfigController extends Controller
 
     public function confirmPrices(Request $req): Response
     {
+        if (ErpStaffSession::enabled()) {
+            return Response::redirect(ErpStaffSession::erpBookingServicesUrl(), true);
+        }
         App::settings()->set('prices_reviewed', '1', Container::auth()->actor()['name']);
         Container::audit()->log(Container::auth()->actor(), 'settings', 'prices_reviewed', null, 'prices.confirmed', []);
         flash('success', 'Thank you. Prices are marked as reviewed.');
         return Response::redirect('/admin/services');
     }
 
-    // ---------------------------------------------------------------- food coupons
+    // ---------------------------------------------------------------- food coupons (managed in ERP only)
 
     public function coupons(Request $req): Response
     {
-        return $this->adminView('coupons', ['title' => 'Food coupons', 'coupons' => Container::catalog()->coupons(false)]);
+        return Response::redirect(ErpStaffSession::erpFoodCouponsUrl(), true);
     }
 
     public function couponSave(Request $req): Response
     {
-        $id = $req->int('id');
-        $name = Validator::text($req->str('name'), 100);
-        $price = parse_rupees($req->str('price'));
-        if (mb_strlen($name) < 3 || $price === null || $price <= 0) {
-            flash('error', 'A coupon needs a name and a price greater than ₹0.');
-            return Response::redirect('/admin/coupons');
-        }
-        $row = [
-            'name' => $name, 'description' => Validator::text($req->str('description'), 255) ?: null, 'price_paise' => $price,
-            'max_per_booking' => max(1, min(5000, $req->int('max_per_booking', 200))),
-            'is_active' => $req->str('is_active') === '1' ? 1 : 0, 'sort_order' => $req->int('sort_order'), 'updated_at' => now(),
-        ];
-        if ($id) {
-            $old = Container::catalog()->coupon($id);
-            if (!$old) {
-                throw new HttpException(404);
-            }
-            App::db()->update('booking_coupons', $row, 'id = :id', ['id' => $id]);
-            Container::audit()->log(Container::auth()->actor(), 'coupon', $id, null, 'coupon.updated', ['from' => array_intersect_key($old, $row), 'to' => $row]);
-        } else {
-            $id = App::db()->insert('booking_coupons', $row + ['created_at' => now()]);
-            Container::audit()->log(Container::auth()->actor(), 'coupon', $id, null, 'coupon.created', $row);
-        }
-        flash('success', 'Food coupon saved. New prices apply to new bookings only.');
-        return Response::redirect('/admin/coupons');
+        return Response::redirect(ErpStaffSession::erpFoodCouponsUrl(), true);
     }
 
     // ---------------------------------------------------------------- settings
@@ -293,20 +298,37 @@ final class AdminConfigController extends Controller
 
     public function settings(Request $req): Response
     {
+        if (ErpStaffSession::enabled()) {
+            return Response::redirect(ErpStaffSession::erpOnlineBookingSettingsUrl(), true);
+        }
+        $online = Container::onlinePay();
+        $keyId = (string) Env::get('RAZORPAY_KEY_ID', '');
         return $this->adminView('settings', [
             'title' => 'Settings',
             's' => App::settings()->all(),
             'waConfigured' => Container::whatsapp()->configured(),
             'staticQr' => is_file(\SJT\Service\UpiPayment::STATIC_QR_FILE),
             'webhookUrl' => absolute_url('/webhooks/whatsapp'),
+            'showUpiSettings' => OnlinePaymentService::showUpiAdminSettings(),
+            'razorpayConfigured' => $online->enabled(),
+            'razorpayKeyLabel' => $keyId !== '' ? (substr($keyId, 0, 12) . '…') : '',
+            'razorpayWebhookUrl' => absolute_url('/webhooks/razorpay'),
+            'paymentGateway' => strtolower((string) Env::get('PAYMENT_GATEWAY', 'none')),
         ]);
     }
 
     public function settingsSave(Request $req): Response
     {
+        if (ErpStaffSession::enabled()) {
+            return Response::redirect(ErpStaffSession::erpOnlineBookingSettingsUrl(), true);
+        }
         $section = $req->str('section');
         if (!isset(self::SETTING_KEYS[$section])) {
             throw new HttpException(400);
+        }
+        if ($section === 'payment' && !OnlinePaymentService::showUpiAdminSettings()) {
+            flash('error', 'Devotee payments use Razorpay. Edit keys in the server .env file; manual UPI is disabled (BOOKING_UPI_MANUAL=false).');
+            return Response::redirect(ErpStaffSession::enabled() ? ErpStaffSession::erpOnlineBookingSettingsUrl() : '/admin/settings#payment', ErpStaffSession::enabled());
         }
         $settings = App::settings();
         $actor = Container::auth()->actor();
@@ -411,6 +433,12 @@ final class AdminConfigController extends Controller
 
     public function qrUpload(Request $req): Response
     {
+        if (ErpStaffSession::enabled()) {
+            return Response::redirect(ErpStaffSession::erpOnlineBookingSettingsUrl(), true);
+        }
+        if (!OnlinePaymentService::showUpiAdminSettings()) {
+            throw new HttpException(404);
+        }
         $err = Container::upi()->storeStaticQr($req->files['qr'] ?? []);
         if ($err) {
             flash('error', $err);
@@ -424,6 +452,9 @@ final class AdminConfigController extends Controller
 
     public function qrPreview(Request $req): Response
     {
+        if (!OnlinePaymentService::showUpiAdminSettings()) {
+            throw new HttpException(404);
+        }
         $upi = Container::upi();
         if ($upi->mode() === 'static') {
             if (!is_file(\SJT\Service\UpiPayment::STATIC_QR_FILE)) {
@@ -440,6 +471,9 @@ final class AdminConfigController extends Controller
 
     public function whatsappTest(Request $req): Response
     {
+        if (ErpStaffSession::enabled()) {
+            return Response::redirect(ErpStaffSession::erpOnlineBookingSettingsUrl(), true);
+        }
         $to = Validator::normaliseMobile($req->str('to'));
         if (!$to) {
             flash('error', 'Enter a valid mobile number for the test message.');
@@ -458,39 +492,68 @@ final class AdminConfigController extends Controller
 
     public function users(Request $req): Response
     {
-        return $this->adminView('users', ['title' => 'Administrators', 'users' => App::db()->all('SELECT id, username, name, role, is_active, last_login_at, locked_until FROM admins ORDER BY username')]);
+        $accounts = Container::auth()->accounts();
+        return $this->adminView('users', [
+            'title' => 'Administrators',
+            'users' => $accounts->listForAdminUi(),
+            'shared_erp' => $accounts->sharedWithErp(),
+        ]);
     }
 
     public function userSave(Request $req): Response
     {
+        $accounts = Container::auth()->accounts();
+        if ($accounts->sharedWithErp()) {
+            flash('error', 'User accounts are shared with the temple ERP. Add or change users in ERP › Users (same username and password work here).');
+            return Response::redirect('/admin/users');
+        }
         $me = Container::auth()->user();
         $id = $req->int('id');
-        $role = $req->str('role') === 'super' ? 'super' : 'staff';
+        $super = $req->str('role') === 'super';
         $active = $req->str('is_active') === '1' ? 1 : 0;
         $name = Validator::text($req->str('name'), 100);
         $pw = (string) ($req->post['password'] ?? '');
+        $usesUsers = $accounts->usesErpUsers();
         if ($id) {
-            $u = App::db()->one('SELECT * FROM admins WHERE id = ?', [$id]);
+            $u = $accounts->findAuthRowById($id);
             if (!$u) {
                 throw new HttpException(404);
             }
-            if ($id === $me['id'] && ($role !== 'super' || !$active)) {
+            if ($id === $me['id'] && (!$super || !$active)) {
                 flash('error', 'You cannot remove your own senior role or deactivate yourself.');
                 return Response::redirect('/admin/users');
             }
-            $row = ['name' => $name ?: $u['name'], 'role' => $role, 'is_active' => $active, 'updated_at' => now()];
-            if ($pw !== '') {
-                if ($p = Auth::passwordProblem($pw)) {
-                    flash('error', $p);
-                    return Response::redirect('/admin/users');
+            if ($usesUsers) {
+                $row = ['full_name' => $name ?: ($u['full_name'] ?? $u['username']), 'role' => StaffAccounts::erpRoleFromBookingSuper($super), 'is_active' => $active];
+                if ($pw !== '') {
+                    if ($p = Auth::passwordProblem($pw)) {
+                        flash('error', $p);
+                        return Response::redirect('/admin/users');
+                    }
+                    $row['password_hash'] = Auth::hash($pw);
+                    $row['failed_logins'] = 0;
+                    $row['locked_until'] = null;
                 }
-                $row += ['password_hash' => Auth::hash($pw), 'failed_logins' => 0, 'locked_until' => null];
+                $row['updated_at'] = now();
+                App::db()->update('users', $row, 'id = :id', ['id' => $id]);
+            } else {
+                $row = ['name' => $name ?: $u['name'], 'role' => $super ? 'super' : 'staff', 'is_active' => $active, 'updated_at' => now()];
+                if ($pw !== '') {
+                    if ($p = Auth::passwordProblem($pw)) {
+                        flash('error', $p);
+                        return Response::redirect('/admin/users');
+                    }
+                    $row += ['password_hash' => Auth::hash($pw), 'failed_logins' => 0, 'locked_until' => null];
+                }
+                App::db()->update('admins', $row, 'id = :id', ['id' => $id]);
             }
-            App::db()->update('admins', $row, 'id = :id', ['id' => $id]);
-            Container::audit()->log(Container::auth()->actor(), 'admin', $u['username'], null, 'admin.updated', ['role' => $role, 'active' => $active, 'password_changed' => $pw !== '']);
+            Container::audit()->log(Container::auth()->actor(), 'admin', $u['username'], null, 'admin.updated', ['role' => $super ? 'super' : 'staff', 'active' => $active, 'password_changed' => $pw !== '']);
         } else {
             $username = strtolower($req->str('username'));
-            if (!preg_match('/^[a-z0-9._-]{3,50}$/', $username) || App::db()->value('SELECT 1 FROM admins WHERE username = ?', [$username])) {
+            $exists = $usesUsers
+                ? App::db()->value('SELECT 1 FROM users WHERE username = ?', [$username])
+                : App::db()->value('SELECT 1 FROM admins WHERE username = ?', [$username]);
+            if (!preg_match('/^[a-z0-9._-]{3,50}$/', $username) || $exists) {
                 flash('error', 'Choose a unique username of 3–50 letters, digits, dots, dashes or underscores.');
                 return Response::redirect('/admin/users');
             }
@@ -498,8 +561,22 @@ final class AdminConfigController extends Controller
                 flash('error', $p);
                 return Response::redirect('/admin/users');
             }
-            App::db()->insert('admins', ['username' => $username, 'name' => $name ?: $username, 'password_hash' => Auth::hash($pw), 'role' => $role, 'is_active' => 1, 'failed_logins' => 0, 'created_at' => now(), 'updated_at' => now()]);
-            Container::audit()->log(Container::auth()->actor(), 'admin', $username, null, 'admin.created', ['role' => $role]);
+            $ts = now();
+            if ($usesUsers) {
+                App::db()->insert('users', [
+                    'username' => $username,
+                    'full_name' => $name ?: $username,
+                    'password_hash' => Auth::hash($pw),
+                    'role' => StaffAccounts::erpRoleFromBookingSuper($super),
+                    'is_active' => 1,
+                    'failed_logins' => 0,
+                    'created_at' => $ts,
+                    'updated_at' => $ts,
+                ]);
+            } else {
+                App::db()->insert('admins', ['username' => $username, 'name' => $name ?: $username, 'password_hash' => Auth::hash($pw), 'role' => $super ? 'super' : 'staff', 'is_active' => 1, 'failed_logins' => 0, 'created_at' => $ts, 'updated_at' => $ts]);
+            }
+            Container::audit()->log(Container::auth()->actor(), 'admin', $username, null, 'admin.created', ['role' => $super ? 'super' : 'staff']);
         }
         flash('success', 'Administrator saved.');
         return Response::redirect('/admin/users');

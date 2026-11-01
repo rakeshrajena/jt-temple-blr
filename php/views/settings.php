@@ -15,25 +15,50 @@ $groups = [
         'vastra_statuses',
         'donation_types',
         'purposes',
-        'puja_purposes',
         'plans',
         'billing_cycles',
         'subscriber_statuses',
     ],
 ];
-$wide = ['payment_modes', 'movements', 'donation_types', 'puja_purposes'];
+$wide = ['payment_modes', 'movements', 'donation_types'];
+$bookingPanelEnabled = !empty($bookingPanelEnabled) || !empty($bookingSettingsEnabled);
 $bookLabels = ['cash' => t('settings.book_cash'), 'bank' => t('settings.book_bank'), 'none' => t('settings.book_none')];
 $directionLabels = ['in' => t('settings.dir_in'), 'out' => t('settings.dir_out')];
 $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('settings.store_food'), 'both' => t('settings.store_both')];
+$settingsPanels = [
+    ['id' => 'identity', 'icon' => 'identity', 'title' => t('settings.identity'), 'desc' => t('settings.hub.identity_desc')],
+    ['id' => 'approval', 'icon' => 'approval', 'title' => t('settings.approval'), 'desc' => t('settings.hub.approval_desc')],
+    ['id' => 'messages', 'icon' => 'messages', 'title' => t('settings.messages'), 'desc' => t('settings.hub.messages_desc')],
+    ['id' => 'choices', 'icon' => 'choices', 'title' => t('settings.choices'), 'desc' => t('settings.hub.choices_desc')],
+];
+if (!empty($bookingPanelEnabled)) {
+    $settingsPanels[] = ['id' => 'online-booking', 'icon' => 'booking', 'title' => t('settings.online_booking'), 'desc' => t('settings.hub.booking_desc')];
+}
+$choiceJumpKeys = [];
+foreach ($groups as $keys) {
+    foreach ($keys as $key) {
+        $choiceJumpKeys[] = $key;
+    }
+}
 ?>
-<div class="settings-page">
-  <nav class="settings-nav" aria-label="<?= e(t('settings.nav')) ?>">
-    <a href="#identity"><?= e(t('settings.identity')) ?></a>
-    <a href="#approval"><?= e(t('settings.approval')) ?></a>
-    <a href="#messages"><?= e(t('settings.messages')) ?></a>
-    <a href="#choices"><?= e(t('settings.choices')) ?></a>
+<div class="settings-page settings-hub" data-settings-hub>
+  <header class="settings-hub-header">
+    <h2 class="settings-hub-title"><?= e(t('page.settings')) ?></h2>
+    <p class="settings-hub-intro"><?= e(t('settings.hub.intro')) ?></p>
+  </header>
+  <nav class="settings-jumbo" aria-label="<?= e(t('settings.nav')) ?>" role="tablist">
+    <?php foreach ($settingsPanels as $i => $panel): ?>
+      <button type="button" class="settings-jumbo-card<?= $i === 0 ? ' is-active' : '' ?>" role="tab" id="tab-<?= e($panel['id']) ?>"
+        data-settings-panel="<?= e($panel['id']) ?>" data-settings-icon="<?= e($panel['icon'] ?? 'grid') ?>" aria-selected="<?= $i === 0 ? 'true' : 'false' ?>" aria-controls="panel-<?= e($panel['id']) ?>">
+        <span class="settings-jumbo-icon" aria-hidden="true"></span>
+        <span class="settings-jumbo-title"><?= e($panel['title']) ?></span>
+        <span class="settings-jumbo-desc"><?= e($panel['desc']) ?></span>
+      </button>
+    <?php endforeach; ?>
   </nav>
 
+  <div class="settings-panels">
+  <div class="settings-panel is-active" data-settings-panel="identity" id="panel-identity" role="tabpanel" aria-labelledby="tab-identity">
   <form id="identity" class="settings-block" method="POST" action="<?= e(url('settings')) ?>" enctype="multipart/form-data">
     <?= csrf_field() ?>
     <input type="hidden" name="form" value="brand">
@@ -77,7 +102,9 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
       </div>
     </section>
   </form>
+  </div>
 
+  <div class="settings-panel" data-settings-panel="approval" id="panel-approval" role="tabpanel" aria-labelledby="tab-approval" hidden>
   <form id="approval" class="settings-block" method="POST" action="<?= e(url('settings')) ?>">
     <?= csrf_field() ?>
     <input type="hidden" name="form" value="approval">
@@ -99,7 +126,9 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
       </div>
     </section>
   </form>
+  </div>
 
+  <div class="settings-panel" data-settings-panel="messages" id="panel-messages" role="tabpanel" aria-labelledby="tab-messages" hidden>
   <form id="messages" class="settings-block" method="POST" action="<?= e(url('settings')) ?>">
     <?= csrf_field() ?>
     <input type="hidden" name="form" value="messages">
@@ -151,13 +180,20 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
       <button class="btn btn-primary" type="submit"><?= e(t('settings.save')) ?></button>
     </div>
   </form>
+  </div>
 
+  <div class="settings-panel" data-settings-panel="choices" id="panel-choices" role="tabpanel" aria-labelledby="tab-choices" hidden>
   <div id="choices" class="settings-block">
     <div class="settings-head">
       <div>
         <h3><?= e(t('settings.choices')) ?><?= help_tip(t('settings.choices_intro') . ' ' . t('settings.note')) ?></h3>
       </div>
     </div>
+    <nav class="settings-choice-jump" aria-label="<?= e(t('settings.hub.choice_jump')) ?>">
+      <?php foreach ($choiceJumpKeys as $key): ?>
+        <a href="#choice-<?= e($key) ?>" data-choice-jump><?= e(t('settings.choice.' . $key)) ?></a>
+      <?php endforeach; ?>
+    </nav>
     <?php foreach ($groups as $group => $keys): ?>
       <h4 class="settings-kicker"><?= e($group) ?></h4>
       <div class="settings-choices">
@@ -283,4 +319,38 @@ $storeLabels = ['inventory' => t('settings.store_inventory'), 'food' => t('setti
       </div>
     <?php endforeach; ?>
   </div>
+  </div>
+
+  <?php if (!empty($bookingPanelEnabled)): ?>
+  <div class="settings-panel settings-panel-wide" data-settings-panel="online-booking" id="panel-online-booking" role="tabpanel" aria-labelledby="tab-online-booking" hidden>
+    <?php require __DIR__ . '/partials/booking_online_settings.php'; ?>
+  </div>
+  <?php endif; ?>
+
+  </div>
 </div>
+<script>
+(function () {
+  var hash = location.hash || '';
+  if (!hash) return;
+  var id = hash.replace(/^#/, '');
+  var panel = 'identity';
+  if (id.indexOf('choice-') === 0) panel = 'choices';
+  else if (id.indexOf('ob-') === 0 || id === 'online-booking') panel = 'online-booking';
+  else if (['identity', 'approval', 'messages', 'choices', 'online-booking'].indexOf(id) >= 0) panel = id;
+  var target = document.querySelector('[data-settings-hub] [data-settings-panel="' + panel + '"]');
+  if (!target) return;
+  document.querySelectorAll('[data-settings-hub] .settings-panel[data-settings-panel]').forEach(function (p) {
+    var on = p === target;
+    p.classList.toggle('is-active', on);
+    p.hidden = !on;
+  });
+  document.querySelectorAll('[data-settings-hub] .settings-jumbo-card[data-settings-panel]').forEach(function (t) {
+    var on = t.getAttribute('data-settings-panel') === panel;
+    t.classList.toggle('is-active', on);
+    t.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+})();
+</script>
+<script src="<?= e(asset('js/settings_hub.js')) ?>?v=3"></script>
+<script src="<?= e(asset('js/settings_booking_ui.js')) ?>?v=2"></script>

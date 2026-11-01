@@ -53,4 +53,9 @@ final class NullAdapter implements GatewayAdapter
     {
         return ['script' => [], 'frame' => [], 'connect' => []];
     }
+
+    public function fetchCapturedPaymentsForOrder(string $orderId): array
+    {
+        return [];
+    }
 }

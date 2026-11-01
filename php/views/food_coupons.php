@@ -86,13 +86,14 @@ $expiryInput = static function (mixed $value): string {
 </div>
 <div class="panel reveal-panel" id="reveal-coupon-generate" hidden>
   <h3><?= e(t('ui.generate_coupons')) ?><?= help_tip(t('ui.coupon_form_note', ['limit' => money(approval_limit('Treasurer'))])) ?></h3>
+  <p class="muted small" style="margin:-4px 0 12px;"><?= e(t('ui.coupon_catalog_source')) ?><?php if (($role ?? '') === 'Admin'): ?> <a href="<?= e(url('settings') . '#ob-panel-top') ?>"><?= e(t('settings.online_booking')) ?></a><?php endif; ?></p>
   <form method="POST" action="<?= e(url('food/coupons')) ?>" data-coupon-expiry data-coupon-create>
     <?= csrf_field() ?>
     <div class="form-grid cols-3">
       <div class="form-group">
-        <label for="coupon-name"><?= e(t('ui.coupon_name')) ?></label>
+        <label for="coupon-name"><?= e(t('ui.coupon_name')) ?><?= help_tip(t('ui.coupon_name_suggest_help')) ?></label>
         <div class="suggest">
-          <input id="coupon-name" type="text" name="coupon_name" maxlength="100" placeholder="e.g. Lunch Mahaprasad" required data-suggest data-kind="puja" data-source="puja-purposes" data-fill="cost:amount" data-open="focus" data-limit="30" autocomplete="off">
+          <input id="coupon-name" type="text" name="coupon_name" maxlength="100" placeholder="e.g. Lunch Mahaprasad" required data-suggest data-kind="puja" data-source="coupon-name-suggestions" data-fill="cost:amount" data-open="focus" data-limit="30" autocomplete="off">
           <div class="suggest-menu" hidden></div>
         </div>
       </div>
@@ -130,7 +131,7 @@ $expiryInput = static function (mixed $value): string {
       <div class="form-group">
         <label for="coupon-purpose"><?= e(t('ui.purpose')) ?></label>
         <div class="suggest">
-          <input id="coupon-purpose" type="text" name="purpose" maxlength="200" placeholder="Donation" data-suggest data-kind="puja" data-source="puja-purposes" data-open="focus" data-limit="30" autocomplete="off">
+          <input id="coupon-purpose" type="text" name="purpose" maxlength="200" placeholder="Donation" data-suggest data-kind="puja" data-source="coupon-name-suggestions" data-open="focus" data-limit="30" autocomplete="off">
           <div class="suggest-menu" hidden></div>
         </div>
       </div>
@@ -229,7 +230,7 @@ $expiryInput = static function (mixed $value): string {
             <div class="form-group">
               <label for="coupon-name-<?= e((string) $b['id']) ?>"><?= e(t('ui.coupon_name')) ?></label>
               <div class="suggest">
-                <input id="coupon-name-<?= e((string) $b['id']) ?>" type="text" name="coupon_name" value="<?= e((string) $b['coupon_name']) ?>" maxlength="100" required data-suggest data-kind="puja" data-source="puja-purposes" data-fill="cost:amount" data-open="focus" data-limit="30" autocomplete="off">
+                <input id="coupon-name-<?= e((string) $b['id']) ?>" type="text" name="coupon_name" value="<?= e((string) $b['coupon_name']) ?>" maxlength="100" required data-suggest data-kind="puja" data-source="coupon-name-suggestions" data-fill="cost:amount" data-open="focus" data-limit="30" autocomplete="off">
                 <div class="suggest-menu" hidden></div>
               </div>
             </div>
@@ -271,7 +272,7 @@ $expiryInput = static function (mixed $value): string {
               <div class="form-group">
                 <label for="coupon-purpose-<?= e((string) $b['id']) ?>"><?= e(t('ui.purpose')) ?></label>
                 <div class="suggest">
-                  <input id="coupon-purpose-<?= e((string) $b['id']) ?>" type="text" name="purpose" maxlength="200" value="<?= e((string) ($b['purpose'] ?? '')) ?>" placeholder="Donation" data-suggest data-kind="puja" data-source="puja-purposes" data-open="focus" data-limit="30" autocomplete="off">
+                  <input id="coupon-purpose-<?= e((string) $b['id']) ?>" type="text" name="purpose" maxlength="200" value="<?= e((string) ($b['purpose'] ?? '')) ?>" placeholder="Donation" data-suggest data-kind="puja" data-source="coupon-name-suggestions" data-open="focus" data-limit="30" autocomplete="off">
                   <div class="suggest-menu" hidden></div>
                 </div>
               </div>
@@ -290,7 +291,7 @@ $expiryInput = static function (mixed $value): string {
   <div class="empty-state">No coupon batches yet — generate the first one above.</div>
   <?php endif; ?>
 </div>
-<script type="application/json" id="puja-purposes"><?= json_encode(puja_purposes(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+<script type="application/json" id="coupon-name-suggestions"><?= json_encode(suggest_coupon_name_catalog(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) ?></script>
 <script>
 document.querySelectorAll('form[data-coupon-expiry]').forEach(function (form) {
   var box = form.querySelector('[data-no-expiry]');

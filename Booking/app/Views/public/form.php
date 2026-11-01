@@ -181,3 +181,13 @@ $waOptIn = ($in['wa_opt_in'] ?? '') !== '0';
     </div>
   </fieldset>
 </form>
+
+<dialog class="avail-dialog" id="avail-dialog" aria-labelledby="avail-dialog-title" aria-describedby="avail-dialog-body">
+  <div class="avail-dialog-inner">
+    <h2 class="h3" id="avail-dialog-title">Date not available</h2>
+    <div id="avail-dialog-body" class="avail-dialog-body"></div>
+    <form method="dialog">
+      <button type="submit" class="btn btn-primary btn-lg" data-avail-dialog-ok>OK, choose another date</button>
+    </form>
+  </div>
+</dialog>

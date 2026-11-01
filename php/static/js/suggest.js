@@ -26,7 +26,17 @@
       return row.item || '';
     }
     if (kind === 'puja') {
-      return row.amount ? '₹' + row.amount : '';
+      var price = row.amount ? '₹' + row.amount : '';
+      if (row.tag === 'prasadam') {
+        return price ? price + ' · Online booking · Prasadam' : 'Online booking · Prasadam';
+      }
+      if (row.tag === 'service') {
+        return price ? price + ' · Online booking · Service' : 'Online booking · Service';
+      }
+      if (row.tag === 'online') {
+        return price ? price + ' · Online booking' : 'Online booking';
+      }
+      return price;
     }
     return '';
   }

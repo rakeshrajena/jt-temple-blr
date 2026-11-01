@@ -1,14 +1,20 @@
 <?php
 /** Admin layout. @var ?array $admin */
 $path = \SJT\Core\App::request()->path;
+$erpAvail = class_exists(\SJT\Service\ErpStaffSession::class) && \SJT\Service\ErpStaffSession::enabled()
+    ? \SJT\Service\ErpStaffSession::erpBookingAvailabilityUrl() : '/admin/availability';
 $nav = [
     '/admin' => 'Dashboard',
     '/admin/bookings' => 'Bookings',
-    '/admin/availability' => 'Availability',
+    $erpAvail => 'Availability',
     '/admin/notifications' => 'Notifications',
     '/admin/reports' => 'Reports',
 ];
-$superNav = ['/admin/services' => 'Services & prices', '/admin/coupons' => 'Food coupons', '/admin/settings' => 'Settings', '/admin/users' => 'Admins', '/admin/audit' => 'Audit log'];
+$erpServices = class_exists(\SJT\Service\ErpStaffSession::class) && \SJT\Service\ErpStaffSession::enabled()
+    ? \SJT\Service\ErpStaffSession::erpBookingServicesUrl() : null;
+$superNav = $erpServices
+    ? [$erpServices => 'Services & prices (ERP)']
+    : ['/admin/services' => 'Services & prices'];
 $isActive = fn (string $p) => $p === '/admin' ? $path === '/admin' : str_starts_with($path, $p);
 ?><!doctype html>
 <html lang="en">
@@ -28,8 +34,14 @@ $isActive = fn (string $p) => $p === '/admin' ? $path === '/admin' : str_starts_
   <?php if (!empty($admin)): ?>
   <div class="a-user">
     <span><?= e($admin['name']) ?> <small>(<?= $admin['role'] === 'super' ? 'senior admin' : 'staff' ?>)</small></span>
+    <?php if (!empty($erp_home_url)): ?><a href="<?= e($erp_home_url) ?>">Temple ERP</a><?php endif; ?>
+    <?php if (!empty($erp_booking_settings_url)): ?><a href="<?= e($erp_booking_settings_url) ?>">Booking settings</a><?php endif; ?>
     <a href="<?= e(url('/admin/password')) ?>">Password</a>
+    <?php if (!empty($erp_logout_url)): ?>
+    <a class="linklike" href="<?= e($erp_logout_url) ?>">Sign out</a>
+    <?php else: ?>
     <form method="post" action="<?= e(url('/admin/logout')) ?>"><?= csrf_field() ?><button type="submit" class="linklike">Sign out</button></form>
+    <?php endif; ?>
   </div>
   <?php endif; ?>
 </header>

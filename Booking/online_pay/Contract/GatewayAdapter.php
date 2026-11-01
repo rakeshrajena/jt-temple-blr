@@ -44,4 +44,11 @@ interface GatewayAdapter
 
     /** Extra CSP sources when this gateway is active. */
     public function contentSecurityPolicy(): array;
+
+    /**
+     * Server-side lookup when checkout verify failed but money may have been captured (network glitch, tab closed).
+     *
+     * @return list<WebhookCapture>
+     */
+    public function fetchCapturedPaymentsForOrder(string $orderId): array;
 }

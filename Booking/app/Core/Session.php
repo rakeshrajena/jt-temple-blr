@@ -3,7 +3,9 @@ declare(strict_types=1);
 
 namespace SJT\Core;
 
-/** Hardened PHP session: httponly, SameSite=Lax, secure on HTTPS, scoped to the app path. */
+use SJT\Service\ErpStaffSession;
+
+/** Hardened PHP session: httponly, SameSite=Lax, secure on HTTPS; shared with ERP when installed together. */
 final class Session
 {
     public static function start(bool $https): void
@@ -11,21 +13,25 @@ final class Session
         if (session_status() === PHP_SESSION_ACTIVE) {
             return;
         }
-        $dir = APP_ROOT . '/storage/sessions';
-        if (is_dir($dir) && is_writable($dir)) {
-            session_save_path($dir);
+        if (ErpStaffSession::enabled()) {
+            ErpStaffSession::applyBeforeStart($https);
+        } else {
+            $dir = APP_ROOT . '/storage/sessions';
+            if (is_dir($dir) && is_writable($dir)) {
+                session_save_path($dir);
+            }
+            ini_set('session.use_strict_mode', '1');
+            ini_set('session.use_only_cookies', '1');
+            ini_set('session.gc_maxlifetime', '7200');
+            session_name('SJTSESS');
+            session_set_cookie_params([
+                'lifetime' => 0,
+                'path' => (App::basePath() ?: '') . '/',
+                'secure' => $https,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
         }
-        ini_set('session.use_strict_mode', '1');
-        ini_set('session.use_only_cookies', '1');
-        ini_set('session.gc_maxlifetime', '7200');
-        session_name('SJTSESS');
-        session_set_cookie_params([
-            'lifetime' => 0,
-            'path' => (App::basePath() ?: '') . '/',
-            'secure' => $https,
-            'httponly' => true,
-            'samesite' => 'Lax',
-        ]);
         session_start();
     }
 

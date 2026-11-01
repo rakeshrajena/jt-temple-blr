@@ -56,6 +56,35 @@ Paste **test** keys from [Razorpay dashboard](https://dashboard.razorpay.com/). 
 
 Webhooks to localhost need a tunnel (e.g. ngrok); for local testing, **Pay now** + server verify after checkout is usually enough.
 
+### Booking admin login (single sign-on with ERP)
+
+When ERP and Booking share the database (`donors` + `bookings` tables), **one login covers both**:
+
+1. Sign in at **ERP** (`/php/`).
+2. Open **Temple › Online bookings** or `/Booking/admin` — no second login.
+
+Both apps share the PHP session cookie (`jt_blr_session`) under the project folder path. Staff accounts live in the **`users`** table (migration `005_shared_staff_users`).
+
+If SSO misbehaves after an update, sign out of ERP once and sign in again. Set `STAFF_SSO=false` in Booking `.env` to bring back the separate booking login page.
+
+### Invoice PDF missing logo (HTML shows it)
+
+The view page uses a normal `<img>` tag. PDF embedding needs to decode `php/storage/brand/logo-print.png`. If PHP **GD** is disabled (common on AMPPS), booking now decodes PNG without GD (same approach as ERP). Re-download the PDF after updating code.
+
+### 502 on “Pay now” / `gateway/order`
+
+If `storage/logs/app-*.log` shows `SSL certificate problem: self-signed certificate in certificate chain`, PHP’s curl cannot verify Razorpay’s HTTPS certificate. For **local staging only**, add to `.env`:
+
+```env
+GATEWAY_SSL_VERIFY=false
+```
+
+(With `APP_ENV=staging` this is allowed; production always verifies TLS.) Long-term fix: point `curl.cainfo` in `php.ini` to a current CA bundle (e.g. from [curl.se/ca](https://curl.se/docs/caextract.html)).
+
+### Razorpay says paid but booking still pending
+
+After a server glitch, use **“I paid — update my booking”** on the pay page (or pay again — verify will reconcile from Razorpay’s API). For booking **SJT-2026-000001** that paid before the verify bug was fixed, open that booking’s pay URL and click that button once.
+
 ## Common issues
 
 | Symptom | Fix |

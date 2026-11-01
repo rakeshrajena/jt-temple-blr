@@ -22,6 +22,7 @@ use SJT\Core\Container;
 use SJT\Core\Env;
 use SJT\Core\Migrator;
 use SJT\Service\Auth;
+use SJT\Service\StaffAccounts;
 
 $cmd = $argv[1] ?? 'help';
 $out = fn (string $s) => fwrite(STDOUT, $s . PHP_EOL);
@@ -64,13 +65,28 @@ try {
                 $err($p);
             }
             $db = App::db();
-            if ($db->value('SELECT 1 FROM admins WHERE username = ?', [$username])) {
+            $accounts = new StaffAccounts($db);
+            if ($accounts->findByUsername($username)) {
                 $err("User $username already exists. Use reset-password.");
             }
-            $db->insert('admins', [
-                'username' => $username, 'name' => $name ?: $username, 'password_hash' => Auth::hash($pw),
-                'role' => $role, 'is_active' => 1, 'failed_logins' => 0, 'created_at' => now(), 'updated_at' => now(),
-            ]);
+            $ts = now();
+            if ($accounts->usesErpUsers()) {
+                $db->insert('users', [
+                    'username' => $username,
+                    'full_name' => $name ?: $username,
+                    'password_hash' => Auth::hash($pw),
+                    'role' => StaffAccounts::erpRoleFromBookingSuper($role === 'super'),
+                    'is_active' => 1,
+                    'failed_logins' => 0,
+                    'created_at' => $ts,
+                    'updated_at' => $ts,
+                ]);
+            } else {
+                $db->insert('admins', [
+                    'username' => $username, 'name' => $name ?: $username, 'password_hash' => Auth::hash($pw),
+                    'role' => $role, 'is_active' => 1, 'failed_logins' => 0, 'created_at' => $ts, 'updated_at' => $ts,
+                ]);
+            }
             Container::audit()->log(['id' => null, 'name' => 'cli'], 'admin', $username, null, 'admin.created', ['role' => $role]);
             $out("Administrator '$username' ($role) created.");
             break;
@@ -81,10 +97,14 @@ try {
             if ($p = Auth::passwordProblem($pw)) {
                 $err($p);
             }
-            $n = App::db()->update('admins', ['password_hash' => Auth::hash($pw), 'failed_logins' => 0, 'locked_until' => null, 'updated_at' => now()], 'username = :u', ['u' => $username]);
-            if (!$n) {
+            $accounts = new StaffAccounts(App::db());
+            $row = $accounts->findAuthRowByUsername($username);
+            if (!$row) {
                 $err('No such user.');
             }
+            $accounts->updatePasswordHash((int) $row['id'], Auth::hash($pw));
+            $t = $accounts->table();
+            App::db()->update($t, ['failed_logins' => 0, 'locked_until' => null, 'updated_at' => now()], 'id = :id', ['id' => (int) $row['id']]);
             Container::audit()->log(['id' => null, 'name' => 'cli'], 'admin', $username, null, 'admin.password_reset', []);
             $out('Password updated and account unlocked.');
             break;
@@ -129,7 +149,7 @@ try {
             $pending = (new Migrator(App::db(), APP_ROOT . '/migrations'))->pending();
             $ok(!$pending, $pending ? 'pending migrations: ' . implode(', ', array_keys($pending)) : 'migrations up to date');
             $s = App::settings();
-            $ok((int) App::db()->value("SELECT COUNT(*) FROM admins WHERE role = 'super' AND is_active = 1") > 0, 'senior administrator account exists');
+            $ok((new StaffAccounts(App::db()))->seniorAdminExists(), 'senior administrator account exists');
             $gw = Container::gateway();
             if ($gw::upiManualForDevotees()) {
                 $ok($s->bool('upi_verified') && Container::upi()->available(), 'UPI payment details verified and available');
