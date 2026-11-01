@@ -157,3 +157,13 @@ Managed in **Temple ERP › Settings › Online booking › Prasadam menu**. Pri
 - **Additional charge per booking** (e.g. a convenience fee) — normally 0.
 - **Rate limit** for submissions from one network: `.env` `BOOKING_RATE_LIMIT_PER_HOUR` (default 40),
   generous enough for the office to book on behalf of devotees.
+
+---
+
+## Production deployment (summary)
+
+1. **`.env` files:** `php/.env` and `Booking/.env` with the same `DB_*`; put `INSTALL_TOKEN` in `php/.env` (and the same token in Booking if you use booking-only install). Booking needs `APP_KEY`, `APP_URL`, Razorpay/WhatsApp as in `.env.example`.
+2. **One web setup:** open **`php/install.php`** or **`Booking/install.php`** (same page when both folders exist). Enter the setup key once — runs ERP schema update **and** all Booking migrations (**001**–**008**), plus optional first admin.
+3. **CLI alternative:** `php bin/console.php migrate` inside `Booking/` after ERP `install.php` if you prefer SSH only.
+4. **Hardening:** delete `install.php`, remove `INSTALL_TOKEN`, chmod `.env` to `600`, enable cron jobs (`notifications:retry`, `maintenance`) per `docs/DEPLOYMENT-CPANEL.md`.
+5. **Verify:** `php bin/console.php check`; if upgrading with historical paid bookings, `php bin/console.php erp:sync-bookings` once.

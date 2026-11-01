@@ -277,6 +277,9 @@ function migrate_schema(PDO $pdo): void
     ensure_selection_columns($pdo);
     ensure_write_claims($pdo);
     backfill_receipt_pdfs($pdo);
+    if (function_exists('booking_erp_ensure_link_schema')) {
+        booking_erp_ensure_link_schema();
+    }
 }
 
 function ensure_write_claims(PDO $pdo): void
