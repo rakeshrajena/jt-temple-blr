@@ -42,6 +42,7 @@ require APP_ROOT . '/includes/actions.php';
 
 food_coupon_catalog_ensure_ready();
 online_booking_migrate_puja_purposes_from_choices();
+online_booking_normalize_service_food_rules();
 online_booking_normalize_service_slot_rules();
 
 date_default_timezone_set(TIMEZONE);

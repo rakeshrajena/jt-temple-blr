@@ -358,6 +358,8 @@ final class BookingService
         $fresh = $this->bookings->find($bookingId);
         if ($changed && $fresh['payment_status'] === 'paid') {
             $this->notifier->statusUpdate($fresh, 'Your online payment of ' . money((int) $fresh['total_paise']) . ' has been received.' . ($fresh['booking_status'] === 'confirmed' ? ' Your booking is confirmed.' : ' Your booking is awaiting approval by the temple office.'));
+        } elseif ($changed && $fresh['payment_status'] === 'awaiting_verification') {
+            $this->notifier->statusUpdate($fresh, 'We received your online payment, but the amount paid does not match the amount due. The temple office will review it and contact you if needed.');
         }
         return $fresh;
     }

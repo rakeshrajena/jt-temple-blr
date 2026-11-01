@@ -9,6 +9,7 @@ use SJT\Service\Audit;
 use SJT\Service\Auth;
 use SJT\Service\Availability;
 use SJT\Service\BookingForm;
+use SJT\Service\BookingMailer;
 use SJT\Service\BookingService;
 use SJT\Service\InvoiceRenderer;
 use SJT\Service\Notifier;
@@ -42,7 +43,8 @@ final class Container
     public static function form(): BookingForm { return self::once('form', fn () => new BookingForm(self::catalog(), self::availability(), App::settings())); }
     public static function upi(): UpiPayment { return self::once('upi', fn () => new UpiPayment(App::settings())); }
     public static function whatsapp(): WhatsAppClient { return self::once('wa', fn () => new WhatsAppClient()); }
-    public static function notifier(): Notifier { return self::once('notifier', fn () => new Notifier(App::db(), self::bookings(), App::settings(), self::whatsapp())); }
+    public static function mailer(): BookingMailer { return self::once('mailer', fn () => new BookingMailer(App::db(), App::settings(), self::invoices())); }
+    public static function notifier(): Notifier { return self::once('notifier', fn () => new Notifier(App::db(), self::bookings(), App::settings(), self::whatsapp(), self::mailer())); }
     public static function invoices(): InvoiceRenderer { return self::once('invoices', fn () => new InvoiceRenderer(self::bookings(), App::settings(), self::upi())); }
     public static function onlinePay(): OnlinePaymentService
     {

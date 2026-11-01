@@ -205,6 +205,16 @@ function online_booking_legacy_puja_purposes_pending(array $legacy): bool
  * Legacy imports had requires_slot=1 with no slots, which blocks all public dates.
  * Also fixes any active service that requires slots but has none configured.
  */
+/** Food-only services must allow the prasadam menu (checkbox hidden in admin for that type). */
+function online_booking_normalize_service_food_rules(): void
+{
+    if (!online_booking_services_table_exists()) {
+        return;
+    }
+    $now = date('Y-m-d H:i:s');
+    db_exec('UPDATE services SET allow_food = 1, updated_at = ? WHERE is_food_only = 1 AND allow_food = 0', [$now]);
+}
+
 function online_booking_normalize_service_slot_rules(): void
 {
     if (!online_booking_services_table_exists()) {

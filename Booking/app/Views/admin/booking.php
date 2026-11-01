@@ -209,7 +209,7 @@ $actionUrl = url('/admin/bookings/' . $b['booking_no'] . '/action');
   <table class="table compact">
     <thead><tr><th>When</th><th>To</th><th>Message</th><th>Status</th><th>Detail</th></tr></thead>
     <tbody><?php foreach ($notifications as $n): ?>
-      <tr><td><?= e(fmt_datetime($n['created_at'])) ?></td><td><?= e($n['audience']) ?><br><small><?= e($n['recipient'] === '-' ? '—' : fmt_mobile($n['recipient'])) ?></small></td><td><?= e(str_replace('_', ' ', $n['event'])) ?></td><td><?= badge('n', $n['status']) ?></td><td><small><?= e((string) $n['error']) ?><?= $n['attempts'] ? ' (attempts: ' . (int) $n['attempts'] . ')' : '' ?></small></td></tr>
+      <tr><td><?= e(fmt_datetime($n['created_at'])) ?></td><td><?= e($n['audience']) ?><br><small><?= e($n['recipient'] === '-' ? '—' : (($n['channel'] ?? '') === 'email' ? $n['recipient'] : fmt_mobile($n['recipient']))) ?></small></td><td><?= e(str_replace('_', ' ', $n['event'])) ?></td><td><?= badge('n', $n['status']) ?></td><td><small><?= e((string) $n['error']) ?><?= $n['attempts'] ? ' (attempts: ' . (int) $n['attempts'] . ')' : '' ?></small></td></tr>
     <?php endforeach; ?></tbody>
   </table>
   <?php endif; ?>

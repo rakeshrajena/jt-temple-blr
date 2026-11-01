@@ -96,6 +96,16 @@ Staff can always **verify** or **record** payments on individual bookings in adm
 6. Use **Send a test message** to your own phone.
 7. Configure the webhook (see docs/WHATSAPP-TEMPLATES.md).
 
+### Devotee email receipts
+
+When a devotee enters an **email address** on the booking form, the app sends email for the same
+events as WhatsApp (booking received / pay later, payment verified, payment failed, and other
+status updates). Each message includes booking and payment status and attaches the **invoice PDF**.
+
+Mail uses **Temple ERP › Settings › Messages** (SMTP host, port, From address). Configure that
+before going live; if SMTP is not set, bookings still work and failed emails appear under
+**Admin › Notifications** like WhatsApp failures.
+
 If WhatsApp is off or misconfigured, bookings continue normally; each unsent message appears
 under **Notifications › Failed** with the reason. Temporary errors retry automatically
 (cron, up to 5 attempts). Staff can *Retry* or *Mark handled* (e.g. after phoning the devotee).

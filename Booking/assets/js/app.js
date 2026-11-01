@@ -166,7 +166,7 @@
     function sync() {
       var sel = selected();
       var foodOnly = sel.some(function (s) { return s.foodOnly; });
-      var foodAllowed = sel.some(function (s) { return s.allowFood; });
+      var foodAllowed = foodOnly || sel.some(function (s) { return !s.foodOnly && s.allowFood; });
       $$('[data-panel]', form).forEach(function (p) {
         var on = sel.some(function (s) { return String(s.id) === p.getAttribute('data-panel'); });
         if (on) p.removeAttribute('data-inactive'); else p.setAttribute('data-inactive', '');
@@ -174,6 +174,9 @@
       var row = $('[data-add-food-row]', form), note = $('[data-food-only-note]', form);
       if (row) row.hidden = foodOnly || (!foodAllowed && sel.length > 0);
       if (note) note.hidden = !foodOnly;
+      if (addFood && !foodAllowed && !foodOnly && sel.length > 0) {
+        addFood.checked = false;
+      }
       var showCoupons = foodOnly || (addFood && addFood.checked);
       if (couponsBox) { if (showCoupons) couponsBox.removeAttribute('data-collapsed'); else couponsBox.setAttribute('data-collapsed', ''); }
       estimate();
