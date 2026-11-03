@@ -31,7 +31,6 @@ Booking admin uses the **same** database table as ERP: `users` (one username/pas
 The live system matches the preview’s **six progress steps** (Choose service → Details → Prasadam → Review → Pay → Done), but steps 1-3 are one form (`POST /book/review`), step 4 is server-rendered review (`POST /book/confirm`), and pay/status use booking URLs with an access token.
 
 
-
 ```mermaid
 flowchart TD
  subgraph public [Devotee - public routes]
