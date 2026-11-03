@@ -16,7 +16,9 @@ require APP_ROOT . '/app/autoload.php';
 $bookingRoot = sjt_booking_root();
 SJT\Core\Env::load($bookingRoot . '/.env');
 $localEnv = dirname($bookingRoot) . '/.env';
-if (is_file($localEnv)) {
+$skipRepoEnv = in_array(getenv('SJT_TEST') ?: '', ['1', 'true', 'yes'], true)
+    || in_array(getenv('APP_ENV') ?: '', ['testing', 'test'], true);
+if (!$skipRepoEnv && is_file($localEnv)) {
     SJT\Core\Env::load($localEnv, [
         'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_PASSWORD',
         'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE',

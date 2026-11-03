@@ -22,8 +22,10 @@ $appPort = 18000 + random_int(0, 900);
 $mockPort = $appPort + 1000;
 $base = "http://127.0.0.1:$appPort/Booking";
 $env = [
+    'SJT_TEST' => '1',
     'APP_ENV' => 'testing', 'APP_DEBUG' => 'false', 'APP_URL' => $base, 'APP_KEY' => str_repeat('k', 64),
     'DB_DRIVER' => 'sqlite', 'DB_PATH' => "$tmp/test.sqlite",
+    'STAFF_SSO' => 'false',
     'WA_ACCESS_TOKEN' => 'test-token', 'WA_PHONE_NUMBER_ID' => '123456', 'WA_API_BASE' => "http://127.0.0.1:$mockPort",
     'WA_APP_SECRET' => 'app-secret', 'WA_WEBHOOK_VERIFY_TOKEN' => 'verify-me', 'MOCK_LOG' => "$tmp/mock.log",
     'PAYMENT_GATEWAY' => 'none', 'BOOKING_UPI_MANUAL' => 'true', 'BOOKING_RATE_LIMIT_PER_HOUR' => '1000', 'RAZORPAY_KEY_SECRET' => 'rzp-secret', 'RAZORPAY_WEBHOOK_SECRET' => 'rzp-hook',
@@ -42,6 +44,22 @@ if ($driver === 'mysql') {
 foreach ($env as $k => $v) {
     putenv("$k=$v");
 }
+
+// Built-in server workers on Windows may not inherit putenv(); prepend test env on every request.
+$envPhp = "$tmp/test-env.php";
+$envLines = ['<?php', 'declare(strict_types=1);'];
+foreach ($env as $k => $v) {
+    $pair = $k . '=' . (string) $v;
+    $envLines[] = 'putenv(' . var_export($pair, true) . ');';
+    $envLines[] = '$_ENV[' . var_export($k, true) . '] = ' . var_export((string) $v, true) . ';';
+    $envLines[] = '$_SERVER[' . var_export($k, true) . '] = ' . var_export((string) $v, true) . ';';
+}
+file_put_contents($envPhp, implode("\n", $envLines) . "\n");
+$routerPhp = "$tmp/router.php";
+file_put_contents($routerPhp, '<?php' . "\n"
+    . 'declare(strict_types=1);' . "\n"
+    . 'require ' . var_export($envPhp, true) . ";\n"
+    . 'require ' . var_export($root . DIRECTORY_SEPARATOR . 'index.php', true) . ";\n");
 
 // ------------------------------------------------------------------ servers
 function sh(string $cmd): string
@@ -64,10 +82,10 @@ $spawn = function (string $cmd) use (&$procs, $tmp) {
 $phpS = escapeshellarg(PHP_BINARY) . ' -S 127.0.0.1:';
 if (DIRECTORY_SEPARATOR === '\\') {
     $spawn($phpS . $mockPort . ' ' . escapeshellarg("$root/tests/mock_whatsapp.php"));
-    $spawn($phpS . $appPort . ' ' . escapeshellarg("$root/index.php"));
+    $spawn($phpS . $appPort . ' ' . escapeshellarg($routerPhp));
 } else {
-    $spawn('exec php -S 127.0.0.1:' . $mockPort . ' ' . escapeshellarg("$root/tests/mock_whatsapp.php"));
-    $spawn('exec env PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:' . $appPort . ' ' . escapeshellarg("$root/index.php"));
+    $spawn($phpS . $mockPort . ' ' . escapeshellarg("$root/tests/mock_whatsapp.php"));
+    $spawn('exec ' . escapeshellarg(PHP_BINARY) . ' -d PHP_CLI_SERVER_WORKERS=4 -S 127.0.0.1:' . $appPort . ' ' . escapeshellarg($routerPhp));
 }
 register_shutdown_function(function () use (&$procs, $tmp) {
     foreach ($procs as $p) {
@@ -89,6 +107,18 @@ register_shutdown_function(function () use (&$procs, $tmp) {
 });
 for ($i = 0; $i < 50 && @file_get_contents("$base/health") === false; $i++) {
     usleep(100000);
+}
+$bookProbe = @file_get_contents("$base/book");
+if ($bookProbe === false || !str_contains($bookProbe, 'name="_csrf"')) {
+    fwrite(STDERR, "Test server setup failed: GET /book did not return the booking form (CSRF missing).\n");
+    fwrite(STDERR, "Temp dir: $tmp\n");
+    if ($bookProbe !== false) {
+        fwrite(STDERR, substr($bookProbe, 0, 1200) . "\n");
+    }
+    if (is_file("$tmp/server.log")) {
+        fwrite(STDERR, "\n--- server.log ---\n" . substr((string) file_get_contents("$tmp/server.log"), -2000) . "\n");
+    }
+    exit(1);
 }
 
 $opts = [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC];
@@ -257,7 +287,7 @@ $p150 = (int) $couponRows[0]['price_paise'];
 $p250 = (int) $couponRows[1]['price_paise'];
 $d = fn (int $days) => date('Y-m-d', strtotime(($days >= 0 ? "+$days" : "$days") . ' days'));
 $person = ['name' => 'Ananya Sahu', 'mobile' => '9845012345'];
-$special = fn (array $extra = []) => array_replace($person + ['services' => [$svc['special-puja']], 'service_date' => $d(5), 'slot' => [$svc['special-puja'] => $slot[$svc['special-puja']]],
+$special = fn (array $extra = []) => array_replace($person + ['service_id' => (string) $svc['special-puja'], 'services' => [$svc['special-puja']], 'service_date' => $d(5), 'slot' => [$svc['special-puja'] => $slot[$svc['special-puja']]],
     'participants' => [$svc['special-puja'] => '3'], 'f' => [$svc['special-puja'] => ['sankalpa_names' => 'Sahu family']]], $extra);
 
 $dev = new Client($base);
@@ -350,17 +380,16 @@ test('Individual service booking (Special Puja) — booking number, totals, pend
     ok(str_contains($p['body'], $r['no']) && str_contains($p['body'], 'not yet a confirmed booking'), 'payment page shows number + request status');
     $created['single'] = $r['no'];
 });
-test('Multiple services in one booking (Special + Vehicle Puja)', function () use ($dev, $special, $svc, $slot, &$created) {
+test('Only one service per booking (two puja services rejected)', function () use ($dev, $special, $svc, $slot) {
     $v = $svc['vehicle-puja'];
     $f = $special();
     $f['services'][] = $v;
+    unset($f['service_id']);
     $f['slot'][$v] = $slot[$v];
     $f['f'][$v] = ['vehicle_type' => 'Car', 'vehicle_number' => 'KA01AB1234'];
-    $r = book($dev, $f);
-    $b = booking((string) $r['no']);
-    eq(50100 + 25100, (int) $b['total_paise'], 'combined total');
-    eq(2, (int) q1("SELECT COUNT(*) FROM booking_items WHERE booking_id = ? AND item_type = 'service'", [$b['id']]), 'two service lines');
-    $created['multi'] = $r['no'];
+    $r = book($dev, $f, false);
+    eq(422, $r['review']['status'], 'rejected');
+    ok(str_contains($r['review']['body'], 'only one service'), 'message');
 });
 test('Service booking with food coupons (4 persons, first category)', function () use ($dev, $special, $c150, $p150) {
     $r = book($dev, $special(['add_food' => '1', 'food_cat' => [$c150 => '1'], 'food' => [$c150 => '4']]));
@@ -404,9 +433,10 @@ test('Food-only booking requires a coupon category and persons', function () use
 test('Food-only cannot be combined with another service', function () use ($dev, $svc, $special, $c150) {
     $f = $special(['food_cat' => [$c150 => '1'], 'food' => [$c150 => '2']]);
     $f['services'][] = $svc['food-only'];
+    unset($f['service_id']);
     $r = book($dev, $f, false);
     eq(422, $r['review']['status'], 'rejected');
-    ok(str_contains($r['review']['body'], 'cannot be combined'), 'message');
+    ok(str_contains($r['review']['body'], 'only one service'), 'message');
 });
 test('Selected coupon category with 0 persons is rejected', function () use ($dev, $special, $c150) {
     $r = book($dev, $special(['add_food' => '1', 'food_cat' => [$c150 => '1'], 'food' => [$c150 => '0']]), false);
@@ -602,7 +632,7 @@ test('Submitting a UPI reference does NOT mark the booking paid', function () us
     ok(str_contains($dev->get("/b/$no")['body'], 'awaiting verification'), 'status page explains');
 });
 test('Invalid and reused UPI references are rejected', function () use ($dev, &$created) {
-    $no = $created['multi'];
+    $no = $created['combined'];
     $t = $dev->csrf("/b/$no/pay");
     $dev->post("/b/$no/payment", ['_csrf' => $t, 'reference' => '12']);
     eq('pending', booking($no)['payment_status'], 'too short rejected');
@@ -652,7 +682,7 @@ test('Ceremony needing approval: paid ≠ confirmed until approved', function ()
     eq('confirmed', booking($no)['booking_status'], 'confirmed after approval');
 });
 test('Reschedule moves date and slot, checks capacity, is audited', function () use ($admin, $svc, $slot, $d, &$created) {
-    $no = $created['multi'];
+    $no = $created['combined'];
     $items = q("SELECT id, service_id FROM booking_items WHERE booking_id = ? AND item_type = 'service'", [booking($no)['id']]);
     $slots = [];
     foreach ($items as $it) {
@@ -908,11 +938,10 @@ test('Food coupon catalog price drives booking totals', function () use ($c150) 
     q('UPDATE booking_coupons SET price_paise = 16000, updated_at = ? WHERE id = ?', [date('c'), $c150]);
     eq(16000, (int) q1('SELECT price_paise FROM booking_coupons WHERE id = ?', [$c150]), 'coupon price in catalog');
 });
-test('Disabled services disappear from booking and are refused', function () use ($admin, $dev, $svc, $special) {
+test('Disabled services disappear from booking and are refused', function () use ($admin, $dev, $svc, $slot, $d) {
     q('UPDATE services SET is_active = 0 WHERE id = ?', [$svc['vehicle-puja']]);
-    ok(!str_contains($dev->get('/book')['body'], 'name="services[]" value="' . $svc['vehicle-puja'] . '"'), 'not listed');
-    $f = $special();
-    $f['services'] = [$svc['vehicle-puja']];
+    ok(!str_contains($dev->get('/book')['body'], 'name="service_id" value="' . $svc['vehicle-puja'] . '"'), 'not listed');
+    $f = ['name' => 'Test User', 'mobile' => '9845012345', 'services' => [$svc['vehicle-puja']], 'service_date' => $d(5), 'slot' => [$svc['vehicle-puja'] => $slot[$svc['vehicle-puja']]], 'f' => [$svc['vehicle-puja'] => ['vehicle_type' => 'Car', 'vehicle_number' => 'KA01AB1234']]];
     eq(422, book($dev, $f, false)['review']['status'], 'refused');
     q('UPDATE services SET is_active = 1 WHERE id = ?', [$svc['vehicle-puja']]);
 });

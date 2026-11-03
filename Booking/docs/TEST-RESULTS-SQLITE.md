@@ -1,6 +1,6 @@
 # Automated test results (sqlite)
 
-Run: 2026-11-03 23:14 IST · PHP 8.2.27 · SQLite 3.39.2 · mock WhatsApp Cloud API
+Run: 2026-11-03 23:48 IST · PHP 8.2.27 · SQLite 3.39.2 · mock WhatsApp Cloud API
 
 **67 of 67 tests passed.**
 
@@ -15,7 +15,7 @@ Run: 2026-11-03 23:14 IST · PHP 8.2.27 · SQLite 3.39.2 · mock WhatsApp Cloud 
 | 7 | WhatsApp template parameters are sanitised | PASS |
 | 8 | Payment gateway signatures (Razorpay) are verified with HMAC | PASS |
 | 9 | Individual service booking (Special Puja) — booking number, totals, pending status | PASS |
-| 10 | Multiple services in one booking (Special + Vehicle Puja) | PASS |
+| 10 | Only one service per booking (two puja services rejected) | PASS |
 | 11 | Service booking with food coupons (4 persons, first category) | PASS |
 | 12 | Service booking with food coupons (2 persons, second category) | PASS |
 | 13 | Combined coupon categories: two food lines itemised separately | PASS |

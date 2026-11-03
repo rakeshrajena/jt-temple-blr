@@ -105,6 +105,10 @@
     if (url.pathname === window.location.pathname && url.search === window.location.search) {
       return;
     }
+    // File downloads (PDF invoice, QR PNG) stay on this page; do not show a blocking overlay.
+    if (/\.pdf$/i.test(url.pathname) || url.searchParams.get('download') === '1') {
+      return;
+    }
     const label = clean(link.innerText);
     show(label === '' ? 'Opening the page' : 'Opening ' + label);
   });

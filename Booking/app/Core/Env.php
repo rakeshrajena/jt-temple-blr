@@ -40,6 +40,9 @@ final class Env
     public static function get(string $key, ?string $default = null): ?string
     {
         $real = getenv($key);
+        if (($real === false || $real === '') && isset($_SERVER[$key]) && is_string($_SERVER[$key]) && $_SERVER[$key] !== '') {
+            $real = $_SERVER[$key];
+        }
         if ($real !== false && $real !== '') {
             return $real;
         }

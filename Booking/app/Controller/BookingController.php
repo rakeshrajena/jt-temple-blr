@@ -15,7 +15,7 @@ use SJT\Service\Validator;
 /** Booking wizard: choose services -> details -> food -> server-side review -> submit. */
 final class BookingController extends Controller
 {
-    private const INPUT_KEYS = ['services', 'name', 'mobile', 'email', 'service_date', 'instructions', 'slot', 'participants', 'f', 'add_food', 'food_cat', 'food', 'wa_opt_in'];
+    private const INPUT_KEYS = ['service_id', 'services', 'name', 'mobile', 'email', 'service_date', 'instructions', 'slot', 'participants', 'f', 'add_food', 'food_cat', 'food', 'wa_opt_in'];
 
     public function form(Request $req): Response
     {
@@ -40,7 +40,7 @@ final class BookingController extends Controller
     public function review(Request $req): Response
     {
         $this->throttle('review:' . $req->ip(), 120, 3600);
-        $in = array_intersect_key($req->post, array_flip(self::INPUT_KEYS));
+        $in = $this->bookingInputFromPost($req->post);
         $formId = $req->str('form_id');
         if (!preg_match('/^[a-f0-9]{32}$/', $formId)) {
             $formId = bin2hex(random_bytes(16));
@@ -61,7 +61,7 @@ final class BookingController extends Controller
     public function check(Request $req): Response
     {
         $this->throttle('check:' . $req->ip(), 240, 3600);
-        $in = array_intersect_key($req->post, array_flip(self::INPUT_KEYS));
+        $in = $this->bookingInputFromPost($req->post);
         try {
             Container::form()->validate($in);
             return Response::json(['ok' => true, 'problems' => []]);
@@ -262,5 +262,20 @@ final class BookingController extends Controller
             'availability' => $availability,
             'hint' => $availability ? BookingForm::availabilityHint() : null,
         ], 422);
+    }
+
+    /** @param array<string, mixed> $post */
+    private function bookingInputFromPost(array $post): array
+    {
+        $in = array_intersect_key($post, array_flip(self::INPUT_KEYS));
+        if (isset($in['service_id']) && is_scalar($in['service_id']) && (string) $in['service_id'] !== '') {
+            $posted = is_array($in['services'] ?? null) ? $in['services'] : [];
+            if ($posted === []) {
+                $in['services'] = [(string) (int) $in['service_id']];
+            }
+        }
+        unset($in['service_id']);
+
+        return $in;
     }
 }

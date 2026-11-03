@@ -194,7 +194,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--focus); outline:
 .check-row.has-error { border-color: var(--bad); }
 .check-row.wa-opt { border-color: var(--ok); background: var(--ok-bg); }
 .check-row.wa-opt input[type=checkbox] { accent-color: var(--ok); }
-input[type=checkbox] { width: 26px; height: 26px; flex: none; margin: 2px 0 0; accent-color: var(--maroon); }
+input[type=checkbox],
+input[type=radio] { width: 26px; height: 26px; flex: none; margin: 2px 0 0; accent-color: var(--maroon); }
 
 .service-options { display: grid; gap: 12px; }
 @media (min-width: 720px) { .service-options { grid-template-columns: 1fr 1fr; } }

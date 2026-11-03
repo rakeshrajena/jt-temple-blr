@@ -4,7 +4,8 @@
  * with JavaScript it becomes a step-by-step wizard with a live price estimate.
  * @var array $services @var array $coupons @var array $slots @var array $in @var array $errors
  */
-$sel = array_map('strval', (array) ($in['services'] ?? []));
+$selFromList = (array) ($in['services'] ?? []);
+$selService = (string) ($in['service_id'] ?? ($selFromList[0] ?? ''));
 $err = fn (string $k) => $errors[$k] ?? null;
 $val = fn (string $k) => is_string($in[$k] ?? null) ? $in[$k] : '';
 $nested = fn (string $k, $sid, ?string $sub = null) => (string) ($sub === null ? (($in[$k] ?? [])[$sid] ?? '') : ((($in[$k] ?? [])[$sid] ?? [])[$sub] ?? ''));
@@ -27,13 +28,13 @@ $waOptIn = ($in['wa_opt_in'] ?? '') !== '0';
   <!-- STEP 1: services -->
   <fieldset class="step card" data-step="1" id="services-section">
     <legend><h1>1. Choose a service</h1></legend>
-    <p class="hint">Tick one or more services. To book only food / prasadam coupons, choose <strong>Food-Only Booking</strong>.</p>
+    <p class="hint">Choose one service. To book only food / prasadam coupons, choose <strong>Food-Only Booking</strong>.</p>
     <?php if ($err('services')): ?><p class="field-error" id="services-error"><?= e($err('services')) ?></p><?php endif; ?>
     <div class="service-options">
-      <?php foreach ($services as $s): $checked = in_array((string) $s['id'], $sel, true); ?>
+      <?php $firstServiceOption = true; foreach ($services as $s): $checked = ((string) $s['id']) === $selService; ?>
       <label class="option-card<?= $s['is_food_only'] ? ' option-food' : '' ?>">
-        <input type="checkbox" name="services[]" value="<?= (int) $s['id'] ?>" <?= $checked ? 'checked' : '' ?>
-               data-service="<?= (int) $s['id'] ?>" data-food-only="<?= $s['is_food_only'] ? '1' : '0' ?>" data-combinable="<?= $s['is_combinable'] ? '1' : '0' ?>">
+        <input type="radio" name="service_id" value="<?= (int) $s['id'] ?>" <?= $checked ? 'checked' : '' ?><?= $firstServiceOption ? ' required' : '' ?>
+               data-service="<?= (int) $s['id'] ?>" data-food-only="<?= $s['is_food_only'] ? '1' : '0' ?>">
         <span class="option-body">
           <span class="option-title"><?= e($s['name']) ?></span>
           <?php if ($s['description']): ?><span class="option-desc"><?= e($s['description']) ?></span><?php endif; ?>
@@ -46,7 +47,7 @@ $waOptIn = ($in['wa_opt_in'] ?? '') !== '0';
           <?php include __DIR__ . '/../partials/service_availability.php'; ?>
         </span>
       </label>
-      <?php endforeach; ?>
+      <?php $firstServiceOption = false; endforeach; ?>
     </div>
     <div class="step-nav"><button type="button" class="btn btn-primary btn-lg" data-next>Next: your details</button></div>
   </fieldset>
@@ -87,7 +88,7 @@ $waOptIn = ($in['wa_opt_in'] ?? '') !== '0';
       </span>
     </label>
 
-    <?php foreach ($services as $s): $sid = $s['id']; $on = in_array((string) $sid, $sel, true); ?>
+    <?php foreach ($services as $s): $sid = $s['id']; $on = ((string) $sid) === $selService; ?>
     <div class="service-panel" data-panel="<?= $sid ?>" <?= $on ? '' : 'data-inactive' ?>>
       <h3><?= e($s['name']) ?></h3>
       <?php include __DIR__ . '/../partials/service_availability.php'; ?>

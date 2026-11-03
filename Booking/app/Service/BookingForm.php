@@ -13,7 +13,7 @@ use SJT\Repo\Settings;
  * only shows an estimate, and the server recalculates at review and at submit.
  *
  * Input keys:
- *   services[]            selected service ids
+ *   service_id            one selected service (form) or services[] (legacy/tests)
  *   name, mobile, email, service_date, instructions
  *   slot[sid], participants[sid], f[sid][fieldKey]
  *   add_food=1, food_cat[cid]=1, food[cid]=qty
@@ -34,6 +34,13 @@ final class BookingForm
         foreach (['services', 'slot', 'participants', 'f', 'food_cat', 'food'] as $k) {
             $in[$k] = is_array($in[$k] ?? null) ? $in[$k] : [];
         }
+        if (isset($in['service_id']) && is_scalar($in['service_id']) && (string) $in['service_id'] !== '') {
+            $posted = is_array($in['services'] ?? null) ? $in['services'] : [];
+            if ($posted === []) {
+                $in['services'] = [(string) (int) $in['service_id']];
+            }
+        }
+        unset($in['service_id']);
         $err = [];
         $all = [];
         foreach ($this->catalog->services() as $s) {
@@ -55,11 +62,7 @@ final class BookingForm
         }
         $foodOnly = (bool) array_filter($selected, fn ($s) => $s['is_food_only']);
         if (count($selected) > 1) {
-            if ($foodOnly) {
-                $err['services'] = 'Food-Only Booking cannot be combined with other services. To add food to a puja or ceremony, untick Food-Only and use "Add Food / Prasadam Coupons" instead.';
-            } elseif ($single = array_filter($selected, fn ($s) => !$s['is_combinable'])) {
-                $err['services'] = reset($single)['name'] . ' must be booked on its own. Please make a separate booking for other services.';
-            }
+            $err['services'] = 'Please choose only one service. Make a separate booking for each ceremony or puja.';
         }
 
         // ---- Devotee

@@ -162,7 +162,7 @@
     try { pricing = JSON.parse(form.getAttribute('data-pricing') || '{}'); } catch (e) {}
     var steps = $$('.step', form);
     var current = 0;
-    var svcBoxes = $$('input[name="services[]"]', form);
+    var svcBoxes = $$('input[name="service_id"]', form);
     var addFood = $('#add_food', form);
     var couponsBox = $('[data-coupons]', form);
     var dateInput = $('#service_date', form);
@@ -236,7 +236,7 @@
       var step = steps[i]; clearMsg(step);
       var first = null, sel = selected();
       if (i === 0) {
-        if (!sel.length) first = flag(first, $('.service-options', step), 'Please choose at least one service.');
+        if (!sel.length) first = flag(first, $('.service-options', step), 'Please choose a service.');
         else if (dateInput && dateInput.value && lastAvailDate === dateInput.value && lastAvailServices) {
           var svcProblems = [];
           sel.forEach(function (s) {
@@ -324,19 +324,8 @@
       });
     });
 
-    // Service selection rules: Food-Only and "book alone" services are exclusive.
     svcBoxes.forEach(function (box) {
-      box.addEventListener('change', function () {
-        if (box.checked) {
-          var me = svcById[box.value] || {};
-          svcBoxes.forEach(function (o) {
-            if (o === box || !o.checked) return;
-            var other = svcById[o.value] || {};
-            if (me.foodOnly || other.foodOnly || !me.combinable || !other.combinable) o.checked = false;
-          });
-        }
-        sync();
-      });
+      box.addEventListener('change', function () { sync(); });
     });
 
     var prasadEntry = form.getAttribute('data-entry-mode') === 'prasad';
