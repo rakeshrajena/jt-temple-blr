@@ -8,7 +8,11 @@ CREATE TABLE users (
     full_name       VARCHAR(100) NOT NULL,
     role            ENUM('Admin', 'Treasurer', 'Staff') NOT NULL DEFAULT 'Staff',
     is_active       TINYINT(1) NOT NULL DEFAULT 1,
-    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+    failed_logins   INT NOT NULL DEFAULT 0,
+    locked_until    DATETIME NULL,
+    last_login_at   DATETIME NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE inventory_items (
@@ -150,12 +154,15 @@ CREATE TABLE donations (
     upi_reference           VARCHAR(64) NULL,
     reconciled_bank_txn_id  INT NULL,
     pledge_id               INT NULL,
+    online_booking_id       INT NULL,
+    online_booking_no       VARCHAR(30) NULL,
     notes                   TEXT,
     created_by              INT,
     created_at              DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (donor_id) REFERENCES donors(id),
     FOREIGN KEY (created_by) REFERENCES users(id),
-    UNIQUE KEY uq_receipt_share_token (receipt_share_token)
+    UNIQUE KEY uq_receipt_share_token (receipt_share_token),
+    UNIQUE KEY uq_donations_online_booking_no (online_booking_no)
 ) ENGINE=InnoDB;
 
 CREATE TABLE pledges (

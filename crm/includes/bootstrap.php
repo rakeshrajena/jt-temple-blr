@@ -11,6 +11,7 @@ require APP_ROOT . '/includes/PdfDocument.php';
 require APP_ROOT . '/includes/barcode.php';
 require APP_ROOT . '/includes/qrcode.php';
 require APP_ROOT . '/includes/db.php';
+require APP_ROOT . '/includes/install_booking.php';
 require APP_ROOT . '/includes/staff_session.php';
 require APP_ROOT . '/includes/booking_link.php';
 require APP_ROOT . '/includes/booking_settings.php';

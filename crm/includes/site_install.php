@@ -126,7 +126,7 @@ function site_install_http_inner(array $opts): void
                     } catch (PDOException $e) {
                         error_log('[jt_blr] site_install booking: ' . $e->getMessage());
                         $error = 'Booking migrations failed: ' . $e->getMessage()
-                            . ' — ensure Booking/.env uses the same DB_NAME, DB_USER, and DB_PASS (or DB_PASSWORD) as crm/.env.';
+                            . ' Ensure Booking/.env uses the same DB_NAME, DB_USER, and DB_PASS (or DB_PASSWORD) as crm/.env.';
                     } catch (Throwable $e) {
                         error_log('[jt_blr] site_install booking: ' . $e->getMessage());
                         $error = 'Booking setup failed: ' . $e->getMessage();
@@ -407,7 +407,7 @@ function site_install_render_page(array $ctx): void
 <body>
 <main>
   <h1>Set up temple ERP and online booking</h1>
-  <p>One setup key runs <strong>all</strong> database updates: ERP tables/columns (<code><?= e($erpFolder) ?>/</code>) and Booking migrations (001–008), on the <strong>same</strong> MySQL database.</p>
+  <p>One setup key runs <strong>all</strong> database updates: ERP tables/columns (<code><?= e($erpFolder) ?>/</code>) and Booking migrations (001 through 010), on the <strong>same</strong> MySQL database.</p>
 
   <?php if ($ctx['serverProblems'] !== []): ?>
     <div class="error">
@@ -422,7 +422,7 @@ function site_install_render_page(array $ctx): void
 
   <?php if (is_array($ctx['erpResult'])): ?>
     <div class="ok">
-      <p><strong>ERP:</strong> <?= e(DB_NAME) ?> on <?= e(DB_HOST) ?> — <?= e((string) $ctx['erpResult']['tables']) ?> tables,
+      <p><strong>ERP:</strong> <?= e(DB_NAME) ?> on <?= e(DB_HOST) ?>, <?= e((string) $ctx['erpResult']['tables']) ?> tables,
         <?= e((string) $ctx['erpResult']['users']) ?> users, <?= e((string) $ctx['erpResult']['donors']) ?> devotees.</p>
     </div>
   <?php endif; ?>
@@ -470,7 +470,7 @@ function site_install_render_page(array $ctx): void
   <?php if ($ctx['ready'] && !is_array($ctx['erpResult']) && !$ctx['bookingLockWritten']): ?>
     <p>Database: <strong><?= e(DB_NAME) ?></strong> on <?= e(DB_HOST) ?>.</p>
     <?php if ($ctx['booksReady']): ?>
-      <p class="info">Saved books snapshot available<?= $ctx['existingDonors'] === 0 ? ' — will import when the database has no devotees yet.' : '.' ?></p>
+      <p class="info">Saved books snapshot available<?= $ctx['existingDonors'] === 0 ? '. It will import when the database has no devotees yet.' : '.' ?></p>
     <?php endif; ?>
 
     <form method="post" action="">
@@ -483,7 +483,7 @@ function site_install_render_page(array $ctx): void
       <?php if ($ctx['bookingReady']): ?>
       <h2>Online booking</h2>
       <label class="check"><input type="checkbox" name="run_booking" value="1" checked> Run Booking migrations (services, payments, ERP journal links, notifications, …).</label>
-      <p style="font-size:0.9rem">Optional: first booking admin (skip if an ERP Admin already exists — same login).</p>
+      <p style="font-size:0.9rem">Optional: first booking admin (skip if an ERP Admin already exists; same login).</p>
       <label for="admin_user">Username</label>
       <input id="admin_user" name="admin_user" autocomplete="username" placeholder="leave blank to skip">
       <label for="admin_name">Full name</label>
