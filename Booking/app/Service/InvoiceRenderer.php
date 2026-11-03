@@ -132,6 +132,21 @@ final class InvoiceRenderer
             $ry -= 15;
         }
 
+        $schedule = booking_schedule_from_items($items);
+        if ($schedule !== []) {
+            $y = min($y, $ry) - 6;
+            $pdf->setFill(...$dark);
+            $pdf->text($left, $y, 'Service times on ' . date('d M Y (D)', strtotime($b['service_date'])), 9, 'F2');
+            $y -= 14;
+            foreach ($schedule as $line) {
+                $slot = $line['time'] ? ', ' . $line['time'] : '';
+                $pdf->setFill(...$grey);
+                $pdf->text($left + 12, $y, '• ' . $line['name'] . $slot, 9);
+                $y -= 13;
+            }
+            $ry = min($ry, $y);
+        }
+
         // ---- divider + stamp ----
         $y = min($y, $ry) - 8;
         $pdf->setStroke(...$navy);
@@ -192,15 +207,15 @@ final class InvoiceRenderer
         $n = 0;
         foreach ($items as $it) {
             $n++;
-            $desc = $it['name'] . ($it['item_type'] === 'food' ? ' (per person)' : '');
+            $desc = $it['name'] . ($it['item_type'] === 'food' ? ' (per person)' : '') . (!empty($it['cancelled_at']) ? ' (Cancelled)' : '');
             if ($it['slot_label']) {
-                $desc .= ' — Time: ' . $it['slot_label'];
+                $desc .= ', Time: ' . $it['slot_label'];
             }
             if ($it['participants']) {
-                $desc .= ' — Participants: ' . (int) $it['participants'];
+                $desc .= ', Participants: ' . (int) $it['participants'];
             }
             foreach ($it['details'] as $dd) {
-                $desc .= ' — ' . $dd['label'] . ': ' . $dd['value'];
+                $desc .= ', ' . $dd['label'] . ': ' . $dd['value'];
             }
 
             $pdf->setFill(...$dark);

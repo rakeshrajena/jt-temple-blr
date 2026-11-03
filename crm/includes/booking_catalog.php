@@ -19,7 +19,7 @@ function booking_catalog_can_manage(): bool
 function booking_fmt_date(?string $ymd): string
 {
     if ($ymd === null || $ymd === '') {
-        return '—';
+        return '-';
     }
     $t = strtotime($ymd);
     return $t ? date('D, j M Y', $t) : $ymd;

@@ -85,6 +85,7 @@ function booking_settings_save_rules(array $post, string $actor): array
     booking_setting_set('invoice_prefix', $inv, $actor);
     booking_setting_set('additional_charge_label', mb_substr(trim((string) ($post['additional_charge_label'] ?? '')), 0, 200), $actor);
     booking_setting_set('additional_charge_paise', (string) $extraPaise, $actor);
+    booking_setting_set('pay_later_enabled', isset($post['pay_later_enabled']) ? '1' : '0', $actor);
     return ['error' => null];
 }
 

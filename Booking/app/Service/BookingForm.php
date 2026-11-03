@@ -183,6 +183,8 @@ final class BookingForm
                     $err["food.$cid"] = 'Please enter the number of persons for ' . $c['name'] . '.';
                 } elseif ((int) $raw > $c['max_per_booking']) {
                     $err["food.$cid"] = 'Maximum ' . $c['max_per_booking'] . ' persons for ' . $c['name'] . ' in one booking. Please contact the temple office for larger groups.';
+                } elseif ($date && ($problem = $this->availability->prasadamProblem($c, $date, (int) $raw))) {
+                    $err["food.$cid"] = $problem;
                 } else {
                     $food[] = ['coupon' => $c, 'qty' => (int) $raw];
                 }
@@ -267,5 +269,40 @@ final class BookingForm
             'additional_paise' => $extra,
             'total_paise' => $subtotal + $extra,
         ];
+    }
+
+    public static function isAvailabilityField(string $key): bool
+    {
+        return $key === 'service_date'
+            || $key === 'services'
+            || str_starts_with($key, 'slot.')
+            || str_starts_with($key, 'food.');
+    }
+
+    public static function hasAvailabilityConflict(array $errors): bool
+    {
+        foreach (array_keys($errors) as $key) {
+            if (self::isAvailabilityField((string) $key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static function availabilityHint(): string
+    {
+        return 'Some services, time slots, or prasadam amounts are not available on the date you chose. Please pick another date, service, or quantity.';
+    }
+
+    /** @return list<string> */
+    public static function problemMessages(array $errors): array
+    {
+        $out = [];
+        foreach ($errors as $msg) {
+            if (is_string($msg) && trim($msg) !== '') {
+                $out[] = trim($msg);
+            }
+        }
+        return array_values(array_unique($out));
     }
 }

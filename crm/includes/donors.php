@@ -57,7 +57,8 @@ function build_donor_statement(
     array $gifts,
     array $corrections,
     array $pledges,
-    array $receipts
+    array $receipts,
+    array $cancellations = []
 ): array {
     $error = cash_book_range_error($from, $to);
     if ($error !== null) {
@@ -109,6 +110,31 @@ function build_donor_statement(
             'kind' => 'correction',
             'purpose' => 'Correction',
             'amount' => $delta,
+            'in_book' => true,
+            'payment_mode' => (string) ($row['payment_mode'] ?? ''),
+            'receipt_number' => (string) ($row['receipt_number'] ?? ''),
+            'receipt_cancelled' => false,
+            'note' => trim((string) ($row['reason'] ?? '')),
+        ];
+    }
+    foreach ($cancellations as $row) {
+        $amount = round((float) ($row['book_amount'] ?? 0), 2);
+        $donationId = (int) ($row['donation_id'] ?? 0);
+        $inBook = book_account((string) ($row['payment_mode'] ?? '')) !== null && $amount >= 0.01;
+        if ($inBook) {
+            $deltaByDonation[$donationId] = round(($deltaByDonation[$donationId] ?? 0.0) - $amount, 2);
+        }
+        $date = (string) ($row['approved_on'] ?? '');
+        if (!$inBook || $date < $from || $date > $to) {
+            continue;
+        }
+        $received -= $amount;
+        $lines[] = [
+            'date' => $date,
+            'sort' => 400000000 + (int) ($row['id'] ?? 0),
+            'kind' => 'receipt_cancel',
+            'purpose' => 'Receipt cancelled',
+            'amount' => round(0 - $amount, 2),
             'in_book' => true,
             'payment_mode' => (string) ($row['payment_mode'] ?? ''),
             'receipt_number' => (string) ($row['receipt_number'] ?? ''),
@@ -228,7 +254,16 @@ function load_donor_statement(int $donorId, string $from, string $to): array
         'SELECT id, pledge_id, amount, payment_mode FROM donations WHERE donor_id = ? AND pledge_id IS NOT NULL',
         [$donorId]
     );
-    return build_donor_statement($donor, $from, $to, $gifts, $corrections, $pledges, $receipts);
+    return build_donor_statement(
+        $donor,
+        $from,
+        $to,
+        $gifts,
+        $corrections,
+        $pledges,
+        $receipts,
+        approved_receipt_cancellation_rows(null, null, $donorId)
+    );
 }
 
 /** @return list<array<string, mixed>> */
@@ -257,6 +292,13 @@ function open_pledge_choices(): array
     ) as $row) {
         $id = (int) $row['pledge_id'];
         $received[$id] = round(($received[$id] ?? 0.0) + (float) $row['delta'], 2);
+    }
+    foreach (approved_receipt_cancellation_rows() as $row) {
+        $id = (int) ($row['pledge_id'] ?? 0);
+        if ($id <= 0 || (float) $row['book_amount'] < 0.01) {
+            continue;
+        }
+        $received[$id] = round(($received[$id] ?? 0.0) - (float) $row['book_amount'], 2);
     }
     $choices = [];
     foreach (db_all(
@@ -428,6 +470,13 @@ function load_donor_list(string $from, string $to, string $query = ''): array
         $id = (int) $row['donor_id'];
         $received[$id] = round(($received[$id] ?? 0.0) + (float) $row['delta'], 2);
     }
+    foreach (approved_receipt_cancellation_rows($from, $to) as $row) {
+        if ((float) $row['book_amount'] < 0.01) {
+            continue;
+        }
+        $id = (int) $row['donor_id'];
+        $received[$id] = round(($received[$id] ?? 0.0) - (float) $row['book_amount'], 2);
+    }
     $promised = [];
     foreach (db_all('SELECT donor_id, COALESCE(SUM(pledged_amount), 0) AS total FROM pledges GROUP BY donor_id') as $row) {
         $promised[(int) $row['donor_id']] = (float) $row['total'];
@@ -454,6 +503,13 @@ function load_donor_list(string $from, string $to, string $query = ''): array
     ) as $row) {
         $id = (int) $row['donor_id'];
         $promised[$id] = round(($promised[$id] ?? 0.0) - (float) $row['delta'], 2);
+    }
+    foreach (approved_receipt_cancellation_rows() as $row) {
+        if ((int) ($row['pledge_id'] ?? 0) <= 0 || (float) $row['book_amount'] < 0.01) {
+            continue;
+        }
+        $id = (int) $row['donor_id'];
+        $promised[$id] = round(($promised[$id] ?? 0.0) + (float) $row['book_amount'], 2);
     }
     $needle = mb_strtolower(trim($query));
     $rows = [];

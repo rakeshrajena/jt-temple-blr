@@ -67,6 +67,12 @@ $css = (string) @file_get_contents(\SJT\Core\App::publicPath() . '/assets/css/in
 
   <div class="stamp stamp-<?= $paid ? 'paid' : (in_array($b['booking_status'], ['cancelled', 'rejected'], true) ? 'void' : 'due') ?>"><?= e($stamp) ?></div>
 
+  <?php
+  $serviceDate = $b['service_date'];
+  $scheduleLines = booking_schedule_from_items($items);
+  include __DIR__ . '/partials/booking_schedule.php';
+  ?>
+
   <table class="parties">
     <tr>
       <td>
@@ -95,7 +101,7 @@ $css = (string) @file_get_contents(\SJT\Core\App::publicPath() . '/assets/css/in
       <tr>
         <td class="n"><?= $n ?></td>
         <td>
-          <div class="strong"><?= e($it['name']) ?><?= $it['item_type'] === 'food' ? ' (per person)' : '' ?></div>
+          <div class="strong"><?= e($it['name']) ?><?= $it['item_type'] === 'food' ? ' (per person)' : '' ?><?= !empty($it['cancelled_at']) ? ' (Cancelled)' : '' ?></div>
           <?php if ($it['slot_label']): ?><div class="sub">Time: <?= e($it['slot_label']) ?></div><?php endif; ?>
           <?php if ($it['participants']): ?><div class="sub">Participants: <?= (int) $it['participants'] ?></div><?php endif; ?>
           <?php foreach ($it['details'] as $d): ?><div class="sub"><?= e($d['label']) ?>: <?= e($d['value']) ?></div><?php endforeach; ?>

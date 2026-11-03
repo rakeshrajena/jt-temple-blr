@@ -34,6 +34,8 @@ $on = fn (string $k) => ($s[$k] ?? '0') === '1' ? ' checked' : '';
     <label>Booking number prefix <input name="booking_prefix" value="<?= $v('booking_prefix') ?>" maxlength="8"><small class="muted">e.g. SJT → SJT-2026-000123</small></label>
     <label>Invoice number prefix <input name="invoice_prefix" value="<?= $v('invoice_prefix') ?>" maxlength="8"><small class="muted">e.g. SJTB → SJTB/2026-27/000123</small></label>
   </div>
+  <label class="check-row inline"><input type="checkbox" name="pay_later_enabled" value="1"<?= (($s['pay_later_enabled'] ?? '1') === '1') ? ' checked' : '' ?>> Show &ldquo;I&rsquo;ll pay later&rdquo; on the payment page</label>
+  <p class="hint">When unticked, devotees do not see a link to skip payment on the pay screen. They can still open their booking from WhatsApp, email, or Find my booking.</p>
   <button class="btn btn-primary" type="submit">Save booking rules</button>
 </form>
 
@@ -47,8 +49,8 @@ $on = fn (string $k) => ($s[$k] ?? '0') === '1' ? ' checked' : '';
     <?= csrf_field() ?><input type="hidden" name="section" value="payment">
     <fieldset class="checks">
       <legend>QR type</legend>
-      <label class="inline"><input type="radio" name="upi_qr_mode" value="dynamic"<?= ($s['upi_qr_mode'] ?? 'dynamic') !== 'static' ? ' checked' : '' ?>> <strong>Dynamic (recommended)</strong> — a QR per booking with the exact amount and booking number filled in</label>
-      <label class="inline"><input type="radio" name="upi_qr_mode" value="static"<?= ($s['upi_qr_mode'] ?? '') === 'static' ? ' checked' : '' ?>> Static — show the temple's existing printed QR image; devotee types the amount</label>
+      <label class="inline"><input type="radio" name="upi_qr_mode" value="dynamic"<?= ($s['upi_qr_mode'] ?? 'dynamic') !== 'static' ? ' checked' : '' ?>> <strong>Dynamic (recommended)</strong>: a QR per booking with the exact amount and booking number filled in</label>
+      <label class="inline"><input type="radio" name="upi_qr_mode" value="static"<?= ($s['upi_qr_mode'] ?? '') === 'static' ? ' checked' : '' ?>> Static: show the temple's existing printed QR image; devotee types the amount</label>
     </fieldset>
     <div class="grid-2">
       <label>Temple UPI ID (VPA) <input name="upi_vpa" value="<?= $v('upi_vpa') ?>" placeholder="templename@sbi" autocapitalize="none" spellcheck="false"></label>
@@ -75,31 +77,31 @@ $on = fn (string $k) => ($s[$k] ?? '0') === '1' ? ' checked' : '';
       <h3>Preview</h3>
       <?php if (($s['upi_qr_mode'] ?? 'dynamic') === 'static' ? $staticQr : ($s['upi_vpa'] ?? '') !== ''): ?>
         <img src="<?= e(url('/admin/settings/qr-preview.png')) ?>" alt="QR preview" width="180" height="180" class="qr-preview">
-        <p class="muted small"><?= ($s['upi_qr_mode'] ?? 'dynamic') === 'static' ? 'Uploaded QR.' : 'Test QR for ₹1.00 — scan it to check the payee name before verifying.' ?></p>
+        <p class="muted small"><?= ($s['upi_qr_mode'] ?? 'dynamic') === 'static' ? 'Uploaded QR.' : 'Test QR for ₹1.00. Scan it to check the payee name before verifying.' ?></p>
       <?php else: ?><p class="muted">Nothing to preview yet.</p><?php endif; ?>
     </div>
   </div>
   <?php else: ?>
   <h2>Online payment (Razorpay)</h2>
-  <p>Devotees pay with <strong>Pay now</strong> on the booking page (UPI, card, and net banking through Razorpay). You do <em>not</em> need a separate temple UPI ID or QR in Booking admin — settlement goes to the bank account linked in your Razorpay dashboard.</p>
+  <p>Devotees pay with <strong>Pay now</strong> on the booking page (UPI, card, and net banking through Razorpay). You do <em>not</em> need a separate temple UPI ID or QR in Booking admin. Settlement goes to the bank account linked in your Razorpay dashboard.</p>
   <p>Gateway: <?= e($paymentGateway) ?> · <?= $razorpayConfigured ? '<span class="badge badge-ok">Keys loaded</span>' : '<span class="badge badge-bad">Not configured</span>' ?><?= $razorpayKeyLabel !== '' ? ' · Key ID ' . e($razorpayKeyLabel) : '' ?></p>
   <div class="callout">
     <strong>Server configuration (<code>Booking/.env</code>)</strong>
     <ul class="muted small">
       <li><code>PAYMENT_GATEWAY=razorpay</code></li>
       <li><code>RAZORPAY_KEY_ID</code> and <code>RAZORPAY_KEY_SECRET</code> (test keys for staging, live keys for production)</li>
-      <li><code>BOOKING_UPI_MANUAL=false</code> — keeps the old scan-QR + UTR form hidden (recommended with Razorpay)</li>
-      <li>Optional <code>RAZORPAY_WEBHOOK_SECRET</code> — backup if a devotee closes the browser before payment confirmation</li>
+      <li><code>BOOKING_UPI_MANUAL=false</code> keeps the old scan-QR + UTR form hidden (recommended with Razorpay)</li>
+      <li>Optional <code>RAZORPAY_WEBHOOK_SECRET</code> as backup if a devotee closes the browser before payment confirmation</li>
     </ul>
   </div>
   <p class="muted small">Webhook URL for Razorpay dashboard: <code><?= e($razorpayWebhookUrl) ?></code> (events such as <code>payment.captured</code>). Staff can still record or verify counter payments on individual bookings in admin.</p>
-  <p class="muted small">To use the legacy temple UPI QR + reference number flow instead, set <code>BOOKING_UPI_MANUAL=true</code> in <code>.env</code> and reload this page — the UPI settings form will reappear.</p>
+  <p class="muted small">To use the legacy temple UPI QR + reference number flow instead, set <code>BOOKING_UPI_MANUAL=true</code> in <code>.env</code> and reload this page. The UPI settings form will reappear.</p>
   <?php endif; ?>
 </section>
 
 <section class="panel" id="whatsapp">
   <h2>WhatsApp notifications</h2>
-  <p>API credentials: <?= $waConfigured ? '<span class="badge badge-ok">Present in .env</span>' : '<span class="badge badge-bad">Not set — add WA_ACCESS_TOKEN and WA_PHONE_NUMBER_ID to .env</span>' ?></p>
+  <p>API credentials: <?= $waConfigured ? '<span class="badge badge-ok">Present in .env</span>' : '<span class="badge badge-bad">Not set. Add WA_ACCESS_TOKEN and WA_PHONE_NUMBER_ID to .env</span>' ?></p>
   <p class="muted small">Credentials are kept only in the server's <code>.env</code> file and are never shown here or sent to browsers. Webhook URL for delivery reports: <code><?= e($webhookUrl) ?></code></p>
   <form method="post" action="<?= e(url('/admin/settings')) ?>" class="form">
     <?= csrf_field() ?><input type="hidden" name="section" value="whatsapp">

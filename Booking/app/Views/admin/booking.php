@@ -12,6 +12,14 @@ $act = function (string $name, string $title, string $tone = '') use ($openActio
 $err = fn (string $k) => !empty($errors[$k]) ? '<p class="field-error">' . e($errors[$k]) . '</p>' : '';
 $hidden = fn (string $a) => csrf_field() . '<input type="hidden" name="action" value="' . $a . '">';
 $actionUrl = url('/admin/bookings/' . $b['booking_no'] . '/action');
+$rescheduleProblems = [];
+if (($openAction ?? null) === 'reschedule') {
+    foreach ($errors as $key => $message) {
+        if ($key !== 'override' && is_string($message) && trim($message) !== '') {
+            $rescheduleProblems[] = $message;
+        }
+    }
+}
 ?>
 <p><a href="<?= e(url('/admin/bookings')) ?>">← All bookings</a></p>
 <div class="row-between">
@@ -54,6 +62,7 @@ $actionUrl = url('/admin/bookings/' . $b['booking_no'] . '/action');
     <tbody>
     <?php foreach ($items as $it): ?>
       <tr><td><strong><?= e($it['name']) ?></strong>
+        <?php if (!empty($it['cancelled_at'])): ?><br><span class="badge badge-bad">Cancelled</span> <small><?= e((string) ($it['cancel_reason'] ?? '')) ?></small><?php endif; ?>
         <?php if ($it['slot_label']): ?><br><small>Time: <?= e($it['slot_label']) ?></small><?php endif; ?>
         <?php if ($it['participants']): ?><br><small>Participants: <?= (int) $it['participants'] ?></small><?php endif; ?>
         <?php foreach ($it['details'] as $d): ?><br><small><?= e($d['label']) ?>: <?= e($d['value']) ?></small><?php endforeach; ?>
@@ -77,7 +86,7 @@ $actionUrl = url('/admin/bookings/' . $b['booking_no'] . '/action');
         <?= $hidden('verify_payment') ?>
         <?php if ($submitted): $p = $submitted[0]; ?>
           <input type="hidden" name="payment_id" value="<?= (int) $p['id'] ?>">
-          <p>Devotee submitted UTR <strong class="mono"><?= e($p['reference']) ?></strong> on <?= e(fmt_datetime($p['submitted_at'])) ?><?= $p['payer_note'] ? ' — "' . e($p['payer_note']) . '"' : '' ?>.</p>
+          <p>Devotee submitted UTR <strong class="mono"><?= e($p['reference']) ?></strong> on <?= e(fmt_datetime($p['submitted_at'])) ?><?= $p['payer_note'] ? ': "' . e($p['payer_note']) . '"' : '' ?>.</p>
           <p class="callout">Check the temple bank account / UPI statement. Mark as paid <strong>only</strong> if a credit with this reference and amount is visible.</p>
         <?php else: ?>
           <p class="callout">Use this when the devotee paid at the counter or the payment was found in the bank statement.</p>
@@ -125,17 +134,18 @@ $actionUrl = url('/admin/bookings/' . $b['booking_no'] . '/action');
 
   <?php if ($open): ?>
     <?= $act('reschedule', 'Reschedule') ?>
-      <form method="post" action="<?= e($actionUrl) ?>" class="form">
+      <form method="post" action="<?= e($actionUrl) ?>" class="form" id="reschedule-form" data-reschedule-check="<?= e(url('/admin/bookings/' . $b['booking_no'] . '/reschedule-check')) ?>" data-reschedule-problems="<?= e(json_encode($rescheduleProblems, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>">
         <?= $hidden('reschedule') ?>
+        <p class="muted small">Daily service, slot, and prasadam limits match online booking. Reschedule does not need a separate approval. Only services marked “needs approval” require approve before the ceremony is confirmed.</p>
         <label>New date <input type="date" name="date" required value="<?= e($b['service_date']) ?>"></label><?= $err('date') ?>
         <?php foreach ($items as $it): if (!isset($slotOptions[$it['id']])) { continue; } ?>
-          <label><?= e($it['name']) ?> — time
+          <label><?= e($it['name']) ?>, time
             <select name="slots[<?= (int) $it['id'] ?>]">
               <?php foreach ($slotOptions[$it['id']] as $sl): ?><option value="<?= $sl['id'] ?>"<?= (int) $it['slot_id'] === $sl['id'] ? ' selected' : '' ?>><?= e($sl['label']) ?><?= $sl['is_active'] ? '' : ' (inactive)' ?></option><?php endforeach; ?>
             </select>
           </label>
         <?php endforeach; ?><?= $err('slot') ?>
-        <label class="inline"><input type="checkbox" name="override" value="1"> Override capacity / blocked date</label><?= $err('override') ?>
+        <label class="inline"><input type="checkbox" name="override" value="1"> Override blocked date only (capacity limits always apply)</label><?= $err('override') ?>
         <label>Message to devotee <span class="muted">(optional)</span><input name="note" maxlength="255"></label>
         <button class="btn" type="submit">Reschedule and notify devotee</button>
       </form>
@@ -206,7 +216,7 @@ $actionUrl = url('/admin/bookings/' . $b['booking_no'] . '/action');
   <table class="table compact">
     <thead><tr><th>When</th><th>Method</th><th>Reference</th><th class="num">Amount</th><th>Status</th><th>Reviewed</th></tr></thead>
     <tbody><?php foreach ($payments as $p): ?>
-      <tr><td><?= e(fmt_datetime($p['submitted_at'])) ?></td><td><?= e(str_replace('_', ' ', $p['method'])) ?></td><td class="mono"><?= e((string) $p['reference']) ?><?= $p['gateway_order_id'] ? '<br><small>' . e($p['gateway_order_id']) . '</small>' : '' ?></td><td class="num"><?= e(money((int) $p['amount_paise'])) ?></td><td><?= badge('pay', $p['status']) ?></td><td><?= $p['reviewed_at'] ? e(fmt_datetime($p['reviewed_at']) . ' by ' . $p['reviewed_by']) : '—' ?><?= $p['review_note'] ? '<br><small>' . e($p['review_note']) . '</small>' : '' ?></td></tr>
+      <tr><td><?= e(fmt_datetime($p['submitted_at'])) ?></td><td><?= e(str_replace('_', ' ', $p['method'])) ?></td><td class="mono"><?= e((string) $p['reference']) ?><?= $p['gateway_order_id'] ? '<br><small>' . e($p['gateway_order_id']) . '</small>' : '' ?></td><td class="num"><?= e(money((int) $p['amount_paise'])) ?></td><td><?= badge('pay', $p['status']) ?></td><td><?= $p['reviewed_at'] ? e(fmt_datetime($p['reviewed_at']) . ' by ' . $p['reviewed_by']) : '-' ?><?= $p['review_note'] ? '<br><small>' . e($p['review_note']) . '</small>' : '' ?></td></tr>
     <?php endforeach; ?></tbody>
   </table>
   <?php endif; ?>
@@ -218,7 +228,7 @@ $actionUrl = url('/admin/bookings/' . $b['booking_no'] . '/action');
   <table class="table compact">
     <thead><tr><th>When</th><th>To</th><th>Message</th><th>Status</th><th>Detail</th></tr></thead>
     <tbody><?php foreach ($notifications as $n): ?>
-      <tr><td><?= e(fmt_datetime($n['created_at'])) ?></td><td><?= e($n['audience']) ?><br><small><?= e($n['recipient'] === '-' ? '—' : (($n['channel'] ?? '') === 'email' ? $n['recipient'] : fmt_mobile($n['recipient']))) ?></small></td><td><?= e(str_replace('_', ' ', $n['event'])) ?></td><td><?= badge('n', $n['status']) ?></td><td><small><?= e((string) $n['error']) ?><?= $n['attempts'] ? ' (attempts: ' . (int) $n['attempts'] . ')' : '' ?></small></td></tr>
+      <tr><td><?= e(fmt_datetime($n['created_at'])) ?></td><td><?= e($n['audience']) ?><br><small><?= e($n['recipient'] === '-' ? '-' : (($n['channel'] ?? '') === 'email' ? $n['recipient'] : fmt_mobile($n['recipient']))) ?></small></td><td><?= e(str_replace('_', ' ', $n['event'])) ?></td><td><?= badge('n', $n['status']) ?></td><td><small><?= e((string) $n['error']) ?><?= $n['attempts'] ? ' (attempts: ' . (int) $n['attempts'] . ')' : '' ?></small></td></tr>
     <?php endforeach; ?></tbody>
   </table>
   <?php endif; ?>
@@ -233,3 +243,13 @@ $actionUrl = url('/admin/bookings/' . $b['booking_no'] . '/action');
     <?php endforeach; ?></tbody>
   </table>
 </section>
+
+<dialog class="avail-dialog" id="avail-dialog" aria-labelledby="avail-dialog-title" aria-describedby="avail-dialog-body">
+  <div class="avail-dialog-inner">
+    <h2 class="h3" id="avail-dialog-title">Date not available</h2>
+    <div id="avail-dialog-body" class="avail-dialog-body"></div>
+    <p class="avail-dialog-actions">
+      <button type="button" class="btn btn-primary" data-avail-dialog-ok>OK, choose another date</button>
+    </p>
+  </div>
+</dialog>

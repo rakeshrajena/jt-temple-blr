@@ -112,21 +112,42 @@ main:focus { outline: none; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 .row-between { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-/* ---------- hero / home */
-.hero { text-align: center; padding: 18px 0 8px; }
-.hero h1 { font-size: 2rem; }
-.hero-kicker { font-family: var(--serif); color: var(--saffron); font-weight: 700; letter-spacing: .06em; margin-bottom: .3em; }
-.hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 20px 0; }
-.service-list { list-style: none; padding: 0; margin: 0 0 24px; display: grid; gap: 12px; }
-.service-tile { display: flex; justify-content: space-between; align-items: center; gap: 16px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
-.service-tile h3 { margin-bottom: .2em; }
-.service-tile p { margin: 0 0 .3em; color: var(--muted); font-size: .95rem; }
-.service-tile .meta { color: var(--ink); }
-.price { font-weight: 700; color: var(--maroon-dark); }
-.food-callout { background: #fff3d8; border: 1px solid #f0d38f; border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
-.coupon-chips { padding-left: 1.2em; }
+/* ---------- home menu (Book Prasad / Puja / Find) */
+.home-menu { padding: 8px 0 28px; }
+.home-menu-head { text-align: center; margin-bottom: 28px; }
+.home-menu-head h1 { font-size: clamp(1.65rem, 4vw, 2.15rem); margin-bottom: .35em; }
+.home-menu-lead { color: var(--muted); font-size: 1.05rem; margin: 0; }
+.home-paths {
+  list-style: none; padding: 0; margin: 0;
+  display: grid; gap: 16px;
+}
+@media (min-width: 720px) {
+  .home-paths { grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: stretch; }
+}
+.path-card {
+  display: flex; flex-direction: column; gap: 10px; height: 100%;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px;
+  padding: 22px 20px 18px; text-decoration: none; color: inherit;
+  transition: border-color .15s, box-shadow .15s;
+}
+.path-card:hover, .path-card:focus-visible {
+  border-color: var(--maroon); box-shadow: 0 4px 18px rgba(42, 27, 18, .08);
+}
+.path-card-title {
+  font: 700 1.2rem/1.25 var(--serif); color: var(--maroon-dark);
+}
+.path-card-desc {
+  flex: 1; color: var(--muted); font-size: .98rem; line-height: 1.45; margin: 0;
+}
+.path-card-action {
+  font-weight: 700; color: var(--maroon); font-size: 1rem; margin-top: 4px;
+}
+.form-back { margin: 0 0 12px; font-size: .95rem; }
+.home-how { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.home-how h2 { font-size: 1.25rem; }
 .how-steps { padding-left: 1.3em; }
 .how-steps li { margin-bottom: .5em; }
+.price { font-weight: 700; color: var(--maroon-dark); }
 
 /* ---------- progress indicator */
 .progress { margin: 0 0 20px; }
@@ -180,6 +201,9 @@ input[type=checkbox] { width: 26px; height: 26px; flex: none; margin: 2px 0 0; a
 .option-card { display: flex; gap: 12px; align-items: flex-start; padding: 16px; border: 2px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; transition: border-color .15s, background .15s; }
 .option-card:hover { border-color: #c9a77e; }
 .option-card:has(input:checked) { border-color: var(--maroon); background: #fff6ea; box-shadow: 0 0 0 3px rgba(122, 29, 29, .12); }
+.option-card.option-unavailable { border-color: rgba(163, 34, 30, .45); background: var(--bad-bg); cursor: not-allowed; }
+.option-card.option-unavailable:has(input:checked) { box-shadow: 0 0 0 3px rgba(163, 34, 30, .15); }
+.option-card .service-availability { width: 100%; margin-top: 10px; }
 .option-card.option-food { border-style: dashed; }
 .option-body { display: flex; flex-direction: column; gap: 4px; }
 .option-title { font-weight: 700; font-size: 1.08rem; color: var(--maroon-dark); }
@@ -209,6 +233,33 @@ input:disabled, select:disabled, textarea:disabled, button:disabled {
 .coupon-head { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
 .coupon-qty { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 12px; padding-left: 38px; }
 .coupon-qty label { margin: 0; width: 100%; font-weight: 500; }
+.coupon-availability { width: 100%; margin-top: 4px; }
+.coupon-stat-grid { display: grid; gap: 8px; margin-top: 4px; }
+@media (min-width: 520px) {
+  .coupon-stat-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+}
+.coupon-stat { background: var(--cream, #faf6ef); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.coupon-stat-k { display: block; font-size: 12px; font-weight: 600; color: var(--ink-soft, #5c4a3a); margin-bottom: 2px; }
+.coupon-stat-v { display: block; font-size: 14px; font-weight: 600; color: var(--ink, #2a1b12); line-height: 1.35; }
+.coupon-stat-live.is-loading .coupon-stat-v { color: var(--ink-soft, #5c4a3a); font-weight: 500; }
+.booking-schedule { margin: 0 0 1rem; }
+.booking-schedule-kv { margin-bottom: .75rem; }
+.booking-schedule-heading { margin: 0 0 .5rem; font-size: 1rem; color: var(--maroon-dark); }
+.booking-schedule-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.booking-schedule-item {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px;
+  padding: 10px 12px; border-radius: 10px; background: var(--cream, #faf6ef); border: 1px solid var(--line);
+}
+.booking-schedule-item.is-cancelled { opacity: .85; background: #f8f0ee; }
+.booking-schedule-name { font-weight: 700; color: var(--ink, #2a1b12); }
+.booking-schedule-time { font-weight: 600; color: var(--maroon-dark); }
+.booking-schedule-badge { margin-left: auto; }
+.review-live-limits { margin-top: 12px; }
+.review-live-limits .review-limit-line { margin: 0 0 6px; font-size: 14px; line-height: 1.4; }
+.review-live-limits .review-limit-line:last-child { margin-bottom: 0; }
+.coupon-status { width: 100%; margin: 10px 0 0; border-radius: 8px; font-size: 13px; font-weight: 600; line-height: 1.4; padding: 8px 10px; }
+.coupon-status[hidden] { display: none !important; }
+.coupon .btn-icon:disabled { opacity: .45; cursor: not-allowed; }
 .stepper { display: flex; align-items: center; gap: 6px; }
 .stepper input { width: 90px; text-align: center; font-size: 1.2rem; font-weight: 700; }
 .line-total { font-weight: 700; color: var(--maroon-dark); font-size: 1.05rem; }
@@ -297,8 +348,11 @@ fieldset.card > legend + * { clear: both; }
 .avail-dialog-body { margin-bottom: 1.25em; font-size: 1.05rem; line-height: 1.5; }
 .avail-dialog-body p { margin: 0 0 .65em; }
 .avail-dialog-body ul { margin: 0; padding-left: 1.25em; }
+.avail-dialog-lead { font-weight: 600; margin: 0 0 .75em; color: var(--ink, #2a1b12); }
+.availability-recovery-hint { margin: 0 0 .75em; font-weight: 600; }
 .avail-dialog-body li { margin-bottom: .5em; }
-.avail-dialog-inner form { margin: 0; text-align: center; }
+.avail-dialog-inner form,
+.avail-dialog-actions { margin: 0; text-align: center; }
 
 /* ERP-style busy overlay (see php/static/js/busy.js) */
 .busy-screen { position: fixed; inset: 0; z-index: 80; background: rgba(62, 12, 22, 0.55); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 11vh 20px 20px; }

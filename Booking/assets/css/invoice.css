@@ -19,6 +19,15 @@ td, th { vertical-align: top; }
 .stamp-paid { color: #1d6b38; border-color: #1d6b38; background: #eef8f0; }
 .stamp-due { color: #8a5a00; border-color: #d39a2a; background: #fff6df; }
 .stamp-void { color: #a3221e; border-color: #a3221e; background: #fbecea; }
+.booking-schedule { margin: 12px 0 14px; padding: 10px 12px; border: 1px solid #e3d3bb; background: #faf6ef; }
+.booking-schedule-kv { margin: 0 0 8px; }
+.booking-schedule-kv dt { font-weight: bold; color: #7a1d1d; }
+.booking-schedule-heading { margin: 0 0 6px; font-size: 10pt; color: #7a1d1d; }
+.booking-schedule-list { list-style: none; margin: 0; padding: 0; }
+.booking-schedule-item { padding: 4px 0; border-top: 1px solid #e8dcc8; }
+.booking-schedule-item:first-child { border-top: none; }
+.booking-schedule-name { font-weight: bold; }
+.booking-schedule-time { color: #5c4a3a; }
 .parties td { width: 50%; padding: 8px 0; line-height: 1.45; }
 .label { font-size: 8.5pt; text-transform: uppercase; letter-spacing: 1px; color: #7a1d1d; font-weight: bold; margin-bottom: 2px; }
 .strong { font-weight: bold; }

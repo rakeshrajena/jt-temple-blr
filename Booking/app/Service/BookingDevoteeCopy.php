@@ -96,7 +96,7 @@ final class BookingDevoteeCopy
         return self::updateDetail(
             $b,
             $ctx,
-            'Your booking request is saved. Payment is still pending — please pay using your booking link to confirm',
+            'Your booking request is saved. Payment is still pending. Please pay using your booking link to confirm',
         );
     }
 }

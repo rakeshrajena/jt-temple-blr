@@ -15,7 +15,7 @@
   <tbody><?php foreach ($services as $s): ?>
     <tr>
       <td><strong><?= e($s['name']) ?></strong><?= $s['is_food_only'] ? '<br><small class="muted">Priced by food coupons</small>' : '' ?></td>
-      <td class="num"><?= $s['is_food_only'] ? '—' : ($s['price_paise'] > 0 ? e(money($s['price_paise'])) : '<span class="muted">On request</span>') ?></td>
+      <td class="num"><?= $s['is_food_only'] ? '-' : ($s['price_paise'] > 0 ? e(money($s['price_paise'])) : '<span class="muted">On request</span>') ?></td>
       <td><small><?= implode(' · ', array_filter([
           $s['requires_approval'] ? 'needs approval' : null,
           $s['collect_participants'] ? 'participants ≤ ' . $s['max_participants'] : null,

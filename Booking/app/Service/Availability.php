@@ -39,17 +39,71 @@ final class Availability
     {
         return (int) $this->db->value(
             'SELECT COUNT(*) FROM booking_items i JOIN bookings b ON b.id = i.booking_id
-             WHERE i.slot_id = ? AND b.service_date = ? AND b.booking_status NOT IN ' . self::INACTIVE .
+             WHERE i.slot_id = ? AND i.cancelled_at IS NULL AND b.service_date = ? AND b.booking_status NOT IN ' . self::INACTIVE .
             ($exceptBooking ? ' AND b.id <> ' . (int) $exceptBooking : ''),
             [$slotId, $date]
         );
+    }
+
+    /** Persons already booked for one prasadam item on a date. Cancelled and rejected bookings do not count. */
+    public function prasadamUsed(int $couponId, string $date, ?int $exceptBooking = null): int
+    {
+        return (int) $this->db->value(
+            "SELECT COALESCE(SUM(i.quantity), 0) FROM booking_items i JOIN bookings b ON b.id = i.booking_id
+             WHERE i.item_type = 'food' AND i.coupon_id = ? AND i.cancelled_at IS NULL AND b.service_date = ? AND b.booking_status NOT IN " . self::INACTIVE .
+            ($exceptBooking ? ' AND b.id <> ' . (int) $exceptBooking : ''),
+            [$couponId, $date]
+        );
+    }
+
+    /**
+     * Why this quantity cannot be added for the prasadam item on this date (null = allowed).
+     * A null daily_max means there is no cap across bookings.
+     */
+    public function prasadamProblem(array $coupon, string $date, int $qty, ?int $exceptBooking = null): ?string
+    {
+        $max = $coupon['daily_max'] ?? null;
+        if ($max === null || $qty < 1) {
+            return null;
+        }
+        $used = $this->prasadamUsed((int) $coupon['id'], $date, $exceptBooking);
+        if ($used + $qty <= (int) $max) {
+            return null;
+        }
+        $left = max(0, (int) $max - $used);
+        $name = (string) $coupon['name'];
+        if ($left === 0) {
+            return $name . ' is fully booked on ' . fmt_date($date) . '. Please choose another date.';
+        }
+        return 'Only ' . $left . ' ' . $name . ' left on ' . fmt_date($date) . '. Please reduce the number of persons.';
+    }
+
+    /**
+     * Remaining persons for each active prasadam item on a date.
+     * remaining is null when that item has no daily maximum.
+     *
+     * @return array<string, array{daily_max:?int, used:int, remaining:?int}>
+     */
+    public function prasadamForDate(string $date, ?int $exceptBooking = null): array
+    {
+        $out = [];
+        foreach ($this->catalog->coupons() as $c) {
+            $max = $c['daily_max'];
+            $used = $max === null ? 0 : $this->prasadamUsed((int) $c['id'], $date, $exceptBooking);
+            $out[(string) $c['id']] = [
+                'daily_max' => $max,
+                'used' => $used,
+                'remaining' => $max === null ? null : max(0, $max - $used),
+            ];
+        }
+        return $out;
     }
 
     public function serviceUsed(int $serviceId, string $date, ?int $exceptBooking = null): int
     {
         return (int) $this->db->value(
             "SELECT COUNT(*) FROM booking_items i JOIN bookings b ON b.id = i.booking_id
-             WHERE i.item_type = 'service' AND i.service_id = ? AND b.service_date = ? AND b.booking_status NOT IN " . self::INACTIVE .
+             WHERE i.item_type = 'service' AND i.service_id = ? AND i.cancelled_at IS NULL AND b.service_date = ? AND b.booking_status NOT IN " . self::INACTIVE .
             ($exceptBooking ? ' AND b.id <> ' . (int) $exceptBooking : ''),
             [$serviceId, $date]
         );
@@ -59,7 +113,7 @@ final class Availability
      * Why a service cannot be booked on a date (null = available).
      * $checkWindow=false lets administrators reschedule outside the public booking window.
      */
-    public function serviceProblem(array $service, string $date, ?int $exceptBooking = null, bool $checkWindow = true): ?string
+    public function serviceProblem(array $service, string $date, ?int $exceptBooking = null, bool $checkWindow = true, bool $respectBlocks = true): ?string
     {
         if (!$service['is_active']) {
             return 'This service is not currently available for online booking.';
@@ -70,7 +124,7 @@ final class Availability
         if ($checkWindow && $date > $this->maxDate()) {
             return 'Bookings are open only up to ' . fmt_date($this->maxDate()) . '.';
         }
-        if ($reason = $this->catalog->blockReason($service['id'], $date)) {
+        if ($respectBlocks && ($reason = $this->catalog->blockReason($service['id'], $date))) {
             return $service['name'] . ' is not available on ' . fmt_date($date) . ': ' . $reason . '.';
         }
         if ($service['daily_capacity'] !== null && $this->serviceUsed($service['id'], $date, $exceptBooking) >= $service['daily_capacity']) {
@@ -122,10 +176,17 @@ final class Availability
         $out = [];
         foreach ($this->catalog->services() as $svc) {
             $problem = $this->serviceProblem($svc, $date);
+            $used = $this->serviceUsed($svc['id'], $date);
+            $cap = $svc['daily_capacity'];
             $out[$svc['id']] = [
                 'available' => $problem === null,
                 'message' => $problem,
                 'slots' => $svc['requires_slot'] ? $this->slotsFor($svc, $date) : [],
+                'capacity' => [
+                    'daily_max' => $cap,
+                    'used' => $used,
+                    'remaining' => $cap === null ? null : max(0, $cap - $used),
+                ],
             ];
         }
         return $out;

@@ -56,8 +56,8 @@ $amount = money((int) $b['total_paise']);
       <p>Pay securely with UPI, card or net banking. Your booking is updated automatically once the payment succeeds.</p>
       <button type="button" class="btn btn-primary btn-lg" data-busy="Opening secure payment" data-gateway-pay="<?= e(url('/b/' . $no . '/gateway/order')) ?>" data-gateway-verify="<?= e(url('/b/' . $no . '/gateway/verify')) ?>" data-gateway-sync="<?= e(url('/b/' . $no . '/gateway/sync')) ?>" data-csrf="<?= e(csrf_token()) ?>">Pay <?= e($amount) ?> now</button>
       <?php if (!empty($gatewaySyncPending)): ?>
-      <p class="hint">If you already paid and see an error from the payment window, use the button below — we will check with the bank and update your booking.</p>
-      <button type="button" class="btn btn-secondary" data-gateway-sync-only="<?= e(url('/b/' . $no . '/gateway/sync')) ?>" data-csrf="<?= e(csrf_token()) ?>">I paid — update my booking</button>
+      <p class="hint">If you already paid and see an error from the payment window, use the button below. We will check with the bank and update your booking.</p>
+      <button type="button" class="btn btn-secondary" data-gateway-sync-only="<?= e(url('/b/' . $no . '/gateway/sync')) ?>" data-csrf="<?= e(csrf_token()) ?>">I paid, update my booking</button>
       <?php endif; ?>
       <p class="field-error" data-gateway-error hidden role="alert"></p>
     </div>
@@ -87,7 +87,7 @@ $amount = money((int) $b['total_paise']);
           <li>Scan the temple's QR code with any UPI app and enter the amount <strong><?= e($amount) ?></strong> exactly.</li>
           <li>In the payment note / remarks, write your booking number <strong><?= e($no) ?></strong>.</li>
           <?php endif; ?>
-          <li>After paying, copy the <strong>UPI reference number (UTR)</strong> from your UPI app — usually 12 digits.</li>
+          <li>After paying, copy the <strong>UPI reference number (UTR)</strong> from your UPI app (usually 12 digits).</li>
           <li>Enter it in the box below and press <strong>Submit payment reference</strong>.</li>
         </ol>
         <div class="actions">
@@ -109,7 +109,7 @@ $amount = money((int) $b['total_paise']);
         <?php if (!empty($errors['reference'])): ?><p class="field-error" id="reference-error" role="alert"><?= e($errors['reference']) ?></p><?php endif; ?>
       </div>
       <div class="field">
-        <label for="payer_note">Paid from (name / UPI ID) <span class="opt">(optional — helps the temple match your payment)</span></label>
+        <label for="payer_note">Paid from (name / UPI ID) <span class="opt">(optional, helps the temple match your payment)</span></label>
         <input id="payer_note" name="payer_note" maxlength="255">
       </div>
       <p class="hint">Submitting the reference does not confirm the booking by itself. The temple office checks every payment against its bank account.</p>
@@ -117,7 +117,9 @@ $amount = money((int) $b['total_paise']);
     </form>
     <?php endif; ?>
 
-    <p class="center"><a href="<?= e(url('/b/' . $no)) ?>">I'll pay later — show my booking</a></p>
+    <?php if (pay_later_enabled()): ?>
+    <p class="center"><a href="<?= e(url('/b/' . $no)) ?>">I'll pay later, show my booking</a></p>
+    <?php endif; ?>
   <?php endif; ?>
 </section>
 
@@ -131,8 +133,12 @@ $amount = money((int) $b['total_paise']);
   </div>
   <dl class="kv">
     <dt>Devotee</dt><dd><?= e($b['devotee_name']) ?> · <?= e(fmt_mobile($b['mobile'])) ?></dd>
-    <dt>Date</dt><dd><?= e(fmt_date($b['service_date'])) ?></dd>
   </dl>
+  <?php
+  $serviceDate = $b['service_date'];
+  $scheduleLines = booking_schedule_from_items($items);
+  include __DIR__ . '/../partials/booking_schedule.php';
+  ?>
   <?php $sub = $b['subtotal_paise']; $extra = $b['additional_paise']; $extraLabel = $b['additional_label']; $total = $b['total_paise'];
   include __DIR__ . '/../partials/items_table.php'; ?>
 </section>

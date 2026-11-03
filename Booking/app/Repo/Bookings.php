@@ -53,21 +53,21 @@ final class Bookings
     /** "Special Puja, Vehicle Puja" */
     public function serviceSummary(int $bookingId): string
     {
-        $names = $this->db->all("SELECT name FROM booking_items WHERE booking_id = ? AND item_type = 'service' ORDER BY sort_order", [$bookingId]);
+        $names = $this->db->all("SELECT name FROM booking_items WHERE booking_id = ? AND item_type = 'service' AND cancelled_at IS NULL ORDER BY sort_order", [$bookingId]);
         return implode(', ', array_column($names, 'name'));
     }
 
     /** "Morning (7:00 AM – 9:00 AM)" (distinct slot labels) */
     public function slotSummary(int $bookingId): string
     {
-        $rows = $this->db->all("SELECT DISTINCT slot_label FROM booking_items WHERE booking_id = ? AND slot_label IS NOT NULL", [$bookingId]);
+        $rows = $this->db->all("SELECT DISTINCT slot_label FROM booking_items WHERE booking_id = ? AND slot_label IS NOT NULL AND cancelled_at IS NULL", [$bookingId]);
         return implode('; ', array_column($rows, 'slot_label'));
     }
 
     /** "Food Coupon (Standard) × 4, Food Coupon (Special) × 2" or "None" */
     public function foodSummary(int $bookingId): string
     {
-        $rows = $this->db->all("SELECT name, quantity FROM booking_items WHERE booking_id = ? AND item_type = 'food' ORDER BY sort_order", [$bookingId]);
+        $rows = $this->db->all("SELECT name, quantity FROM booking_items WHERE booking_id = ? AND item_type = 'food' AND cancelled_at IS NULL ORDER BY sort_order", [$bookingId]);
         return $rows ? implode(', ', array_map(fn ($r) => $r['name'] . ' × ' . $r['quantity'], $rows)) : 'None';
     }
 
@@ -141,5 +141,64 @@ final class Bookings
             $p[] = $f['created_to'] . ' 23:59:59';
         }
         return [implode(' AND ', $w), $p];
+    }
+
+    /**
+     * Bookings on one service date, optionally narrowed to a booking number, numeric id, or phone.
+     * When the search matches nothing on that date, $elsewhere holds the same search on other dates.
+     *
+     * @return array{rows: list<array<string,mixed>>, elsewhere: list<array<string,mixed>>}
+     */
+    public function forDay(string $date, string $q = ''): array
+    {
+        [$clause, $params] = $this->identityClause($q);
+        $rows = $this->withItems(
+            $this->db->all(
+                'SELECT b.* FROM bookings b WHERE b.service_date = ?' . $clause . ' ORDER BY b.id',
+                array_merge([$date], $params)
+            )
+        );
+        $elsewhere = [];
+        if ($q !== '' && $rows === []) {
+            $elsewhere = $this->withItems(
+                $this->db->all(
+                    'SELECT b.* FROM bookings b WHERE b.service_date <> ?' . $clause . ' ORDER BY b.service_date, b.id LIMIT 50',
+                    array_merge([$date], $params)
+                )
+            );
+        }
+        return ['rows' => $rows, 'elsewhere' => $elsewhere];
+    }
+
+    /** @param list<array<string,mixed>> $rows @return list<array<string,mixed>> */
+    private function withItems(array $rows): array
+    {
+        foreach ($rows as &$row) {
+            $row['items'] = $this->items((int) $row['id']);
+        }
+        unset($row);
+        return $rows;
+    }
+
+    /** @return array{0: string, 1: list<mixed>} */
+    private function identityClause(string $q): array
+    {
+        $q = trim($q);
+        if ($q === '') {
+            return ['', []];
+        }
+        $like = '%' . str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $q) . '%';
+        $parts = ["b.booking_no LIKE ? ESCAPE '!'"];
+        $params = [$like];
+        $digits = preg_replace('/\D/', '', $q) ?? '';
+        if ($digits !== '' && ctype_digit($digits) && strlen($digits) <= 12 && $q === $digits) {
+            $parts[] = 'b.id = ?';
+            $params[] = (int) $digits;
+        }
+        if (strlen($digits) >= 4) {
+            $parts[] = 'b.mobile LIKE ?';
+            $params[] = '%' . $digits . '%';
+        }
+        return [' AND (' . implode(' OR ', $parts) . ')', $params];
     }
 }

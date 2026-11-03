@@ -45,14 +45,14 @@ foreach ($report['rows'] as $r) { foreach ($tot as $k => $_) { $tot[$k] += $r[$k
   <h2>By service</h2>
   <table class="table compact"><thead><tr><th>Service</th><th class="num">Bookings</th><th class="num">Value</th></tr></thead><tbody>
   <?php foreach ($report['services'] as $n => $s): ?><tr><td><?= e($n) ?></td><td class="num"><?= $s['count'] ?></td><td class="num"><?= e(money($s['amount'])) ?></td></tr><?php endforeach; ?>
-  <?php if (!$report['services']): ?><tr><td colspan="3" class="muted">—</td></tr><?php endif; ?>
+  <?php if (!$report['services']): ?><tr><td colspan="3" class="muted">-</td></tr><?php endif; ?>
   </tbody></table>
 </section>
 <section class="panel">
   <h2>Food coupons</h2>
   <table class="table compact"><thead><tr><th>Coupon</th><th class="num">Persons</th><th class="num">Value</th></tr></thead><tbody>
   <?php foreach ($report['coupons'] as $n => $c): ?><tr><td><?= e($n) ?></td><td class="num"><?= $c['persons'] ?></td><td class="num"><?= e(money($c['amount'])) ?></td></tr><?php endforeach; ?>
-  <?php if (!$report['coupons']): ?><tr><td colspan="3" class="muted">—</td></tr><?php endif; ?>
+  <?php if (!$report['coupons']): ?><tr><td colspan="3" class="muted">-</td></tr><?php endif; ?>
   </tbody></table>
 </section>
 </div>

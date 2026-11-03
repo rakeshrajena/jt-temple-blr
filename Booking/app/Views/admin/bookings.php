@@ -37,7 +37,7 @@ $q = array_filter($f, fn ($v) => $v !== '');
       <td class="num"><?= e(money((int) $b['total_paise'])) ?></td>
       <td><?= badge('booking', $b['booking_status']) ?></td>
       <td><?= badge('payment', $b['payment_status']) ?><?php if ($b['payment_ref']): ?><br><small class="muted"><?= e($b['payment_ref']) ?></small><?php endif; ?></td>
-      <td><?= $b['approval_status'] === 'not_required' ? '<span class="muted">—</span>' : badge('approval', $b['approval_status']) ?></td>
+      <td><?= $b['approval_status'] === 'not_required' ? '<span class="muted">-</span>' : badge('approval', $b['approval_status']) ?></td>
     </tr>
   <?php endforeach; ?>
   </tbody>

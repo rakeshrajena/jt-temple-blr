@@ -19,8 +19,16 @@ final class PublicController extends Controller
 {
     public function home(Request $req): Response
     {
+        $services = Container::catalog()->services();
+        $foodOnly = null;
+        foreach ($services as $s) {
+            if (!empty($s['is_food_only'])) {
+                $foodOnly = $s;
+                break;
+            }
+        }
         return $this->view('public/home', [
-            'services' => Container::catalog()->services(),
+            'foodOnlyService' => $foodOnly,
             'coupons' => Container::catalog()->coupons(),
         ]);
     }

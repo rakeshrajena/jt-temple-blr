@@ -61,6 +61,7 @@ function ensure_food_coupon_catalog_schema(PDO $pdo): void
                     description VARCHAR(255) NULL,
                     price_paise INT NOT NULL,
                     max_per_booking INT NOT NULL DEFAULT 200,
+                    daily_max INT NULL,
                     is_active TINYINT(1) NOT NULL DEFAULT 1,
                     sort_order INT NOT NULL DEFAULT 0,
                     created_at DATETIME NOT NULL,
@@ -75,6 +76,7 @@ function ensure_food_coupon_catalog_schema(PDO $pdo): void
                     description VARCHAR(255) NULL,
                     price_paise INT NOT NULL,
                     max_per_booking INT NOT NULL DEFAULT 200,
+                    daily_max INT NULL,
                     is_active INTEGER NOT NULL DEFAULT 1,
                     sort_order INT NOT NULL DEFAULT 0,
                     created_at TEXT NOT NULL,
@@ -83,6 +85,8 @@ function ensure_food_coupon_catalog_schema(PDO $pdo): void
             );
         }
     }
+
+    food_coupon_catalog_ensure_daily_max($pdo);
 
     $count = (int) $pdo->query('SELECT COUNT(*) FROM food_coupon_catalog')->fetchColumn();
     if ($count > 0) {
@@ -93,16 +97,18 @@ function ensure_food_coupon_catalog_schema(PDO $pdo): void
     if (food_coupon_catalog_booking_coupons_exists($pdo)) {
         $rows = $pdo->query('SELECT * FROM booking_coupons ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
         $insert = $pdo->prepare(
-            'INSERT INTO food_coupon_catalog (id, name, description, price_paise, max_per_booking, is_active, sort_order, created_at, updated_at)
-             VALUES (?,?,?,?,?,?,?,?,?)'
+            'INSERT INTO food_coupon_catalog (id, name, description, price_paise, max_per_booking, daily_max, is_active, sort_order, created_at, updated_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?)'
         );
         foreach ($rows as $r) {
+            $daily = $r['daily_max'] ?? null;
             $insert->execute([
                 (int) $r['id'],
                 $r['name'],
                 $r['description'],
                 (int) $r['price_paise'],
                 (int) $r['max_per_booking'],
+                $daily === null || $daily === '' ? null : (int) $daily,
                 (int) $r['is_active'],
                 (int) $r['sort_order'],
                 $r['created_at'],
@@ -118,6 +124,39 @@ function ensure_food_coupon_catalog_schema(PDO $pdo): void
     );
     foreach (food_coupon_catalog_default_menu() as $i => [$name, $desc, $paise]) {
         $insert->execute([$name, $desc, $paise, 200, 1, $i, $now, $now]);
+    }
+}
+
+/** Empty daily_max means no cap across bookings. Values below 1 are treated as empty. */
+function food_coupon_catalog_parse_daily_max(mixed $raw): ?int
+{
+    $s = trim((string) $raw);
+    if ($s === '') {
+        return null;
+    }
+    $n = (int) $s;
+    return $n < 1 ? null : min(50000, $n);
+}
+
+function food_coupon_catalog_ensure_daily_max(PDO $pdo): void
+{
+    if (!food_coupon_catalog_table_exists_on($pdo)) {
+        return;
+    }
+    $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+    if ($driver === 'sqlite') {
+        $cols = $pdo->query('PRAGMA table_info(food_coupon_catalog)')->fetchAll(PDO::FETCH_ASSOC);
+        if (!in_array('daily_max', array_column($cols, 'name'), true)) {
+            $pdo->exec('ALTER TABLE food_coupon_catalog ADD COLUMN daily_max INT NULL');
+        }
+        return;
+    }
+    $stmt = $pdo->prepare(
+        'SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?'
+    );
+    $stmt->execute(['food_coupon_catalog', 'daily_max']);
+    if (!$stmt->fetchColumn()) {
+        $pdo->exec('ALTER TABLE food_coupon_catalog ADD COLUMN daily_max INT NULL');
     }
 }
 
@@ -162,6 +201,8 @@ function food_coupon_catalog_list(bool $activeOnly = false): array
         $row['id'] = (int) $row['id'];
         $row['price_paise'] = (int) $row['price_paise'];
         $row['max_per_booking'] = (int) $row['max_per_booking'];
+        $daily = $row['daily_max'] ?? null;
+        $row['daily_max'] = ($daily === null || $daily === '' || (int) $daily < 1) ? null : (int) $daily;
         $row['is_active'] = (int) $row['is_active'] === 1;
         $row['sort_order'] = (int) $row['sort_order'];
     }
@@ -179,6 +220,7 @@ function food_coupon_catalog_editor_rows(): array
         'description' => '',
         'price_paise' => 0,
         'max_per_booking' => 200,
+        'daily_max' => null,
         'is_active' => true,
         'sort_order' => count($rows),
     ];
@@ -208,19 +250,20 @@ function food_coupon_catalog_save_from_post(): array
         'description' => trim(post_string('catalog_description', 255)) ?: null,
         'price_paise' => $price,
         'max_per_booking' => max(1, min(5000, (int) ($_POST['catalog_max'] ?? 200))),
+        'daily_max' => food_coupon_catalog_parse_daily_max($_POST['catalog_daily_max'] ?? ''),
         'is_active' => isset($_POST['catalog_active']) ? 1 : 0,
         'sort_order' => (int) ($_POST['catalog_sort'] ?? 0),
         'updated_at' => date('Y-m-d H:i:s'),
     ];
     if ($id > 0) {
         db_exec(
-            'UPDATE food_coupon_catalog SET name = ?, description = ?, price_paise = ?, max_per_booking = ?, is_active = ?, sort_order = ?, updated_at = ? WHERE id = ?',
-            [$row['name'], $row['description'], $row['price_paise'], $row['max_per_booking'], $row['is_active'], $row['sort_order'], $row['updated_at'], $id]
+            'UPDATE food_coupon_catalog SET name = ?, description = ?, price_paise = ?, max_per_booking = ?, daily_max = ?, is_active = ?, sort_order = ?, updated_at = ? WHERE id = ?',
+            [$row['name'], $row['description'], $row['price_paise'], $row['max_per_booking'], $row['daily_max'], $row['is_active'], $row['sort_order'], $row['updated_at'], $id]
         );
     } else {
         db_exec(
-            'INSERT INTO food_coupon_catalog (name, description, price_paise, max_per_booking, is_active, sort_order, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)',
-            [$row['name'], $row['description'], $row['price_paise'], $row['max_per_booking'], $row['is_active'], $row['sort_order'], $row['updated_at'], $row['updated_at']]
+            'INSERT INTO food_coupon_catalog (name, description, price_paise, max_per_booking, daily_max, is_active, sort_order, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)',
+            [$row['name'], $row['description'], $row['price_paise'], $row['max_per_booking'], $row['daily_max'], $row['is_active'], $row['sort_order'], $row['updated_at'], $row['updated_at']]
         );
     }
     return ['error' => null];

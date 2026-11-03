@@ -50,6 +50,15 @@
     }
     const form = event.target;
     const submitter = event.submitter || null;
+    if (form && (form.getAttribute('method') === 'dialog' || (form.closest && form.closest('#avail-dialog')))) {
+      return;
+    }
+    if (form && form.id === 'booking-form' && form.getAttribute('data-book-submit-ok') !== '1') {
+      const checkUrl = form.getAttribute('data-book-check');
+      if (checkUrl && submitter && submitter.type === 'submit') {
+        return;
+      }
+    }
     if (form && form.classList.contains('locale-switch')) {
       show('Changing the language');
       return;

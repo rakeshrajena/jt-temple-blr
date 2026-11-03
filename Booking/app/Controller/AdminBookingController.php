@@ -29,6 +29,45 @@ final class AdminBookingController extends Controller
         ]);
     }
 
+    public function cancellations(Request $req): Response
+    {
+        $date = Validator::date($req->str('date')) ?: today();
+        $q = trim($req->str('q'));
+        $day = Container::bookings()->forDay($date, $q);
+        return $this->adminView('cancellations', [
+            'title' => 'Cancellations',
+            'date' => $date,
+            'q' => $q,
+            'rows' => $day['rows'],
+            'elsewhere' => $day['elsewhere'],
+        ]);
+    }
+
+    public function cancelItem(Request $req): Response
+    {
+        $date = Validator::date($req->str('date')) ?: today();
+        $q = trim($req->str('q'));
+        $back = url('/admin/cancellations', ['date' => $date, 'q' => $q]);
+        $no = strtoupper(trim($req->str('booking_no')));
+        $b = $no !== '' ? Container::bookings()->findByNo($no) : null;
+        if (!$b) {
+            flash('error', 'Booking not found.');
+            return Response::redirect($back, true);
+        }
+        try {
+            $fresh = Container::service()->cancelItem($b, Container::auth()->actor(), $req->int('item_id'), $req->str('reason'));
+            $done = $fresh['booking_status'] === 'cancelled'
+                ? 'Item cancelled. Nothing else remained, so the booking is cancelled.'
+                : (($fresh['payment_status'] ?? '') === 'paid'
+                    ? 'Item cancelled. The paid amount is unchanged.'
+                    : 'Item cancelled. The unpaid total was updated.');
+            flash('success', $done);
+        } catch (ValidationException $e) {
+            flash('error', implode(' ', $e->errors));
+        }
+        return Response::redirect($back, true);
+    }
+
     public function export(Request $req): Response
     {
         $f = $this->filters($req);
@@ -86,6 +125,20 @@ final class AdminBookingController extends Controller
     {
         $b = $this->booking($req);
         return Response::file(Container::invoices()->pdf($b), 'application/pdf', 'Invoice-' . $b['booking_no'] . '.pdf', true);
+    }
+
+    public function rescheduleCheck(Request $req): Response
+    {
+        $b = $this->booking($req);
+        $slots = array_map('intval', array_filter($req->arr('slots'), 'is_scalar'));
+        $errors = Container::service()->rescheduleValidate(
+            $b,
+            $req->str('date'),
+            $slots,
+            $req->str('override') === '1'
+        );
+        $problems = Container::service()->rescheduleProblemMessages($errors);
+        return Response::json(['ok' => $problems === [], 'problems' => $problems]);
     }
 
     public function action(Request $req): Response

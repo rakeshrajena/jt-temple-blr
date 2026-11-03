@@ -9,11 +9,16 @@ $err = fn (string $k) => $errors[$k] ?? null;
 $val = fn (string $k) => is_string($in[$k] ?? null) ? $in[$k] : '';
 $nested = fn (string $k, $sid, ?string $sub = null) => (string) ($sub === null ? (($in[$k] ?? [])[$sid] ?? '') : ((($in[$k] ?? [])[$sid] ?? [])[$sub] ?? ''));
 $addFood = !empty($in['add_food']);
+$isPrasadEntry = ($entryMode ?? '') === 'prasad';
 $waOptIn = ($in['wa_opt_in'] ?? '') !== '0';
 ?>
 <?php $step = 1; include __DIR__ . '/../partials/progress.php'; ?>
 
-<form method="post" action="<?= e(url('/book/review')) ?>" class="booking-form" id="booking-form" novalidate data-pricing="<?= e($pricingJson) ?>">
+<?php if (($entryMode ?? '') === 'prasad'): ?>
+<p class="form-back"><a href="<?= e(url('/')) ?>">← Back to booking options</a></p>
+<?php endif; ?>
+
+<form method="post" action="<?= e(url('/book/review')) ?>" class="booking-form" id="booking-form" novalidate data-pricing="<?= e($pricingJson) ?>" data-book-check="<?= e(url('/book/check')) ?>"<?= ($entryMode ?? '') === 'prasad' ? ' data-entry-mode="prasad"' : '' ?>>
   <?= csrf_field() ?>
   <input type="hidden" name="form_id" value="<?= e($formId) ?>">
 
@@ -38,6 +43,7 @@ $waOptIn = ($in['wa_opt_in'] ?? '') !== '0';
             <?php else: ?>Charges confirmed by the temple office<?php endif; ?>
             <?php if ($s['requires_approval']): ?><span class="tag">Needs temple approval</span><?php endif; ?>
           </span>
+          <?php include __DIR__ . '/../partials/service_availability.php'; ?>
         </span>
       </label>
       <?php endforeach; ?>
@@ -61,7 +67,7 @@ $waOptIn = ($in['wa_opt_in'] ?? '') !== '0';
         <?php if ($err('mobile')): ?><p class="field-error" id="mobile-error"><?= e($err('mobile')) ?></p><?php endif; ?>
       </div>
       <div class="field<?= $err('email') ? ' has-error' : '' ?>">
-        <label for="email">Email <span class="opt">(optional — required for email receipt)</span></label>
+        <label for="email">Email <span class="opt">(optional; required for email receipt)</span></label>
         <input id="email" name="email" type="email" inputmode="email" maxlength="150" autocomplete="email" value="<?= e($val('email')) ?>" aria-describedby="email-hint<?= $err('email') ? ' email-error' : '' ?>" <?= $err('email') ? 'aria-invalid="true"' : '' ?>>
         <p class="hint" id="email-hint">We email your booking confirmation, payment status, and invoice PDF to this address.</p>
         <?php if ($err('email')): ?><p class="field-error" id="email-error"><?= e($err('email')) ?></p><?php endif; ?>
@@ -84,11 +90,12 @@ $waOptIn = ($in['wa_opt_in'] ?? '') !== '0';
     <?php foreach ($services as $s): $sid = $s['id']; $on = in_array((string) $sid, $sel, true); ?>
     <div class="service-panel" data-panel="<?= $sid ?>" <?= $on ? '' : 'data-inactive' ?>>
       <h3><?= e($s['name']) ?></h3>
+      <?php include __DIR__ . '/../partials/service_availability.php'; ?>
       <?php if ($s['requires_slot']): $k = "slot.$sid"; ?>
       <div class="field<?= $err($k) ? ' has-error' : '' ?>">
         <label for="slot-<?= $sid ?>"><?= $s['is_food_only'] ? 'Collection / meal time' : 'Preferred time' ?> <span class="req">(required)</span></label>
         <select id="slot-<?= $sid ?>" name="slot[<?= $sid ?>]" data-slot-select="<?= $sid ?>" <?= $err($k) ? 'aria-invalid="true" aria-describedby="slot-' . $sid . '-error"' : '' ?>>
-          <option value="">— Choose a time —</option>
+          <option value="">Choose a time</option>
           <?php foreach ($slots[$sid] ?? [] as $sl): ?>
             <option value="<?= $sl['id'] ?>" <?= $nested('slot', $sid) === (string) $sl['id'] ? 'selected' : '' ?>><?= e($sl['label']) ?></option>
           <?php endforeach; ?>
@@ -113,7 +120,7 @@ $waOptIn = ($in['wa_opt_in'] ?? '') !== '0';
           <textarea <?= $attrs ?> rows="3" maxlength="1000"><?= e($v) ?></textarea>
         <?php elseif ($fd['type'] === 'select'): ?>
           <select <?= $attrs ?>>
-            <option value="">— Choose —</option>
+            <option value="">Choose</option>
             <?php foreach ($fd['options'] ?? [] as $o): ?><option <?= $v === $o ? 'selected' : '' ?>><?= e($o) ?></option><?php endforeach; ?>
           </select>
         <?php elseif ($fd['type'] === 'number'): ?>
@@ -135,32 +142,55 @@ $waOptIn = ($in['wa_opt_in'] ?? '') !== '0';
     </div>
     <div class="step-nav">
       <button type="button" class="btn btn-secondary" data-prev>Back</button>
-      <button type="button" class="btn btn-primary btn-lg" data-next>Next: prasadam</button>
+      <button type="button" class="btn btn-primary btn-lg" data-next><?= $isPrasadEntry ? 'Next: prasad coupons' : 'Next: prasadam' ?></button>
     </div>
   </fieldset>
 
   <!-- STEP 3: food -->
   <fieldset class="step card" data-step="3" id="food-section">
-    <legend><h2>3. Food / Prasadam coupons</h2></legend>
+    <legend><h2><?= $isPrasadEntry ? '3. Choose prasad coupons' : '3. Food / Prasadam coupons' ?></h2></legend>
+    <?php if ($isPrasadEntry): ?>
+    <p class="hint">Choose at least one category and enter the number of persons.</p>
+    <?php else: ?>
     <p class="hint" data-food-only-note hidden>Food-Only Booking: choose at least one coupon category and enter the number of persons.</p>
     <label class="check-row" data-add-food-row>
       <input type="checkbox" name="add_food" value="1" id="add_food" <?= $addFood ? 'checked' : '' ?>>
       <span><strong>Add Food / Prasadam Coupons</strong> <span class="opt">(optional)</span></span>
     </label>
+    <?php endif; ?>
     <?php if ($err('food')): ?><p class="field-error" id="food-error"><?= e($err('food')) ?></p><?php endif; ?>
-    <div class="coupons" data-coupons>
+    <div class="coupons" data-coupons<?= $isPrasadEntry ? '' : ' data-collapsed' ?>>
       <?php foreach ($coupons as $c): $cid = $c['id']; $k = "food.$cid"; $qty = (string) (($in['food'] ?? [])[$cid] ?? ''); $catOn = !empty(($in['food_cat'] ?? [])[$cid]); ?>
       <div class="coupon<?= $err($k) ? ' has-error' : '' ?>" data-coupon="<?= $cid ?>">
         <label class="coupon-head">
           <input type="checkbox" name="food_cat[<?= $cid ?>]" value="1" data-coupon-check="<?= $cid ?>" <?= $catOn ? 'checked' : '' ?>>
-          <span><strong><?= e($c['name']) ?></strong> — <?= e(money($c['price_paise'])) ?> per person<?php if ($c['description']): ?><span class="sub"><?= e($c['description']) ?></span><?php endif; ?></span>
+          <span><strong><?= e($c['name']) ?></strong> · <?= e(money($c['price_paise'])) ?> per person<?php if ($c['description']): ?><span class="sub"><?= e($c['description']) ?></span><?php endif; ?></span>
         </label>
         <div class="coupon-qty">
           <label for="food-<?= $cid ?>">Number of persons</label>
           <div class="stepper">
             <button type="button" class="btn btn-icon" data-dec="<?= $cid ?>" aria-label="Fewer persons for <?= e($c['name']) ?>">−</button>
-            <input id="food-<?= $cid ?>" name="food[<?= $cid ?>]" type="number" inputmode="numeric" min="0" max="<?= (int) $c['max_per_booking'] ?>" value="<?= e($qty) ?>" data-qty="<?= $cid ?>" <?= $err($k) ? 'aria-invalid="true" aria-describedby="food-' . $cid . '-error"' : '' ?>>
+            <input id="food-<?= $cid ?>" name="food[<?= $cid ?>]" type="number" inputmode="numeric" min="0" max="<?= (int) $c['max_per_booking'] ?>" data-per-booking="<?= (int) $c['max_per_booking'] ?>" value="<?= e($qty) ?>" data-qty="<?= $cid ?>" <?= $err($k) ? 'aria-invalid="true" aria-describedby="food-' . $cid . '-error"' : '' ?>>
             <button type="button" class="btn btn-icon" data-inc="<?= $cid ?>" aria-label="More persons for <?= e($c['name']) ?>">+</button>
+          </div>
+          <div class="coupon-availability" data-coupon-availability="<?= $cid ?>" aria-live="polite">
+            <div class="coupon-stat-grid">
+              <div class="coupon-stat">
+                <span class="coupon-stat-k">This booking</span>
+                <span class="coupon-stat-v" data-stat-per-booking>Up to <?= (int) $c['max_per_booking'] ?> persons</span>
+              </div>
+              <?php if (($c['daily_max'] ?? null) !== null): ?>
+              <div class="coupon-stat" data-stat-daily-cap-row>
+                <span class="coupon-stat-k">Daily limit (all bookings)</span>
+                <span class="coupon-stat-v" data-stat-daily-cap><?= (int) $c['daily_max'] ?> persons max</span>
+              </div>
+              <div class="coupon-stat coupon-stat-live" data-stat-live-row>
+                <span class="coupon-stat-k">On your chosen date</span>
+                <span class="coupon-stat-v" data-stat-live-value>Choose your date in step 2 to see live counts</span>
+              </div>
+              <?php endif; ?>
+            </div>
+            <p class="coupon-status badge badge-info" data-coupon-status hidden></p>
           </div>
           <output class="line-total" data-line-total="<?= $cid ?>" aria-live="polite"></output>
         </div>
@@ -182,13 +212,3 @@ $waOptIn = ($in['wa_opt_in'] ?? '') !== '0';
     </div>
   </fieldset>
 </form>
-
-<dialog class="avail-dialog" id="avail-dialog" aria-labelledby="avail-dialog-title" aria-describedby="avail-dialog-body">
-  <div class="avail-dialog-inner">
-    <h2 class="h3" id="avail-dialog-title">Date not available</h2>
-    <div id="avail-dialog-body" class="avail-dialog-body"></div>
-    <form method="dialog">
-      <button type="submit" class="btn btn-primary btn-lg" data-avail-dialog-ok>OK, choose another date</button>
-    </form>
-  </div>
-</dialog>

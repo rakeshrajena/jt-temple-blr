@@ -116,11 +116,56 @@ if (!function_exists('today')) {
     }
 }
 
+if (!function_exists('booking_schedule_from_draft')) {
+    /** @return list<array{name:string,time:?string,needs_time:bool,cancelled:bool}> */
+    function booking_schedule_from_draft(array $draft): array
+    {
+        $lines = [];
+        foreach ($draft['services'] ?? [] as $line) {
+            $svc = $line['service'] ?? [];
+            $lines[] = [
+                'name' => (string) ($svc['name'] ?? 'Service'),
+                'time' => isset($line['slot']['label']) ? (string) $line['slot']['label'] : null,
+                'needs_time' => !empty($svc['requires_slot']),
+                'cancelled' => false,
+            ];
+        }
+        return $lines;
+    }
+}
+
+if (!function_exists('booking_schedule_from_items')) {
+    /** @return list<array{name:string,time:?string,needs_time:bool,cancelled:bool}> */
+    function booking_schedule_from_items(array $items): array
+    {
+        $lines = [];
+        foreach ($items as $it) {
+            if (($it['item_type'] ?? '') !== 'service') {
+                continue;
+            }
+            $lines[] = [
+                'name' => (string) ($it['name'] ?? 'Service'),
+                'time' => !empty($it['slot_label']) ? (string) $it['slot_label'] : null,
+                'needs_time' => !empty($it['slot_id']),
+                'cancelled' => !empty($it['cancelled_at']),
+            ];
+        }
+        return $lines;
+    }
+}
+
+if (!function_exists('pay_later_enabled')) {
+    function pay_later_enabled(): bool
+    {
+        return setting('pay_later_enabled', '1') === '1';
+    }
+}
+
 if (!function_exists('fmt_date')) {
     function fmt_date(?string $ymd): string
     {
         if (!$ymd) {
-            return '—';
+            return '-';
         }
         $t = strtotime($ymd);
         return $t ? date('D, j M Y', $t) : $ymd;
@@ -131,7 +176,7 @@ if (!function_exists('fmt_datetime')) {
     function fmt_datetime(?string $dt): string
     {
         if (!$dt) {
-            return '—';
+            return '-';
         }
         $t = strtotime($dt);
         return $t ? date('j M Y, g:i A', $t) : $dt;
