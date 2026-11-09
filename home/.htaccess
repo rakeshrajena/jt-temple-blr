@@ -1,0 +1,7 @@
+# Static temple home (Vite build). Upload the contents of home/ into public_html (not the home folder itself).
+DirectoryIndex index.html
+Options -Indexes
+
+<IfModule mod_authz_core.c>
+  Require all granted
+</IfModule>

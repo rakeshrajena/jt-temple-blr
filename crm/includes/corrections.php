@@ -120,10 +120,22 @@ function ensure_correction_schema(PDO $pdo): void
             created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (donation_id) REFERENCES donations(id),
             FOREIGN KEY (prepared_by) REFERENCES users(id),
+            approved_on   DATE NULL,
             KEY idx_receipt_cancel_donation (donation_id)
         ) ENGINE=InnoDB"
     );
     ensure_column($pdo, 'donations', 'receipt_cancelled', 'TINYINT(1) NOT NULL DEFAULT 0');
+    $approvedOn = $pdo->query("SHOW COLUMNS FROM `receipt_cancellations` LIKE 'approved_on'")->fetch();
+    if ($approvedOn === false) {
+        $pdo->exec('ALTER TABLE `receipt_cancellations` ADD COLUMN `approved_on` DATE NULL');
+    }
+    $pdo->exec(
+        "UPDATE receipt_cancellations rc
+         JOIN donations d ON d.id = rc.donation_id AND d.receipt_cancelled = 1
+         JOIN approvals a ON a.subject_type = 'receipt' AND a.subject_id = rc.id AND a.status = 'Approved'
+         SET rc.approved_on = DATE(a.updated_at)
+         WHERE rc.approved_on IS NULL"
+    );
 }
 
 function corrected_book_amount(string $subjectType, int $subjectId, float $postedAmount): float
@@ -266,14 +278,118 @@ function correction_history(): array
 
 function apply_receipt_cancellation(int $cancellationId): void
 {
-    $row = db_one('SELECT donation_id FROM receipt_cancellations WHERE id = ?', [$cancellationId]);
+    $row = db_one('SELECT donation_id, approved_on FROM receipt_cancellations WHERE id = ?', [$cancellationId]);
     if ($row === null) {
         throw new RuntimeException('That receipt cancellation was not found.');
     }
     db_exec('UPDATE donations SET receipt_cancelled = 1 WHERE id = ?', [(int) $row['donation_id']]);
+    if (($row['approved_on'] ?? null) === null || (string) $row['approved_on'] === '') {
+        db_exec(
+            'UPDATE receipt_cancellations SET approved_on = ? WHERE id = ? AND approved_on IS NULL',
+            [date('Y-m-d'), $cancellationId]
+        );
+    }
     if (function_exists('booking_erp_after_receipt_cancelled')) {
         booking_erp_after_receipt_cancelled((int) $row['donation_id']);
     }
+}
+
+/**
+ * Approved receipt cancellations. The original donation stays in the books.
+ * book_amount is the net still standing, after approved amount corrections.
+ *
+ * @return list<array<string, mixed>>
+ */
+function approved_receipt_cancellation_rows(?string $from = null, ?string $to = null, ?int $donorId = null): array
+{
+    $sql = "SELECT rc.id, rc.donation_id, rc.reason, rc.approved_on,
+                   d.donor_id, d.pledge_id, d.amount, d.payment_mode, d.purpose, d.receipt_number, d.notes,
+                   don.name AS donor_name,
+                   COALESCE(decider.full_name, preparer.full_name, '') AS entered_by_name,
+                   (
+                     SELECT COALESCE(SUM(c.corrected_amount - c.original_amount), 0)
+                     FROM corrections c
+                     JOIN approvals ca ON ca.subject_type = 'correction' AND ca.subject_id = c.id AND ca.status = 'Approved'
+                     WHERE c.subject_type = 'donation' AND c.subject_id = d.id
+                   ) AS correction_delta
+            FROM receipt_cancellations rc
+            JOIN donations d ON d.id = rc.donation_id AND d.receipt_cancelled = 1
+            JOIN donors don ON don.id = d.donor_id
+            LEFT JOIN users preparer ON preparer.id = rc.prepared_by
+            LEFT JOIN approvals a ON a.subject_type = 'receipt' AND a.subject_id = rc.id AND a.status = 'Approved'
+            LEFT JOIN users decider ON decider.id = a.decided_by
+            WHERE rc.approved_on IS NOT NULL";
+    $params = [];
+    if ($from !== null && $to !== null) {
+        $sql .= ' AND rc.approved_on BETWEEN ? AND ?';
+        $params[] = $from;
+        $params[] = $to;
+    }
+    if ($donorId !== null) {
+        $sql .= ' AND d.donor_id = ?';
+        $params[] = $donorId;
+    }
+    $sql .= ' ORDER BY rc.approved_on, rc.id';
+    $rows = [];
+    foreach (db_all($sql, $params) as $row) {
+        $net = round((float) $row['amount'] + (float) $row['correction_delta'], 2);
+        $inBook = book_account((string) ($row['payment_mode'] ?? '')) !== null && $net > 0.009;
+        $row['book_amount'] = $inBook ? $net : 0.0;
+        $row['pledge_id'] = $row['pledge_id'] !== null && $row['pledge_id'] !== '' ? (int) $row['pledge_id'] : null;
+        $rows[] = $row;
+    }
+    return $rows;
+}
+
+/** @param array<string, mixed> $row @return array<string, mixed>|null */
+function receipt_cancellation_movement(array $row): ?array
+{
+    $amount = round((float) ($row['book_amount'] ?? 0), 2);
+    $account = book_account((string) ($row['payment_mode'] ?? ''));
+    if ($account === null || $amount < 0.01) {
+        return null;
+    }
+    $who = trim((string) ($row['donor_name'] ?? ''));
+    $particulars = 'Receipt cancelled — ' . ($who !== '' ? $who : 'Devotee');
+    $receipt = trim((string) ($row['receipt_number'] ?? ''));
+    if ($receipt !== '') {
+        $particulars .= ' ' . $receipt;
+    }
+    $reason = trim((string) ($row['reason'] ?? ''));
+    if ($reason !== '') {
+        $particulars .= ' — ' . $reason;
+    }
+    return book_movement(
+        (string) $row['approved_on'],
+        4,
+        (int) $row['id'],
+        $particulars,
+        'receipt_cancel',
+        (string) ($row['entered_by_name'] ?? ''),
+        0.0,
+        0.0,
+        $account === 'cash' ? $amount : 0.0,
+        $account === 'bank' ? $amount : 0.0
+    );
+}
+
+/** @param array<string, mixed> $row @return array<string, mixed>|null */
+function receipt_cancellation_ledger_line(array $row): ?array
+{
+    $amount = round((float) ($row['book_amount'] ?? 0), 2);
+    if ($amount < 0.01 || book_account((string) ($row['payment_mode'] ?? '')) === null) {
+        return null;
+    }
+    $reason = trim((string) ($row['reason'] ?? ''));
+    return [
+        'head' => ledger_head_name((string) ($row['purpose'] ?? ''), 'General'),
+        'date' => (string) $row['approved_on'],
+        'sort' => 400000000 + (int) $row['id'],
+        'particulars' => 'Receipt cancelled — ' . ($reason !== '' ? $reason : 'Approved'),
+        'entered_by' => (string) ($row['entered_by_name'] ?? ''),
+        'received' => round(0 - $amount, 2),
+        'spent' => 0.0,
+    ];
 }
 
 /** @return list<array<string, mixed>> */

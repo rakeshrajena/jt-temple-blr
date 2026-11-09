@@ -22,8 +22,10 @@ $appPort = 18000 + random_int(0, 900);
 $mockPort = $appPort + 1000;
 $base = "http://127.0.0.1:$appPort/Booking";
 $env = [
+    'SJT_TEST' => '1',
     'APP_ENV' => 'testing', 'APP_DEBUG' => 'false', 'APP_URL' => $base, 'APP_KEY' => str_repeat('k', 64),
     'DB_DRIVER' => 'sqlite', 'DB_PATH' => "$tmp/test.sqlite",
+    'STAFF_SSO' => 'false',
     'WA_ACCESS_TOKEN' => 'test-token', 'WA_PHONE_NUMBER_ID' => '123456', 'WA_API_BASE' => "http://127.0.0.1:$mockPort",
     'WA_APP_SECRET' => 'app-secret', 'WA_WEBHOOK_VERIFY_TOKEN' => 'verify-me', 'MOCK_LOG' => "$tmp/mock.log",
     'PAYMENT_GATEWAY' => 'none', 'BOOKING_UPI_MANUAL' => 'true', 'BOOKING_RATE_LIMIT_PER_HOUR' => '1000', 'RAZORPAY_KEY_SECRET' => 'rzp-secret', 'RAZORPAY_WEBHOOK_SECRET' => 'rzp-hook',
@@ -42,6 +44,22 @@ if ($driver === 'mysql') {
 foreach ($env as $k => $v) {
     putenv("$k=$v");
 }
+
+// Built-in server workers on Windows may not inherit putenv(); prepend test env on every request.
+$envPhp = "$tmp/test-env.php";
+$envLines = ['<?php', 'declare(strict_types=1);'];
+foreach ($env as $k => $v) {
+    $pair = $k . '=' . (string) $v;
+    $envLines[] = 'putenv(' . var_export($pair, true) . ');';
+    $envLines[] = '$_ENV[' . var_export($k, true) . '] = ' . var_export((string) $v, true) . ';';
+    $envLines[] = '$_SERVER[' . var_export($k, true) . '] = ' . var_export((string) $v, true) . ';';
+}
+file_put_contents($envPhp, implode("\n", $envLines) . "\n");
+$routerPhp = "$tmp/router.php";
+file_put_contents($routerPhp, '<?php' . "\n"
+    . 'declare(strict_types=1);' . "\n"
+    . 'require ' . var_export($envPhp, true) . ";\n"
+    . 'require ' . var_export($root . DIRECTORY_SEPARATOR . 'index.php', true) . ";\n");
 
 // ------------------------------------------------------------------ servers
 function sh(string $cmd): string
@@ -64,10 +82,10 @@ $spawn = function (string $cmd) use (&$procs, $tmp) {
 $phpS = escapeshellarg(PHP_BINARY) . ' -S 127.0.0.1:';
 if (DIRECTORY_SEPARATOR === '\\') {
     $spawn($phpS . $mockPort . ' ' . escapeshellarg("$root/tests/mock_whatsapp.php"));
-    $spawn($phpS . $appPort . ' ' . escapeshellarg("$root/index.php"));
+    $spawn($phpS . $appPort . ' ' . escapeshellarg($routerPhp));
 } else {
-    $spawn('exec php -S 127.0.0.1:' . $mockPort . ' ' . escapeshellarg("$root/tests/mock_whatsapp.php"));
-    $spawn('exec env PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:' . $appPort . ' ' . escapeshellarg("$root/index.php"));
+    $spawn($phpS . $mockPort . ' ' . escapeshellarg("$root/tests/mock_whatsapp.php"));
+    $spawn('exec ' . escapeshellarg(PHP_BINARY) . ' -d PHP_CLI_SERVER_WORKERS=4 -S 127.0.0.1:' . $appPort . ' ' . escapeshellarg($routerPhp));
 }
 register_shutdown_function(function () use (&$procs, $tmp) {
     foreach ($procs as $p) {
@@ -89,6 +107,18 @@ register_shutdown_function(function () use (&$procs, $tmp) {
 });
 for ($i = 0; $i < 50 && @file_get_contents("$base/health") === false; $i++) {
     usleep(100000);
+}
+$bookProbe = @file_get_contents("$base/book");
+if ($bookProbe === false || !str_contains($bookProbe, 'name="_csrf"')) {
+    fwrite(STDERR, "Test server setup failed: GET /book did not return the booking form (CSRF missing).\n");
+    fwrite(STDERR, "Temp dir: $tmp\n");
+    if ($bookProbe !== false) {
+        fwrite(STDERR, substr($bookProbe, 0, 1200) . "\n");
+    }
+    if (is_file("$tmp/server.log")) {
+        fwrite(STDERR, "\n--- server.log ---\n" . substr((string) file_get_contents("$tmp/server.log"), -2000) . "\n");
+    }
+    exit(1);
 }
 
 $opts = [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC];
@@ -257,7 +287,7 @@ $p150 = (int) $couponRows[0]['price_paise'];
 $p250 = (int) $couponRows[1]['price_paise'];
 $d = fn (int $days) => date('Y-m-d', strtotime(($days >= 0 ? "+$days" : "$days") . ' days'));
 $person = ['name' => 'Ananya Sahu', 'mobile' => '9845012345'];
-$special = fn (array $extra = []) => array_replace($person + ['services' => [$svc['special-puja']], 'service_date' => $d(5), 'slot' => [$svc['special-puja'] => $slot[$svc['special-puja']]],
+$special = fn (array $extra = []) => array_replace($person + ['service_id' => (string) $svc['special-puja'], 'services' => [$svc['special-puja']], 'service_date' => $d(5), 'slot' => [$svc['special-puja'] => $slot[$svc['special-puja']]],
     'participants' => [$svc['special-puja'] => '3'], 'f' => [$svc['special-puja'] => ['sankalpa_names' => 'Sahu family']]], $extra);
 
 $dev = new Client($base);
@@ -350,17 +380,16 @@ test('Individual service booking (Special Puja) — booking number, totals, pend
     ok(str_contains($p['body'], $r['no']) && str_contains($p['body'], 'not yet a confirmed booking'), 'payment page shows number + request status');
     $created['single'] = $r['no'];
 });
-test('Multiple services in one booking (Special + Vehicle Puja)', function () use ($dev, $special, $svc, $slot, &$created) {
+test('Only one service per booking (two puja services rejected)', function () use ($dev, $special, $svc, $slot) {
     $v = $svc['vehicle-puja'];
     $f = $special();
     $f['services'][] = $v;
+    unset($f['service_id']);
     $f['slot'][$v] = $slot[$v];
     $f['f'][$v] = ['vehicle_type' => 'Car', 'vehicle_number' => 'KA01AB1234'];
-    $r = book($dev, $f);
-    $b = booking((string) $r['no']);
-    eq(50100 + 25100, (int) $b['total_paise'], 'combined total');
-    eq(2, (int) q1("SELECT COUNT(*) FROM booking_items WHERE booking_id = ? AND item_type = 'service'", [$b['id']]), 'two service lines');
-    $created['multi'] = $r['no'];
+    $r = book($dev, $f, false);
+    eq(422, $r['review']['status'], 'rejected');
+    ok(str_contains($r['review']['body'], 'only one service'), 'message');
 });
 test('Service booking with food coupons (4 persons, first category)', function () use ($dev, $special, $c150, $p150) {
     $r = book($dev, $special(['add_food' => '1', 'food_cat' => [$c150 => '1'], 'food' => [$c150 => '4']]));
@@ -404,9 +433,10 @@ test('Food-only booking requires a coupon category and persons', function () use
 test('Food-only cannot be combined with another service', function () use ($dev, $svc, $special, $c150) {
     $f = $special(['food_cat' => [$c150 => '1'], 'food' => [$c150 => '2']]);
     $f['services'][] = $svc['food-only'];
+    unset($f['service_id']);
     $r = book($dev, $f, false);
     eq(422, $r['review']['status'], 'rejected');
-    ok(str_contains($r['review']['body'], 'cannot be combined'), 'message');
+    ok(str_contains($r['review']['body'], 'only one service'), 'message');
 });
 test('Selected coupon category with 0 persons is rejected', function () use ($dev, $special, $c150) {
     $r = book($dev, $special(['add_food' => '1', 'food_cat' => [$c150 => '1'], 'food' => [$c150 => '0']]), false);
@@ -421,9 +451,61 @@ test('Quantity above the per-booking maximum is rejected', function () use ($dev
     $r = book($dev, $special(['add_food' => '1', 'food_cat' => [$c150 => '1'], 'food' => [$c150 => '201']]), false);
     eq(422, $r['review']['status'], 'rejected');
 });
+test('Daily maximum for a prasadam item is shared across bookings on that date', function () use ($dev, $special, $c150, $d) {
+    q('UPDATE booking_coupons SET daily_max = 5 WHERE id = ?', [$c150]);
+    try {
+        $date = $d(14);
+        $food = ['add_food' => '1', 'food_cat' => [$c150 => '1'], 'food' => [$c150 => '3']];
+        $first = book($dev, $special(['service_date' => $date] + $food));
+        eq(303, $first['confirm']['status'] ?? 0, 'first booking within the daily maximum');
+        $api = json_decode($dev->get('/api/availability?date=' . $date)['body'], true);
+        eq(2, $api['prasadam'][(string) $c150]['remaining'] ?? null, 'two persons left that day');
+        $over = book($dev, $special(['service_date' => $date] + $food), false);
+        eq(422, $over['review']['status'], 'over the daily maximum rejected');
+        ok(str_contains($over['review']['body'], 'Only 2'), 'remaining persons shown');
+        $otherDay = book($dev, $special(['service_date' => $d(15)] + $food));
+        eq(303, $otherDay['confirm']['status'] ?? 0, 'another date has its own daily maximum');
+        q('UPDATE bookings SET booking_status = ? WHERE booking_no = ?', ['cancelled', $first['no']]);
+        $after = book($dev, $special(['service_date' => $date] + $food));
+        eq(303, $after['confirm']['status'] ?? 0, 'a cancelled booking frees the daily maximum');
+    } finally {
+        q('UPDATE booking_coupons SET daily_max = NULL WHERE id = ?', [$c150]);
+    }
+});
 test('Tampered price fields from the browser are ignored (server-side pricing)', function () use ($dev, $special) {
     $r = book($dev, $special(['price' => '1', 'total_paise' => '100', 'quote' => ['total_paise' => 1]]));
     eq(50100, (int) booking((string) $r['no'])['total_paise'], 'server price used');
+});
+test('Review and receipt show service date and chosen time slots', function () use ($dev, $special) {
+    $fields = $special();
+    $slotLabel = 'Morning (7:00 AM – 9:00 AM)';
+    $page = $dev->get('/book');
+    preg_match('/name="_csrf" value="([^"]+)"/', $page['body'], $m1);
+    preg_match('/name="form_id" value="([^"]+)"/', $page['body'], $m2);
+    $review = $dev->post('/book/review', ['_csrf' => $m1[1] ?? '', 'form_id' => $m2[1] ?? ''] + $fields);
+    eq(200, $review['status'], 'review page');
+    ok(str_contains($review['body'], 'Service times'), 'review lists service times');
+    ok(str_contains($review['body'], $slotLabel), 'review shows chosen slot');
+    $confirm = $dev->post('/book/confirm', ['_csrf' => $m1[1] ?? '', 'form_id' => $m2[1] ?? '', 'agree' => '1']);
+    preg_match('#/b/([A-Z0-9-]+)#', (string) ($confirm['location'] ?? ''), $m);
+    $no = $m[1] ?? '';
+    ok($no !== '', 'booking created');
+    $status = $dev->get("/b/$no")['body'];
+    ok(str_contains($status, $slotLabel), 'booking receipt shows slot');
+    $inv = $dev->get("/b/$no/invoice")['body'];
+    ok(str_contains($inv, $slotLabel), 'invoice shows slot');
+});
+test('Pay later link on payment page follows admin setting', function () use ($dev, $special) {
+    setSetting('upi_vpa', 'sjtemple@sbi');
+    setSetting('upi_verified', '1');
+    $r = book($dev, $special(['name' => 'Pay Later Test', 'mobile' => '9845091777']));
+    $no = (string) $r['no'];
+    eq('pending', booking($no)['payment_status'], 'unpaid booking');
+    setSetting('pay_later_enabled', '1');
+    ok(str_contains($dev->get("/b/$no/pay")['body'], 'pay later'), 'link shown when enabled');
+    setSetting('pay_later_enabled', '0');
+    ok(!str_contains($dev->get("/b/$no/pay")['body'], 'pay later'), 'link hidden when disabled');
+    setSetting('pay_later_enabled', '1');
 });
 test('Invoice: HTML and PDF contain booking, invoice number and correct totals', function () use ($dev, &$created) {
     $no = $created['combined'];
@@ -507,6 +589,7 @@ test('Blocked (unavailable) dates are rejected with the reason', function () use
     ok(str_contains($r['review']['body'], 'Rath Yatra'), 'reason shown');
     $api = json_decode($dev->get('/api/availability?date=' . $d(9))['body'], true);
     ok($api['services'][array_key_first($api['services'])]['available'] === false, 'availability API reports closed');
+    ok(isset($api['services'][array_key_first($api['services'])]['capacity']['used']), 'availability API includes service capacity counts');
 });
 test('Full time slot cannot be overbooked', function () use ($dev, $svc, $slot, $d) {
     $s = $svc['shraddha-karma'];
@@ -549,7 +632,7 @@ test('Submitting a UPI reference does NOT mark the booking paid', function () us
     ok(str_contains($dev->get("/b/$no")['body'], 'awaiting verification'), 'status page explains');
 });
 test('Invalid and reused UPI references are rejected', function () use ($dev, &$created) {
-    $no = $created['multi'];
+    $no = $created['combined'];
     $t = $dev->csrf("/b/$no/pay");
     $dev->post("/b/$no/payment", ['_csrf' => $t, 'reference' => '12']);
     eq('pending', booking($no)['payment_status'], 'too short rejected');
@@ -599,7 +682,7 @@ test('Ceremony needing approval: paid ≠ confirmed until approved', function ()
     eq('confirmed', booking($no)['booking_status'], 'confirmed after approval');
 });
 test('Reschedule moves date and slot, checks capacity, is audited', function () use ($admin, $svc, $slot, $d, &$created) {
-    $no = $created['multi'];
+    $no = $created['combined'];
     $items = q("SELECT id, service_id FROM booking_items WHERE booking_id = ? AND item_type = 'service'", [booking($no)['id']]);
     $slots = [];
     foreach ($items as $it) {
@@ -617,7 +700,22 @@ test('Reschedule moves date and slot, checks capacity, is audited', function () 
     adminAction($admin, (string) $r2['no'], 'reschedule', ['date' => $d(12), 'slots' => [$iid => $slot[$s]]]);
     eq($d(13), booking((string) $r2['no'])['service_date'], 'blocked by full slot');
     adminAction($admin, (string) $r2['no'], 'reschedule', ['date' => $d(12), 'slots' => [$iid => $slot[$s]], 'override' => '1']);
-    eq($d(12), booking((string) $r2['no'])['service_date'], 'override works');
+    eq($d(13), booking((string) $r2['no'])['service_date'], 'override cannot bypass slot capacity');
+});
+test('Reschedule checks prasadam daily max on the new date', function () use ($admin, $dev, $special, $c150, $d) {
+    q('UPDATE booking_coupons SET daily_max = 4 WHERE id = ?', [$c150]);
+    try {
+        $dateA = $d(24);
+        $dateB = $d(25);
+        $food = ['add_food' => '1', 'food_cat' => [$c150 => '1'], 'food' => [$c150 => '4']];
+        $r1 = book($dev, $special(['name' => 'Resched A', 'mobile' => '9845092001', 'service_date' => $dateA] + $food));
+        book($dev, $special(['name' => 'Resched B', 'mobile' => '9845092002', 'service_date' => $dateB] + $food));
+        $no = (string) $r1['no'];
+        adminAction($admin, $no, 'reschedule', ['date' => $dateB, 'slots' => []]);
+        eq($dateA, booking($no)['service_date'], 'prasadam daily max blocks reschedule onto a full date');
+    } finally {
+        q('UPDATE booking_coupons SET daily_max = NULL WHERE id = ?', [$c150]);
+    }
 });
 test('Cancel then refund a paid booking', function () use ($admin, &$created) {
     $no = $created['single'];
@@ -840,11 +938,10 @@ test('Food coupon catalog price drives booking totals', function () use ($c150) 
     q('UPDATE booking_coupons SET price_paise = 16000, updated_at = ? WHERE id = ?', [date('c'), $c150]);
     eq(16000, (int) q1('SELECT price_paise FROM booking_coupons WHERE id = ?', [$c150]), 'coupon price in catalog');
 });
-test('Disabled services disappear from booking and are refused', function () use ($admin, $dev, $svc, $special) {
+test('Disabled services disappear from booking and are refused', function () use ($admin, $dev, $svc, $slot, $d) {
     q('UPDATE services SET is_active = 0 WHERE id = ?', [$svc['vehicle-puja']]);
-    ok(!str_contains($dev->get('/book')['body'], 'name="services[]" value="' . $svc['vehicle-puja'] . '"'), 'not listed');
-    $f = $special();
-    $f['services'] = [$svc['vehicle-puja']];
+    ok(!str_contains($dev->get('/book')['body'], 'name="service_id" value="' . $svc['vehicle-puja'] . '"'), 'not listed');
+    $f = ['name' => 'Test User', 'mobile' => '9845012345', 'services' => [$svc['vehicle-puja']], 'service_date' => $d(5), 'slot' => [$svc['vehicle-puja'] => $slot[$svc['vehicle-puja']]], 'f' => [$svc['vehicle-puja'] => ['vehicle_type' => 'Car', 'vehicle_number' => 'KA01AB1234']]];
     eq(422, book($dev, $f, false)['review']['status'], 'refused');
     q('UPDATE services SET is_active = 1 WHERE id = ?', [$svc['vehicle-puja']]);
 });
@@ -860,15 +957,143 @@ test('UPI QR only appears after payment details are verified', function () use (
     $amt = number_format((int) $b['total_paise'] / 100, 2, '.', '');
     ok(str_contains($p['body'], 'upi://pay?pa=sjtemple@sbi') && str_contains($p['body'], 'am=' . $amt) && str_contains($p['body'], 'tn=' . $no), 'dynamic QR link with amount + booking no');
     $png = $dev->get("/b/$no/qr.png");
-    ok(str_starts_with($png['body'], "\x89PNG"), 'QR PNG download');
+    if (!function_exists('imagecreatetruecolor')) {
+        ok(true, 'QR PNG download (skipped — enable PHP GD in CLI php.ini for PNG generation)');
+    } else {
+        ok(str_starts_with($png['body'], "\x89PNG"), 'QR PNG download');
+    }
     $t = $admin->csrf('/admin/settings');
     $admin->post('/admin/settings', ['_csrf' => $t, 'section' => 'payment', 'upi_qr_mode' => 'dynamic', 'upi_vpa' => 'someone@okaxis', 'upi_payee_name' => 'X', 'upi_verified' => '1', 'payment_instructions' => 'Pay']);
     eq('0', q1("SELECT svalue FROM settings WHERE skey = 'upi_verified'"), 'changing the UPI ID resets verification');
 });
+test('Book check and review-check enforce availability before submit', function () use ($base, $dev, $special, $c150, $d) {
+    q('UPDATE booking_coupons SET daily_max = 4 WHERE id = ?', [$c150]);
+    try {
+        $date = $d(29);
+        $fields = $special([
+            'name' => 'Review Check Devotee', 'mobile' => '9845091999', 'service_date' => $date,
+            'add_food' => '1', 'food_cat' => [$c150 => '1'], 'food' => [$c150 => '2'],
+        ]);
+        $waiting = new Client($base);
+        $page = $waiting->get('/book');
+        preg_match('/name="_csrf" value="([^"]+)"/', $page['body'], $m1);
+        preg_match('/name="form_id" value="([^"]+)"/', $page['body'], $m2);
+        $rev = $waiting->post('/book/review', ['_csrf' => $m1[1] ?? '', 'form_id' => $m2[1] ?? ''] + $fields);
+        eq(200, $rev['status'], 'review page while capacity remains');
+        $rc = $waiting->get('/book/review-check');
+        eq(200, $rc['status'], 'review-check HTTP ok');
+        $ok = json_decode($rc['body'], true);
+        ok(is_array($ok) && ($ok['ok'] ?? false) === true, 'review-check json ok');
+
+        book($dev, $special([
+            'name' => 'Fill Daily Cap', 'mobile' => '9845091998', 'service_date' => $date,
+            'add_food' => '1', 'food_cat' => [$c150 => '1'], 'food' => [$c150 => '4'],
+        ]));
+
+        $csrf = $dev->csrf('/book');
+        $chk = $dev->post('/book/check', ['_csrf' => $csrf] + $fields);
+        eq(422, $chk['status'], 'book check when daily cap is full');
+        $cj = json_decode($chk['body'], true);
+        ok(is_array($cj) && ($cj['ok'] ?? true) === false && !empty($cj['problems']), 'book check returns problems');
+        ok(!empty($cj['hint']), 'book check returns recovery hint');
+
+        $rc2 = $waiting->get('/book/review-check');
+        eq(422, $rc2['status'], 'review-check when cap filled after review');
+        $rj = json_decode($rc2['body'], true);
+        ok(is_array($rj) && ($rj['ok'] ?? true) === false && !empty($rj['problems']), 'review-check returns problems');
+    } finally {
+        q('UPDATE booking_coupons SET daily_max = NULL WHERE id = ?', [$c150]);
+    }
+});
+test('Admin day list defaults to today and cancels one service or prasadam line', function () use ($admin, $dev, $special, $c150, $d) {
+    $open = $admin->get('/admin/cancellations');
+    eq(200, $open['status'], 'page opens');
+    ok(str_contains($open['body'], '(today)'), 'defaults to the current date');
+    ok(preg_match('/name="date"[^>]*value="' . date('Y-m-d') . '"/', $open['body']) === 1, 'date field is today');
+    $gate = $dev->get('/admin/cancellations');
+    ok($gate['status'] === 303 && str_contains((string) $gate['location'], '/admin/login'), 'devotee cannot open the day list');
+    $gateToken = $dev->csrf('/admin/login');
+    $blocked = $dev->post('/admin/cancellations/cancel', ['_csrf' => $gateToken, 'booking_no' => 'SJT-2026-000001', 'item_id' => '1', 'reason' => 'no']);
+    ok($blocked['status'] === 303 && str_contains((string) $blocked['location'], '/admin/login'), 'devotee cannot cancel a line');
+
+    q('UPDATE booking_coupons SET daily_max = 4 WHERE id = ?', [$c150]);
+    try {
+        $date = $d(21);
+        $fields = $special([
+            'name' => 'Meera Das', 'mobile' => '9845091001', 'service_date' => $date,
+            'add_food' => '1', 'food_cat' => [$c150 => '1'], 'food' => [$c150 => '4'],
+        ]);
+        $first = book($dev, $fields);
+        $no = (string) $first['no'];
+        eq(303, $first['confirm']['status'] ?? 0, 'booking created');
+        $full = book($dev, $fields, false);
+        eq(422, $full['review']['status'], 'daily prasadam maximum is full');
+        $bid = (int) booking($no)['id'];
+        $foodId = (int) q1("SELECT id FROM booking_items WHERE booking_id = ? AND item_type = 'food'", [$bid]);
+        $serviceId = (int) q1("SELECT id FROM booking_items WHERE booking_id = ? AND item_type = 'service' AND amount_paise > 0", [$bid]);
+        $day = $admin->get('/admin/cancellations?date=' . $date . '&q=9845091001');
+        ok(str_contains($day['body'], $no), 'phone search lists the booking');
+        $byNo = $admin->get('/admin/cancellations?date=' . $date . '&q=' . $no);
+        ok(str_contains($byNo['body'], 'Cancel'), 'booking number search shows the cancel action');
+        $other = $admin->get('/admin/cancellations?date=' . $d(3) . '&q=' . $no);
+        ok(str_contains($other['body'], 'other dates') && str_contains($other['body'], $no), 'booking number on another date is still found');
+        $token = $admin->csrf('/admin/cancellations?date=' . $date . '&q=' . rawurlencode($no));
+        $res = $admin->post('/admin/cancellations/cancel', [
+            '_csrf' => $token, 'booking_no' => $no, 'item_id' => $foodId, 'reason' => 'Devotee reduced the group',
+            'date' => $date, 'q' => $no,
+        ]);
+        eq(303, $res['status'], 'prasadam line cancel redirects');
+        ok((string) q1('SELECT cancelled_at FROM booking_items WHERE id = ?', [$foodId]) !== '', 'prasadam line cancelled');
+        $serviceAmount = (int) q1('SELECT amount_paise FROM booking_items WHERE id = ?', [$serviceId]);
+        $afterFood = booking($no);
+        eq($serviceAmount, (int) $afterFood['subtotal_paise'], 'unpaid total drops the prasadam');
+        eq('pending', $afterFood['booking_status'], 'booking stays open while the puja remains');
+        $again = book($dev, $fields);
+        eq(303, $again['confirm']['status'] ?? 0, 'cancelled prasadam frees the daily maximum');
+        $token = $admin->csrf('/admin/cancellations?date=' . $date);
+        $res = $admin->post('/admin/cancellations/cancel', [
+            '_csrf' => $token, 'booking_no' => $no, 'item_id' => $serviceId, 'reason' => 'Puja not required',
+            'date' => $date, 'q' => '',
+        ]);
+        eq(303, $res['status'], 'service line cancel redirects');
+        eq('cancelled', booking($no)['booking_status'], 'booking closes when nothing remains');
+        eq(0, (int) booking($no)['total_paise'], 'closed unpaid booking has no balance');
+    } finally {
+        q('UPDATE booking_coupons SET daily_max = NULL WHERE id = ?', [$c150]);
+    }
+
+    $paidDate = $d(22);
+    $paid = book($dev, $special([
+        'name' => 'Paid Line Test', 'mobile' => '9845091002', 'service_date' => $paidDate,
+        'add_food' => '1', 'food_cat' => [$c150 => '1'], 'food' => [$c150 => '2'],
+    ]));
+    $paidNo = (string) $paid['no'];
+    $paidRow = booking($paidNo);
+    $due = (int) $paidRow['total_paise'];
+    adminAction($admin, $paidNo, 'verify_payment', [
+        'reference' => '444455556666',
+        'amount' => number_format($due / 100, 2, '.', ''),
+    ]);
+    eq('paid', booking($paidNo)['payment_status'], 'payment recorded');
+    $paidFood = (int) q1("SELECT id FROM booking_items WHERE booking_id = ? AND item_type = 'food'", [(int) $paidRow['id']]);
+    $token = $admin->csrf('/admin/cancellations?date=' . $paidDate);
+    $admin->post('/admin/cancellations/cancel', [
+        '_csrf' => $token, 'booking_no' => $paidNo, 'item_id' => $paidFood, 'reason' => 'Did not collect prasadam',
+        'date' => $paidDate, 'q' => '',
+    ]);
+    $kept = booking($paidNo);
+    eq($due, (int) $kept['total_paise'], 'paid total stays until a full cancellation');
+    eq('confirmed', $kept['booking_status'], 'paid booking stays open');
+    ok((string) q1('SELECT cancelled_at FROM booking_items WHERE id = ?', [$paidFood]) !== '', 'paid prasadam line is cancelled');
+});
 test('Data persists: bookings, items, payments and audit are in the database', function () {
     ok((int) q1('SELECT COUNT(*) FROM bookings') >= 30, 'bookings stored');
     eq(0, (int) q1('SELECT COUNT(*) FROM bookings b WHERE total_paise <> subtotal_paise + additional_paise'), 'every total = subtotal + additional');
-    eq(0, (int) q1('SELECT COUNT(*) FROM bookings b WHERE subtotal_paise <> (SELECT SUM(amount_paise) FROM booking_items i WHERE i.booking_id = b.id)'), 'every subtotal = sum of items');
+    eq(0, (int) q1("SELECT COUNT(*) FROM bookings b WHERE subtotal_paise <> (
+        SELECT COALESCE(SUM(i.amount_paise), 0) FROM booking_items i
+        WHERE i.booking_id = b.id
+        AND (i.cancelled_at IS NULL OR b.payment_status IN ('paid', 'refunded'))
+    )"), 'every subtotal = sum of items still on the bill');
     eq(0, (int) q1('SELECT COUNT(*) FROM booking_items WHERE amount_paise <> unit_price_paise * quantity'), 'every line = rate × qty');
     eq(0, (int) q1("SELECT COUNT(*) FROM bookings WHERE booking_status = 'confirmed' AND payment_status NOT IN ('paid','not_required')"), 'no confirmed booking without verified payment');
 });

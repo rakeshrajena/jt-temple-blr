@@ -63,6 +63,7 @@ final class BookingService
                     }
                 }
             }
+            $errors += $this->lockPrasadamDaily($db, $draft['quote']['items'], $draft['service_date']);
             if ($errors) {
                 throw new ValidationException($errors);
             }
@@ -231,6 +232,110 @@ final class BookingService
         }, ['reason' => $reason], fn ($n) => 'Your booking has been cancelled. Reason: ' . $reason . ($n['payment_status'] === 'paid' ? ' The temple office will contact you about the refund.' : ''));
     }
 
+    /**
+     * Cancel one service or prasadam line. Admin only.
+     * Unpaid bookings are repriced. Paid bookings keep the amount already received;
+     * the line drops off the day's work and frees its place.
+     */
+    public function cancelItem(array $b, array $actor, int $itemId, string $reason): array
+    {
+        $reason = Validator::text($reason, 255);
+        if ($reason === '') {
+            throw new ValidationException(['reason' => 'Please enter a reason. It is shared with the devotee.']);
+        }
+        $itemName = '';
+        $paid = false;
+        $closed = false;
+        $this->db->transaction(function (Database $db) use ($b, $actor, $itemId, $reason, &$itemName, &$paid, &$closed) {
+            $cur = $this->lock((int) $b['id']);
+            if (!in_array($cur['booking_status'], ['pending', 'confirmed'], true)) {
+                throw new ValidationException(['action' => 'This booking is already closed.']);
+            }
+            if (($cur['cancellation_status'] ?? '') === 'awaiting_approval') {
+                throw new ValidationException(['action' => 'A cancellation is already waiting for accounts approval.']);
+            }
+            if ($cur['payment_status'] === 'awaiting_verification') {
+                throw new ValidationException(['action' => 'A payment is waiting to be checked. Verify or reject it before cancelling an item.']);
+            }
+            $item = $db->one('SELECT * FROM booking_items WHERE id = ? AND booking_id = ?', [$itemId, (int) $cur['id']]);
+            if (!$item || !in_array($item['item_type'], ['service', 'food'], true)) {
+                throw new ValidationException(['action' => 'That item is not on this booking.']);
+            }
+            if (!empty($item['cancelled_at'])) {
+                throw new ValidationException(['action' => 'That item is already cancelled.']);
+            }
+            $paid = ($cur['payment_status'] ?? '') === 'paid';
+            $now = now();
+            $db->update('booking_items', [
+                'cancelled_at' => $now,
+                'cancel_reason' => $reason,
+            ], 'id = :id', ['id' => $itemId]);
+            $itemName = (string) $item['name'];
+            $changes = [];
+            if (!$paid) {
+                $billable = (int) $db->value(
+                    "SELECT COUNT(*) FROM booking_items WHERE booking_id = ? AND cancelled_at IS NULL
+                     AND (item_type = 'food' OR amount_paise > 0)",
+                    [(int) $cur['id']]
+                );
+                if ($billable === 0) {
+                    $db->run(
+                        'UPDATE booking_items SET cancelled_at = ?, cancel_reason = ? WHERE booking_id = ? AND cancelled_at IS NULL',
+                        [$now, $reason, (int) $cur['id']]
+                    );
+                    $changes = [
+                        'subtotal_paise' => 0,
+                        'additional_paise' => 0,
+                        'additional_label' => null,
+                        'total_paise' => 0,
+                        'payment_status' => 'not_required',
+                        'booking_status' => 'cancelled',
+                        'cancellation_status' => null,
+                    ];
+                    $closed = true;
+                } else {
+                    $sub = (int) $db->value(
+                        'SELECT COALESCE(SUM(amount_paise), 0) FROM booking_items WHERE booking_id = ? AND cancelled_at IS NULL',
+                        [(int) $cur['id']]
+                    );
+                    $total = $sub + (int) $cur['additional_paise'];
+                    $pay = (string) $cur['payment_status'];
+                    if ($total <= 0) {
+                        $pay = 'not_required';
+                    } elseif ($pay === 'not_required') {
+                        $pay = 'pending';
+                    }
+                    $changes = [
+                        'subtotal_paise' => $sub,
+                        'total_paise' => $total,
+                        'payment_status' => $pay,
+                    ];
+                }
+            }
+            $this->setStatus($cur, $changes);
+            $this->audit->log($actor, 'booking', (string) $cur['booking_no'], (int) $cur['id'], 'booking.item_cancelled', [
+                'item_id' => $itemId,
+                'item_type' => $item['item_type'],
+                'name' => $itemName,
+                'quantity' => (int) $item['quantity'],
+                'amount_paise' => (int) $item['amount_paise'],
+                'reason' => $reason,
+                'paid_amount_unchanged' => $paid,
+                'booking_closed' => $closed,
+            ]);
+        });
+        $fresh = $this->bookings->find((int) $b['id']);
+        if ($closed) {
+            $message = 'Your booking has been cancelled because ' . $itemName . ' was removed and nothing else remains. Reason: ' . $reason;
+        } elseif ($paid) {
+            $message = $itemName . ' was cancelled. Reason: ' . $reason . ' The amount already paid is unchanged. Contact the temple office if a refund is needed.';
+        } else {
+            $message = $itemName . ' was cancelled. Reason: ' . $reason . ' The new total is ' . money((int) $fresh['total_paise']) . '.';
+        }
+        $this->notifier->statusUpdate($fresh, $message);
+        return $fresh;
+    }
+
     public function complete(array $b, array $actor): array
     {
         return $this->change($b, $actor, 'booking.completed', function (array $cur) {
@@ -242,15 +347,76 @@ final class BookingService
     }
 
     /**
-     * Move a booking to a new date and/or slots. $slots maps booking_item id => slot id.
-     * Capacity is checked unless $override is true (recorded in the audit log).
+     * Same rules as online booking for daily service, slot, and prasadam caps.
+     * Admin "override" only skips temple-blocked dates, not capacity limits.
+     *
+     * @param array<int,int> $slots booking_item id => time_slot id
+     * @return array<string,string>
      */
-    public function reschedule(array $b, array $actor, string $newDate, array $slots, bool $override, string $note): array
+    public function rescheduleValidate(array $b, string $newDate, array $slots, bool $overrideBlocks): array
     {
         $date = Validator::date($newDate);
         if (!$date) {
-            throw new ValidationException(['date' => 'Please choose a valid new date.']);
+            return ['date' => 'Please choose a valid new date.'];
         }
+        if (!in_array($b['booking_status'], ['pending', 'confirmed'], true)) {
+            return ['action' => 'Only open bookings can be rescheduled.'];
+        }
+        $items = $this->bookings->items((int) $b['id']);
+        $bookingId = (int) $b['id'];
+        $errors = [];
+        $respectBlocks = !$overrideBlocks;
+        foreach ($items as $it) {
+            if ($it['item_type'] !== 'service') {
+                continue;
+            }
+            $svc = $this->catalog->service((int) $it['service_id']);
+            if (!$svc) {
+                continue;
+            }
+            if ($p = $this->availability->serviceProblem($svc, $date, $bookingId, false, $respectBlocks)) {
+                $errors['date'] = $p;
+            }
+            $newSlotId = isset($slots[$it['id']]) ? (int) $slots[$it['id']] : (int) $it['slot_id'];
+            if ($svc['requires_slot']) {
+                $slot = $newSlotId ? $this->catalog->slot($newSlotId) : null;
+                if (!$slot || $slot['service_id'] !== $svc['id']) {
+                    $errors['slot'] = 'Please choose a valid time for ' . $svc['name'] . '.';
+                    continue;
+                }
+                if ($p = $this->availability->slotProblem($svc, $slot, $date, $bookingId)) {
+                    $errors['slot'] = $p;
+                }
+            }
+        }
+        $errors += $this->lockPrasadamDaily($this->db, $items, $date, $bookingId);
+        if ($errors !== [] && $respectBlocks && $this->rescheduleErrorsAreBlocksOnly($errors)) {
+            $errors['override'] = 'Tick "Override blocked date" only if the temple has closed this date for new bookings but you still need to move this booking there.';
+        }
+        return $errors;
+    }
+
+    /** @param array<string,string> $errors @return list<string> */
+    public function rescheduleProblemMessages(array $errors): array
+    {
+        $out = [];
+        foreach ($errors as $key => $message) {
+            if ($key === 'override' || trim($message) === '') {
+                continue;
+            }
+            $out[] = $message;
+        }
+        return array_values(array_unique($out));
+    }
+
+    /** Move a booking to a new date and/or slots. Override skips blocked dates only (audit logged). */
+    public function reschedule(array $b, array $actor, string $newDate, array $slots, bool $override, string $note): array
+    {
+        $errors = $this->rescheduleValidate($b, $newDate, $slots, $override);
+        if ($errors !== []) {
+            throw new ValidationException($errors);
+        }
+        $date = Validator::date($newDate);
         $old = [];
         $this->db->transaction(function (Database $db) use ($b, $actor, $date, $slots, $override, $note, &$old) {
             $cur = $this->lock($b['id']);
@@ -258,35 +424,32 @@ final class BookingService
                 throw new ValidationException(['action' => 'Only open bookings can be rescheduled.']);
             }
             $items = $this->bookings->items((int) $b['id']);
-            $errors = [];
+            $errors = $this->rescheduleValidate($cur, (string) $date, $slots, $override);
+            if ($errors !== []) {
+                throw new ValidationException($errors);
+            }
             $changes = [];
             foreach ($items as $it) {
                 if ($it['item_type'] !== 'service') {
                     continue;
                 }
                 $svc = $this->catalog->service((int) $it['service_id']);
-                if (!$svc) {
+                if (!$svc || !$svc['requires_slot']) {
                     continue;
                 }
-                if (!$override && ($p = $this->availability->serviceProblem($svc, $date, (int) $b['id'], false))) {
-                    $errors['date'] = $p;
-                }
                 $newSlotId = isset($slots[$it['id']]) ? (int) $slots[$it['id']] : (int) $it['slot_id'];
-                if ($svc['requires_slot']) {
-                    $db->one('SELECT id FROM time_slots WHERE id = ?' . $db->forUpdate(), [$newSlotId]);
-                    $slot = $newSlotId ? $this->catalog->slot($newSlotId) : null;
-                    if (!$slot || $slot['service_id'] !== $svc['id']) {
-                        $errors['slot'] = 'Please choose a valid time for ' . $svc['name'] . '.';
-                        continue;
-                    }
-                    if (!$override && ($p = $this->availability->slotProblem($svc, $slot, $date, (int) $b['id']))) {
-                        $errors['slot'] = $p;
-                    }
+                $db->one('SELECT id FROM time_slots WHERE id = ?' . $db->forUpdate(), [$newSlotId]);
+                $slot = $this->catalog->slot($newSlotId);
+                if ($slot) {
                     $changes[$it['id']] = $slot;
                 }
             }
-            if ($errors) {
-                throw new ValidationException($errors + ['override' => 'Tick "Override capacity" to reschedule anyway.']);
+            foreach ($items as $it) {
+                if (($it['item_type'] ?? '') === 'food' && !empty($it['coupon_id'])) {
+                    $cid = (int) $it['coupon_id'];
+                    $table = $this->couponCatalogTable();
+                    $db->one('SELECT id FROM ' . $table . ' WHERE id = ?' . $db->forUpdate(), [$cid]);
+                }
             }
             $old = ['date' => $cur['service_date'], 'slots' => array_column($items, 'slot_label', 'id')];
             foreach ($changes as $itemId => $slot) {
@@ -499,5 +662,66 @@ final class BookingService
             $this->notifier->statusUpdate($fresh, $message($fresh));
         }
         return $fresh;
+    }
+
+    /** @param array<string,string> $errors */
+    private function rescheduleErrorsAreBlocksOnly(array $errors): bool
+    {
+        foreach ($errors as $key => $message) {
+            if ($key === 'override') {
+                continue;
+            }
+            if ($key !== 'date' || !str_contains($message, ' is not available on ')) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Re-check each prasadam line against the daily maximum while the catalog row is locked.
+     *
+     * @param list<array<string,mixed>> $lines
+     * @return array<string,string>
+     */
+    private function lockPrasadamDaily(Database $db, array $lines, string $date, ?int $exceptBooking = null): array
+    {
+        $food = [];
+        foreach ($lines as $it) {
+            if (($it['item_type'] ?? '') !== 'food' || empty($it['coupon_id']) || !empty($it['cancelled_at'])) {
+                continue;
+            }
+            $food[] = $it;
+        }
+        usort($food, static fn (array $a, array $b): int => (int) $a['coupon_id'] <=> (int) $b['coupon_id']);
+        $errors = [];
+        $table = $this->couponCatalogTable();
+        foreach ($food as $it) {
+            $cid = (int) $it['coupon_id'];
+            $coupon = $this->catalog->coupon($cid);
+            if (!$coupon) {
+                $errors['food.' . $cid] = 'A selected prasadam item is no longer available.';
+                continue;
+            }
+            if ($coupon['daily_max'] === null) {
+                continue;
+            }
+            $db->one('SELECT id FROM ' . $table . ' WHERE id = ?' . $db->forUpdate(), [$cid]);
+            $coupon = $this->catalog->coupon($cid) ?? $coupon;
+            $qty = (int) ($it['quantity'] ?? 0);
+            if ($p = $this->availability->prasadamProblem($coupon, $date, $qty, $exceptBooking)) {
+                $errors['food.' . $cid] = $p;
+            }
+        }
+        return $errors;
+    }
+
+    private function couponCatalogTable(): string
+    {
+        $table = $this->catalog->couponCatalog()->table();
+        if ($table !== 'food_coupon_catalog' && $table !== 'booking_coupons') {
+            throw new \RuntimeException('Unexpected prasadam catalog table.');
+        }
+        return $table;
     }
 }

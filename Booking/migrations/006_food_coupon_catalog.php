@@ -25,6 +25,7 @@ return function (Database $db): void {
                 description VARCHAR(255) NULL,
                 price_paise INT NOT NULL,
                 max_per_booking INT NOT NULL DEFAULT 200,
+                daily_max INT NULL,
                 is_active {$bool} NOT NULL DEFAULT 1,
                 sort_order INT NOT NULL DEFAULT 0,
                 created_at {$dt} NOT NULL,
@@ -46,12 +47,14 @@ return function (Database $db): void {
     if ($legacy) {
         $rows = $db->all('SELECT * FROM booking_coupons ORDER BY id');
         foreach ($rows as $r) {
+            $daily = $r['daily_max'] ?? null;
             $db->insert('food_coupon_catalog', [
                 'id' => (int) $r['id'],
                 'name' => $r['name'],
                 'description' => $r['description'],
                 'price_paise' => (int) $r['price_paise'],
                 'max_per_booking' => (int) $r['max_per_booking'],
+                'daily_max' => $daily === null || $daily === '' ? null : (int) $daily,
                 'is_active' => (int) $r['is_active'],
                 'sort_order' => (int) $r['sort_order'],
                 'created_at' => $r['created_at'],

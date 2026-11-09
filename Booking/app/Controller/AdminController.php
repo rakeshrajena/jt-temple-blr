@@ -72,7 +72,7 @@ final class AdminController extends Controller
                 $setup[] = ['UPI payment details are not verified yet, so devotees are asked to pay at the counter.', '/admin/settings#payment'];
             }
         } elseif (!$online->enabled()) {
-            $setup[] = ['Razorpay is not configured in .env — devotees cannot pay online yet.', ErpStaffSession::enabled() ? ErpStaffSession::erpOnlineBookingSettingsUrl() : '/admin/settings#payment'];
+            $setup[] = ['Razorpay is not configured in .env. Devotees cannot pay online yet.', ErpStaffSession::enabled() ? ErpStaffSession::erpOnlineBookingSettingsUrl() : '/admin/settings#payment'];
         }
         if (!Container::whatsapp()->configured() || !$s->bool('whatsapp_enabled')) {
             $setup[] = ['WhatsApp notifications are not active. Messages are being logged as failed for follow-up.', '/admin/settings#whatsapp'];

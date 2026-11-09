@@ -55,11 +55,7 @@ final class CouponCatalog
         $sql = 'SELECT * FROM ' . $t . ($activeOnly ? ' WHERE is_active = 1' : '') . ' ORDER BY sort_order, id';
         $rows = $this->db->all($sql);
         foreach ($rows as &$r) {
-            $r['id'] = (int) $r['id'];
-            $r['price_paise'] = (int) $r['price_paise'];
-            $r['max_per_booking'] = (int) $r['max_per_booking'];
-            $r['is_active'] = (bool) (int) $r['is_active'];
-            $r['sort_order'] = (int) $r['sort_order'];
+            $r = $this->hydrate($r);
         }
         unset($r);
         return $rows;
@@ -72,9 +68,17 @@ final class CouponCatalog
         if (!$r) {
             return null;
         }
+        return $this->hydrate($r);
+    }
+
+    /** @param array<string,mixed> $r */
+    private function hydrate(array $r): array
+    {
         $r['id'] = (int) $r['id'];
         $r['price_paise'] = (int) $r['price_paise'];
         $r['max_per_booking'] = (int) $r['max_per_booking'];
+        $daily = $r['daily_max'] ?? null;
+        $r['daily_max'] = ($daily === null || $daily === '' || (int) $daily < 1) ? null : (int) $daily;
         $r['is_active'] = (bool) (int) $r['is_active'];
         $r['sort_order'] = (int) $r['sort_order'];
         return $r;

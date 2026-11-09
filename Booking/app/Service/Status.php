@@ -73,8 +73,8 @@ final class Status
             'cancelled' => ['bad', 'Booking cancelled', 'This booking has been cancelled. Please contact the temple office for any help.'],
             'rejected' => ['bad', 'Booking not approved', 'The temple office could not approve this request. Please contact the temple office.'],
             default => match (true) {
-                $p === 'pending' => ['warn', 'Booking request received — payment pending', 'This is a booking request, not yet a confirmed booking. Please complete the payment and submit the UPI reference number.'],
-                $p === 'awaiting_verification' => ['info', 'Payment submitted — awaiting verification', 'We have received your payment reference. The temple office will verify it and confirm your booking.'],
+                $p === 'pending' => ['warn', 'Booking request received, payment pending', 'This is a booking request, not yet a confirmed booking. Please complete the payment and submit the UPI reference number.'],
+                $p === 'awaiting_verification' => ['info', 'Payment submitted, awaiting verification', 'We have received your payment reference. The temple office will verify it and confirm your booking.'],
                 $p === 'failed' => ['bad', 'Payment could not be verified', 'The temple office could not match your payment. Please check the UPI reference number and submit it again, or contact the temple office.'],
                 $a === 'pending' => ['info', 'Awaiting temple approval', 'Your payment is recorded. The temple office will review and confirm this booking.'],
                 default => ['info', 'Booking request received', 'The temple office will confirm your booking.'],

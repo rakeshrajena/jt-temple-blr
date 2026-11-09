@@ -1669,7 +1669,7 @@ function action_receipts_bulk_email(): void
         }
         $subject = 'Receipt ' . $number;
         $link = receipt_public_url((string) ($row['receipt_share_token'] ?? ''));
-        $sendError = send_smtp_message($settings, $email, $subject, receipt_bulk_email_body($message, $link), [
+        $sendError = send_smtp_pdf_message($settings, $email, $subject, receipt_bulk_email_body($message, $link), [
             'filename' => $number . '.pdf',
             'content' => $pdf,
             'mime' => 'application/pdf',

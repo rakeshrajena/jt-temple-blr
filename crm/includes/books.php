@@ -346,6 +346,12 @@ function load_book_movements(string $from, string $to): array
             $movements[] = $movement;
         }
     }
+    foreach (approved_receipt_cancellation_rows($fyStart, $to) as $row) {
+        $movement = receipt_cancellation_movement($row);
+        if ($movement !== null) {
+            $movements[] = $movement;
+        }
+    }
     return $movements;
 }
 
@@ -649,6 +655,12 @@ function load_ledger_lines(string $from, string $to): array
     }
     foreach (approved_correction_rows($fyStart, $to) as $row) {
         $line = correction_ledger_line($row);
+        if ($line !== null) {
+            $lines[] = $line;
+        }
+    }
+    foreach (approved_receipt_cancellation_rows($fyStart, $to) as $row) {
+        $line = receipt_cancellation_ledger_line($row);
         if ($line !== null) {
             $lines[] = $line;
         }

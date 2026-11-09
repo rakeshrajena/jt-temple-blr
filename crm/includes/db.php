@@ -237,6 +237,9 @@ function install_into(PDO $pdo, bool $replaceBooks = false, ?string $snapshotPat
         run_sql_file($pdo, APP_ROOT . '/schema.sql', true);
     }
     migrate_schema($pdo);
+    if (function_exists('install_booking_migrations')) {
+        install_booking_migrations($pdo);
+    }
     $seeded = false;
     $imported = false;
     $snapshot = is_file($snapshotPath);

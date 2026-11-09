@@ -138,6 +138,7 @@ return function (Database $db): void {
         'wa_tpl_admin_new' => 'sjt_admin_new_booking',
         'wa_tpl_admin_payment' => 'sjt_admin_payment_submitted',
         'terms_text' => 'Booking requests are confirmed only after payment verification and, where required, approval by the temple office. Please arrive 15 minutes before your time slot.',
+        'pay_later_enabled' => '1',
         'prices_reviewed' => '0',
     ];
     foreach ($settings as $k => $v) {

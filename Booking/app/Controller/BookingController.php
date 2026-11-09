@@ -9,12 +9,13 @@ use SJT\Core\Request;
 use SJT\Core\Response;
 use SJT\Core\Session;
 use SJT\Core\ValidationException;
+use SJT\Service\BookingForm;
 use SJT\Service\Validator;
 
 /** Booking wizard: choose services -> details -> food -> server-side review -> submit. */
 final class BookingController extends Controller
 {
-    private const INPUT_KEYS = ['services', 'name', 'mobile', 'email', 'service_date', 'instructions', 'slot', 'participants', 'f', 'add_food', 'food_cat', 'food', 'wa_opt_in'];
+    private const INPUT_KEYS = ['service_id', 'services', 'name', 'mobile', 'email', 'service_date', 'instructions', 'slot', 'participants', 'f', 'add_food', 'food_cat', 'food', 'wa_opt_in'];
 
     public function form(Request $req): Response
     {
@@ -22,20 +23,24 @@ final class BookingController extends Controller
         if ($req->str('edit') === '1') {
             $in = Session::get('booking_input', []);
         }
+        $entryMode = '';
         if (!$in && ($code = $req->str('service')) !== '') {
             foreach (Container::catalog()->services() as $s) {
                 if ($s['code'] === $code) {
                     $in['services'] = [(string) $s['id']];
+                    if (!empty($s['is_food_only'])) {
+                        $entryMode = 'prasad';
+                    }
                 }
             }
         }
-        return $this->renderForm($in, []);
+        return $this->renderForm($in, [], 200, $entryMode);
     }
 
     public function review(Request $req): Response
     {
         $this->throttle('review:' . $req->ip(), 120, 3600);
-        $in = array_intersect_key($req->post, array_flip(self::INPUT_KEYS));
+        $in = $this->bookingInputFromPost($req->post);
         $formId = $req->str('form_id');
         if (!preg_match('/^[a-f0-9]{32}$/', $formId)) {
             $formId = bin2hex(random_bytes(16));
@@ -45,10 +50,45 @@ final class BookingController extends Controller
         try {
             $draft = Container::form()->validate($in);
         } catch (ValidationException $e) {
+            $this->flashAvailabilityConflict($e->errors);
             return $this->renderForm($in, $e->errors, 422);
         }
         Session::set('booking_reviewed_total', $draft['quote']['total_paise']);
         return $this->renderReview($draft);
+    }
+
+    /** Server-side availability check for the booking form (same rules as review). */
+    public function check(Request $req): Response
+    {
+        $this->throttle('check:' . $req->ip(), 240, 3600);
+        $in = $this->bookingInputFromPost($req->post);
+        try {
+            Container::form()->validate($in);
+            return Response::json(['ok' => true, 'problems' => []]);
+        } catch (ValidationException $e) {
+            return $this->validationJsonResponse($e);
+        }
+    }
+
+    /** Re-check the saved review session before final submit. */
+    public function reviewCheck(Request $req): Response
+    {
+        $this->throttle('review-check:' . $req->ip(), 240, 3600);
+        $in = Session::get('booking_input');
+        if (!$in) {
+            return Response::json([
+                'ok' => false,
+                'problems' => ['Your booking session has expired. Please fill in the form again.'],
+                'availability' => false,
+                'hint' => null,
+            ], 401);
+        }
+        try {
+            Container::form()->validate($in);
+            return Response::json(['ok' => true, 'problems' => []]);
+        } catch (ValidationException $e) {
+            return $this->validationJsonResponse($e);
+        }
     }
 
     /** Refreshing or returning to the review page re-validates the saved input. */
@@ -61,6 +101,7 @@ final class BookingController extends Controller
         try {
             $draft = Container::form()->validate($in);
         } catch (ValidationException $e) {
+            $this->flashAvailabilityConflict($e->errors);
             return $this->renderForm($in, $e->errors, 422);
         }
         Session::set('booking_reviewed_total', $draft['quote']['total_paise']);
@@ -83,6 +124,7 @@ final class BookingController extends Controller
         try {
             $draft = Container::form()->validate($in);
         } catch (ValidationException $e) {
+            $this->flashAvailabilityConflict($e->errors);
             return $this->renderForm($in, $e->errors, 422);
         }
         if ($draft['quote']['total_paise'] !== (int) Session::get('booking_reviewed_total', -1)) {
@@ -100,6 +142,7 @@ final class BookingController extends Controller
         try {
             [$b] = Container::service()->create($draft, $formId, $req->ip());
         } catch (ValidationException $e) {
+            $this->flashAvailabilityConflict($e->errors);
             return $this->renderForm($in, $e->errors, 409);
         }
         self::grant($b);
@@ -121,15 +164,29 @@ final class BookingController extends Controller
         if (!$date) {
             return Response::json(['error' => 'Invalid date'], 400);
         }
-        return Response::json(['date' => $date, 'services' => Container::availability()->forDate($date)]);
+        $avail = Container::availability();
+        return Response::json([
+            'date' => $date,
+            'services' => $avail->forDate($date),
+            'prasadam' => $avail->prasadamForDate($date),
+        ]);
     }
 
     // ------------------------------------------------------------------
 
-    private function renderForm(array $in, array $errors, int $status = 200): Response
+    private function renderForm(array $in, array $errors, int $status = 200, string $entryMode = ''): Response
     {
         $catalog = Container::catalog();
         $services = $catalog->services();
+        if ($entryMode === '' && isset($in['services']) && is_array($in['services']) && count($in['services']) === 1) {
+            $onlyId = (string) $in['services'][0];
+            foreach ($services as $s) {
+                if ((string) $s['id'] === $onlyId && !empty($s['is_food_only'])) {
+                    $entryMode = 'prasad';
+                    break;
+                }
+            }
+        }
         $avail = Container::availability();
         $slots = [];
         foreach ($catalog->slots() as $s) {
@@ -145,13 +202,21 @@ final class BookingController extends Controller
             'services' => array_map(fn ($s) => [
                 'id' => $s['id'], 'name' => $s['name'], 'price' => $s['price_paise'], 'foodOnly' => $s['is_food_only'],
                 'combinable' => $s['is_combinable'], 'allowFood' => $s['allow_food'], 'approval' => $s['requires_approval'],
+                'dailyCapacity' => $s['daily_capacity'], 'requiresSlot' => $s['requires_slot'],
             ], $services),
-            'coupons' => array_map(fn ($c) => ['id' => $c['id'], 'name' => $c['name'], 'price' => $c['price_paise']], $coupons),
+            'coupons' => array_map(fn ($c) => [
+                'id' => $c['id'],
+                'name' => $c['name'],
+                'price' => $c['price_paise'],
+                'max' => $c['max_per_booking'],
+                'dailyMax' => $c['daily_max'],
+            ], $coupons),
             'extra' => ['label' => $this->cfg()->get('additional_charge_label') ?: 'Additional charges', 'amount' => $this->cfg()->int('additional_charge_paise')],
             'availabilityUrl' => url('/api/availability'),
         ];
         return $this->view('public/form', [
-            'title' => 'Book a service',
+            'title' => $entryMode === 'prasad' ? 'Book Prasad' : 'Book a service',
+            'entryMode' => $entryMode,
             'services' => $services,
             'coupons' => $coupons,
             'slots' => $slots,
@@ -174,6 +239,43 @@ final class BookingController extends Controller
             'notice' => $notice,
             'errors' => $errors,
             'terms' => App::settings()->get('terms_text', ''),
+            'reviewCheckUrl' => url('/book/review-check'),
         ]);
+    }
+
+    /** @param array<string,string> $errors */
+    private function flashAvailabilityConflict(array $errors): void
+    {
+        if (BookingForm::hasAvailabilityConflict($errors)) {
+            flash('error', BookingForm::availabilityHint());
+        }
+    }
+
+    private function validationJsonResponse(ValidationException $e): Response
+    {
+        $errors = $e->errors;
+        $availability = BookingForm::hasAvailabilityConflict($errors);
+        return Response::json([
+            'ok' => false,
+            'problems' => BookingForm::problemMessages($errors),
+            'errors' => $errors,
+            'availability' => $availability,
+            'hint' => $availability ? BookingForm::availabilityHint() : null,
+        ], 422);
+    }
+
+    /** @param array<string, mixed> $post */
+    private function bookingInputFromPost(array $post): array
+    {
+        $in = array_intersect_key($post, array_flip(self::INPUT_KEYS));
+        if (isset($in['service_id']) && is_scalar($in['service_id']) && (string) $in['service_id'] !== '') {
+            $posted = is_array($in['services'] ?? null) ? $in['services'] : [];
+            if ($posted === []) {
+                $in['services'] = [(string) (int) $in['service_id']];
+            }
+        }
+        unset($in['service_id']);
+
+        return $in;
     }
 }

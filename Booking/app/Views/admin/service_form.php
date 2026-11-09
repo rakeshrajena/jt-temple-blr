@@ -11,7 +11,7 @@ $wd = ['1' => 'Mon', '2' => 'Tue', '3' => 'Wed', '4' => 'Thu', '5' => 'Fri', '6'
   <input type="hidden" name="id" value="<?= (int) $s['id'] ?>">
   <div class="grid-2">
     <label>Service name <input name="name" required maxlength="150" value="<?= e($s['name']) ?>"></label>
-    <label>Price (₹)<?= $s['is_food_only'] ? ' — not used for Food-Only' : '' ?> <input name="price" inputmode="decimal" value="<?= e(number_format($s['price_paise'] / 100, 2, '.', '')) ?>"<?= $s['is_food_only'] ? ' disabled' : '' ?>><small class="muted">Use 0 when the temple confirms charges later (add them on the booking page).</small></label>
+    <label>Price (₹)<?= $s['is_food_only'] ? ' (not used for Food-Only)' : '' ?> <input name="price" inputmode="decimal" value="<?= e(number_format($s['price_paise'] / 100, 2, '.', '')) ?>"<?= $s['is_food_only'] ? ' disabled' : '' ?>><small class="muted">Use 0 when the temple confirms charges later (add them on the booking page).</small></label>
   </div>
   <label>Description shown to devotees <textarea name="description" rows="2" maxlength="500"><?= e((string) $s['description']) ?></textarea></label>
   <fieldset class="checks">

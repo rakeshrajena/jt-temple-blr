@@ -25,7 +25,9 @@ $phone = setting('temple_phone');
       <span class="brand-text"><span class="brand-name"><?= e($templeName) ?></span><span class="brand-sub">Online Seva &amp; Prasadam Booking</span></span>
     </a>
     <nav class="site-nav" aria-label="Main">
-      <a href="<?= e(url('/book')) ?>">Book</a>
+      <a href="<?= e(url('/')) ?>">Home</a>
+      <a href="<?= e(url('/book', ['service' => 'food-only'])) ?>">Book Prasad</a>
+      <a href="<?= e(url('/book')) ?>">Book Puja</a>
       <a href="<?= e(url('/lookup')) ?>">Find my booking</a>
     </nav>
   </div>
@@ -47,5 +49,14 @@ $phone = setting('temple_phone');
   </div>
 </footer>
 <?php booking_busy_overlay(); ?>
+<dialog class="avail-dialog" id="avail-dialog" aria-labelledby="avail-dialog-title" aria-describedby="avail-dialog-body">
+  <div class="avail-dialog-inner">
+    <h2 class="h3" id="avail-dialog-title">Date not available</h2>
+    <div id="avail-dialog-body" class="avail-dialog-body"></div>
+    <p class="avail-dialog-actions">
+      <button type="button" class="btn btn-primary btn-lg" data-avail-dialog-ok>OK, choose another date</button>
+    </p>
+  </div>
+</dialog>
 </body>
 </html>

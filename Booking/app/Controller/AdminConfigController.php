@@ -78,7 +78,7 @@ final class AdminConfigController extends Controller
             [$from, $to]
         );
         Container::audit()->log(Container::auth()->actor(), 'availability', null, null, 'availability.blocked', ['from' => $from, 'to' => $to, 'service_id' => $sid, 'reason' => $reason]);
-        flash('success', "$n date(s) blocked for new bookings." . ($existing ? " Note: $existing existing booking(s) fall on these dates — reschedule or cancel them from the Bookings page if needed." : ''));
+        flash('success', "$n date(s) blocked for new bookings." . ($existing ? " Note: $existing existing booking(s) fall on these dates. Reschedule or cancel them from the Bookings page if needed." : ''));
         return Response::redirect('/admin/availability');
     }
 
@@ -291,7 +291,7 @@ final class AdminConfigController extends Controller
 
     private const SETTING_KEYS = [
         'temple' => ['temple_name', 'temple_address', 'temple_phone', 'temple_email', 'temple_website', 'temple_gstin', 'terms_text'],
-        'booking' => ['booking_lead_days', 'booking_max_days', 'additional_charge_label', 'additional_charge_paise', 'booking_prefix', 'invoice_prefix'],
+        'booking' => ['booking_lead_days', 'booking_max_days', 'additional_charge_label', 'additional_charge_paise', 'booking_prefix', 'invoice_prefix', 'pay_later_enabled'],
         'payment' => ['upi_vpa', 'upi_payee_name', 'upi_qr_mode', 'upi_include_tr', 'upi_verified', 'upi_verified_note', 'payment_instructions'],
         'whatsapp' => ['whatsapp_enabled', 'admin_whatsapp_numbers', 'whatsapp_language', 'wa_tpl_devotee_ack', 'wa_tpl_devotee_update', 'wa_tpl_admin_new', 'wa_tpl_admin_payment'],
     ];
@@ -340,6 +340,7 @@ final class AdminConfigController extends Controller
                 case 'upi_include_tr':
                 case 'upi_verified':
                 case 'whatsapp_enabled':
+                case 'pay_later_enabled':
                     $v = $v === '1' ? '1' : '0';
                     break;
                 case 'booking_lead_days':

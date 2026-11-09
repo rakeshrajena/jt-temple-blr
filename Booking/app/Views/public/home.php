@@ -1,58 +1,55 @@
 <?php
-/** @var array $services @var array $coupons */
-$foodOnly = array_values(array_filter($services, fn ($s) => $s['is_food_only']));
-$regular = array_values(array_filter($services, fn ($s) => !$s['is_food_only']));
+/**
+ * @var array|null $foodOnlyService First food-only catalog row (code food-only)
+ * @var array $coupons Prasadam menu for subtitle on Book Prasad card
+ */
+$prasadLead = 'Madhyanha Prasad and food coupons for your chosen day.';
+if ($coupons !== []) {
+    $names = array_map(fn ($c) => $c['name'], array_slice($coupons, 0, 2));
+    $prasadLead = implode(' and ', $names) . ' for a chosen day.';
+}
+if ($foodOnlyService && trim((string) ($foodOnlyService['description'] ?? '')) !== '') {
+    $prasadLead = (string) $foodOnlyService['description'];
+}
+$prasadUrl = url('/book', ['service' => $foodOnlyService['code'] ?? 'food-only']);
 ?>
-<section class="hero">
-  <p class="hero-kicker">॥ Jai Jagannath ॥</p>
-  <h1>Book a puja, ceremony or prasadam</h1>
-  <p class="lead">Choose a seva, pick a date and time, add food coupons if you wish, and pay online. You will get a booking number straight away.</p>
-  <div class="hero-actions">
-    <a class="btn btn-primary btn-lg" href="<?= e(url('/book')) ?>">Start booking</a>
-    <a class="btn btn-secondary btn-lg" href="<?= e(url('/lookup')) ?>">Find my booking</a>
-  </div>
-</section>
+<section class="home-menu" aria-labelledby="home-menu-title">
+  <header class="home-menu-head">
+    <h1 id="home-menu-title">What would you like to do?</h1>
+    <p class="home-menu-lead">Choose one option to continue.</p>
+  </header>
 
-<section aria-labelledby="svc-h">
-  <h2 id="svc-h">Services you can book</h2>
-  <ul class="service-list">
-    <?php foreach ($regular as $s): ?>
-    <li class="service-tile">
-      <div>
-        <h3><?= e($s['name']) ?></h3>
-        <?php if ($s['description']): ?><p><?= e($s['description']) ?></p><?php endif; ?>
-        <p class="meta">
-          <?= $s['price_paise'] > 0 ? '<span class="price">' . e(money($s['price_paise'])) . '</span>' : '<span class="price">Charges confirmed by temple</span>' ?>
-          <?php if ($s['requires_approval']): ?><span class="tag">Needs temple approval</span><?php endif; ?>
-        </p>
-      </div>
-      <a class="btn btn-secondary" href="<?= e(url('/book', ['service' => $s['code']])) ?>" aria-label="Book <?= e($s['name']) ?>">Book</a>
+  <ul class="home-paths">
+    <li>
+      <a class="path-card" href="<?= e($prasadUrl) ?>">
+        <span class="path-card-title">Book Prasad</span>
+        <span class="path-card-desc"><?= e($prasadLead) ?></span>
+        <span class="path-card-action">Continue <span aria-hidden="true">→</span></span>
+      </a>
     </li>
-    <?php endforeach; ?>
+    <li>
+      <a class="path-card" href="<?= e(url('/book')) ?>">
+        <span class="path-card-title">Book Puja</span>
+        <span class="path-card-desc">Choose a puja or ceremony and add prasad for your group if you wish.</span>
+        <span class="path-card-action">Continue <span aria-hidden="true">→</span></span>
+      </a>
+    </li>
+    <li>
+      <a class="path-card" href="<?= e(url('/lookup')) ?>">
+        <span class="path-card-title">Find my booking</span>
+        <span class="path-card-desc">Check status with your booking number and mobile number.</span>
+        <span class="path-card-action">Continue <span aria-hidden="true">→</span></span>
+      </a>
+    </li>
   </ul>
 </section>
 
-<?php if ($coupons): ?>
-<section class="food-callout" aria-labelledby="food-h">
-  <h2 id="food-h">Food / Prasadam coupons</h2>
-  <p>Add prasadam coupons to any booking, or book food coupons on their own.</p>
-  <ul class="coupon-chips">
-    <?php foreach ($coupons as $c): ?>
-      <li><?= e($c['name']) ?> — <strong><?= e(money($c['price_paise'])) ?></strong> per person</li>
-    <?php endforeach; ?>
-  </ul>
-  <?php if ($foodOnly): ?>
-    <a class="btn btn-primary" href="<?= e(url('/book', ['service' => $foodOnly[0]['code']])) ?>">Book food coupons only</a>
-  <?php endif; ?>
-</section>
-<?php endif; ?>
-
-<section class="how" aria-labelledby="how-h">
+<section class="how home-how" aria-labelledby="how-h">
   <h2 id="how-h">How it works</h2>
   <ol class="how-steps">
-    <li><strong>Choose</strong> the service, date and time.</li>
-    <li><strong>Review</strong> the price summary and submit. You get a booking number.</li>
-    <li><strong>Pay</strong> online (UPI, card or net banking).</li>
-    <li><strong>Confirmation</strong> follows once your payment is received<?= array_filter($regular, fn ($s) => $s['requires_approval']) ? ' and the temple approves ceremonies that need it' : '' ?>.</li>
+    <li><strong>Choose</strong> prasad only, or a puja with optional food coupons.</li>
+    <li><strong>Review</strong> the summary and submit. You receive a booking number.</li>
+    <li><strong>Pay</strong> online when payment is due.</li>
+    <li><strong>Confirmation</strong> follows once payment is verified and, where required, the temple approves your seva.</li>
   </ol>
 </section>

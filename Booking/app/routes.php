@@ -16,8 +16,10 @@ $super = ['admin' => true, 'role' => 'super'];
 // ---- Devotee-facing
 $r->get('/', [P::class, 'home']);
 $r->get('/book', [B::class, 'form']);
+$r->post('/book/check', [B::class, 'check']);
 $r->post('/book/review', [B::class, 'review']);
 $r->get('/book/review', [B::class, 'reviewAgain']);
+$r->get('/book/review-check', [B::class, 'reviewCheck']);
 $r->post('/book/confirm', [B::class, 'confirm']);
 $r->get('/api/availability', [B::class, 'availability']);
 $r->get('/b/{no}', [P::class, 'status']);
@@ -50,7 +52,10 @@ $r->post('/admin/password', [A::class, 'password'], $admin);
 
 $r->get('/admin/bookings', [AB::class, 'index'], $admin);
 $r->get('/admin/bookings/export.csv', [AB::class, 'export'], $admin);
+$r->get('/admin/cancellations', [AB::class, 'cancellations'], $admin);
+$r->post('/admin/cancellations/cancel', [AB::class, 'cancelItem'], $admin);
 $r->get('/admin/bookings/{no}', [AB::class, 'show'], $admin);
+$r->get('/admin/bookings/{no}/reschedule-check', [AB::class, 'rescheduleCheck'], $admin);
 $r->get('/admin/bookings/{no}/invoice.pdf', [AB::class, 'invoicePdf'], $admin);
 $r->post('/admin/bookings/{no}/action', [AB::class, 'action'], $admin);
 

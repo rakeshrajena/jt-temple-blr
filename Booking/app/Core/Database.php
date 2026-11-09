@@ -18,6 +18,10 @@ final class Database
     public function __construct(array $cfg)
     {
         $this->driver = $cfg['driver'] ?? 'mysql';
+        if (isset($cfg['pdo']) && $cfg['pdo'] instanceof PDO) {
+            $this->pdo = $cfg['pdo'];
+            return;
+        }
         $opts = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -33,6 +37,16 @@ final class Database
             $this->pdo = new PDO($dsn, $cfg['user'], $cfg['pass'], $opts);
             $this->pdo->exec("SET time_zone = '" . date('P') . "', sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO'");
         }
+    }
+
+    /** Reuse an existing PDO (e.g. ERP install scratch DB) without opening a second connection. */
+    public static function usingPdo(PDO $pdo, ?string $driver = null): self
+    {
+        $driver ??= (string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        if ($driver === 'mysql') {
+            return new self(['driver' => 'mysql', 'pdo' => $pdo]);
+        }
+        return new self(['driver' => 'sqlite', 'pdo' => $pdo]);
     }
 
     public static function fromEnv(): self

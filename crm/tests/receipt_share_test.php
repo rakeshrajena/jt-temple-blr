@@ -134,8 +134,9 @@ $attached = smtp_data_payload('Temple', 'seva@temple.test', 'devotee@example.com
 check(
     str_contains($attached, 'multipart/mixed')
     && str_contains($attached, 'filename="RCPT-2026-0099.pdf"')
-    && str_contains($attached, chunk_split(base64_encode($pdf), 76, "\r\n")),
-    'the receipt email attaches the PDF'
+    && str_contains($attached, chunk_split(base64_encode($pdf), 76, "\r\n"))
+    && !str_contains($attached, 'multipart/related'),
+    'the receipt email attaches the PDF as plain text plus PDF (no nested HTML parts)'
 );
 check(
     smtp_attachment_error(['filename' => '../secret.pdf', 'content' => 'x', 'mime' => 'application/pdf']) !== null,

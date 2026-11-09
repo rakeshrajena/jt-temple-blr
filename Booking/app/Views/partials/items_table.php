@@ -11,6 +11,10 @@ $hasFood = (bool) array_filter($items, fn ($i) => $i['item_type'] === 'food');
     <tr>
       <td>
         <strong><?= e($it['name']) ?></strong>
+        <?php if (!empty($it['cancelled_at'])): ?><span class="sub">Cancelled<?= !empty($it['cancel_reason']) ? ': ' . e((string) $it['cancel_reason']) : '' ?></span><?php endif; ?>
+        <?php
+        $lineServiceDate = $serviceDateForItems ?? ($b['service_date'] ?? null);
+        if ($lineServiceDate && $it['item_type'] === 'service'): ?><span class="sub">Date: <?= e(fmt_date($lineServiceDate)) ?></span><?php endif; ?>
         <?php if (!empty($it['slot_label'])): ?><span class="sub">Time: <?= e($it['slot_label']) ?></span><?php endif; ?>
         <?php if (!empty($it['participants'])): ?><span class="sub">Participants: <?= (int) $it['participants'] ?></span><?php endif; ?>
         <?php foreach ($details as $d): ?><span class="sub"><?= e($d['label']) ?>: <?= e($d['value']) ?></span><?php endforeach; ?>

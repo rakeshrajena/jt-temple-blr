@@ -31,10 +31,14 @@ include __DIR__ . '/../partials/progress.php';
   <dl class="kv">
     <dt>Devotee</dt><dd><?= e($b['devotee_name']) ?></dd>
     <dt>Mobile</dt><dd><?= e(fmt_mobile($b['mobile'])) ?></dd>
-    <dt>Date</dt><dd><?= e(fmt_date($b['service_date'])) ?></dd>
     <dt>Booked on</dt><dd><?= e(fmt_datetime($b['created_at'])) ?></dd>
     <dt>Invoice no.</dt><dd><?= e($b['invoice_no']) ?></dd>
   </dl>
+  <?php
+  $serviceDate = $b['service_date'];
+  $scheduleLines = booking_schedule_from_items($items);
+  include __DIR__ . '/../partials/booking_schedule.php';
+  ?>
   <?php $sub = $b['subtotal_paise']; $extra = $b['additional_paise']; $extraLabel = $b['additional_label']; $total = $b['total_paise'];
   include __DIR__ . '/../partials/items_table.php'; ?>
 </section>

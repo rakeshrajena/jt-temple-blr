@@ -309,16 +309,17 @@ function smtp_data_payload(
     }
     $mixed = 'jt_' . bin2hex(random_bytes(8));
     $encoded = rtrim(chunk_split(base64_encode($attachment['content']), 76, "\r\n"));
+    // Plain text + PDF only (same as online booking). Nested alternative/related inside mixed is rejected on many hosts.
     $raw = $headers
-        . 'Content-Type: multipart/mixed; boundary="' . $mixed . "\"\r\n"
-        . "\r\n"
+        . 'Content-Type: multipart/mixed; boundary="' . $mixed . "\"\r\n\r\n"
         . '--' . $mixed . "\r\n"
-        . $message
+        . "Content-Type: text/plain; charset=UTF-8\r\n"
+        . "Content-Transfer-Encoding: 8bit\r\n\r\n"
+        . $plain . "\r\n"
         . '--' . $mixed . "\r\n"
         . 'Content-Type: application/pdf; name="' . $attachment['filename'] . "\"\r\n"
         . "Content-Transfer-Encoding: base64\r\n"
-        . 'Content-Disposition: attachment; filename="' . $attachment['filename'] . "\"\r\n"
-        . "\r\n"
+        . 'Content-Disposition: attachment; filename="' . $attachment['filename'] . "\"\r\n\r\n"
         . $encoded . "\r\n"
         . '--' . $mixed . "--\r\n";
     return smtp_dot_stuff($raw) . "\r\n.\r\n";
@@ -517,7 +518,12 @@ function smtp_send_php_mail(
     }
     $from = trim($settings['smtp_from_email']);
     $fromName = trim($settings['smtp_from_name']) !== '' ? trim($settings['smtp_from_name']) : APP_NAME;
-    $plain = str_replace("\n", "\r\n", str_replace(["\r\n", "\r"], "\n", $body));
+    $text = str_replace(["\r\n", "\r"], "\n", $body);
+    $text = rtrim($text);
+    if ($attachment !== null) {
+        $text .= "\n\n" . str_replace(["\r\n", "\r"], "\n", email_signature_text());
+    }
+    $plain = str_replace("\n", "\r\n", $text);
     $headers = 'MIME-Version: 1.0' . "\r\n"
         . 'From: ' . smtp_quoted_name($fromName) . ' <' . $from . '>' . "\r\n"
         . 'Reply-To: ' . $from . "\r\n";
@@ -638,6 +644,28 @@ function send_smtp_message(
     } finally {
         fclose($socket);
     }
+}
+
+/**
+ * Sends plain text with a PDF attachment; retries without the file if the server refuses nested MIME.
+ *
+ * @param array<string, string> $settings
+ * @param array{filename: string, content: string, mime: string} $attachment
+ */
+function send_smtp_pdf_message(
+    array $settings,
+    string $to,
+    string $subject,
+    string $body,
+    array $attachment,
+): ?string {
+    $err = send_smtp_message($settings, $to, $subject, $body, $attachment);
+    if ($err === null) {
+        return null;
+    }
+    error_log('[jt_blr] Email with PDF refused; retrying without attachment: ' . $err);
+    $fallback = rtrim($body) . "\n\n(The PDF could not be attached. Use the link in this message to open or download your receipt.)";
+    return send_smtp_message($settings, $to, $subject, $fallback);
 }
 
 /** @param resource $socket */

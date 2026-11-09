@@ -50,6 +50,15 @@
     }
     const form = event.target;
     const submitter = event.submitter || null;
+    if (form && (form.getAttribute('method') === 'dialog' || (form.closest && form.closest('#avail-dialog')))) {
+      return;
+    }
+    if (form && form.id === 'booking-form' && form.getAttribute('data-book-submit-ok') !== '1') {
+      const checkUrl = form.getAttribute('data-book-check');
+      if (checkUrl && submitter && submitter.type === 'submit') {
+        return;
+      }
+    }
     if (form && form.classList.contains('locale-switch')) {
       show('Changing the language');
       return;
@@ -94,6 +103,10 @@
       return;
     }
     if (url.pathname === window.location.pathname && url.search === window.location.search) {
+      return;
+    }
+    // File downloads (PDF invoice, QR PNG) stay on this page; do not show a blocking overlay.
+    if (/\.pdf$/i.test(url.pathname) || url.searchParams.get('download') === '1') {
       return;
     }
     const label = clean(link.innerText);

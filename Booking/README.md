@@ -97,6 +97,7 @@ flowchart LR
  BS -->|paid + approved or N/A| CONF[booking_status: confirmed]
 ```
 
+
 | State | Preview (`bookingPreview.html`) | Live (`booking/`) |
 |---|---|---|
 | UTR submitted | Sets `payment = awaiting` | `payment_status = awaiting_verification`; row in `payments` |

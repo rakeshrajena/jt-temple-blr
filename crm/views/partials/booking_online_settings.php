@@ -155,6 +155,13 @@ $obServiceCount = count($bookingServices);
               <div class="form-group"><label><?= e(t('settings.ob_invoice_prefix')) ?></label><input type="text" name="invoice_prefix" maxlength="8" value="<?= $v('invoice_prefix') ?>" required<?= $bsCanEdit ? '' : ' readonly' ?>></div>
               <div class="form-group"><label><?= e(t('settings.ob_extra_label')) ?></label><input type="text" name="additional_charge_label" value="<?= $v('additional_charge_label') ?>" maxlength="200"<?= $bsCanEdit ? '' : ' readonly' ?>></div>
               <div class="form-group"><label><?= e(t('settings.ob_extra_amount')) ?></label><input type="text" name="additional_charge" inputmode="decimal" value="<?= e($extra) ?>"<?= $bsCanEdit ? '' : ' readonly' ?>></div>
+              <div class="form-group full">
+                <label class="checkbox-label">
+                  <input type="checkbox" name="pay_later_enabled" value="1"<?= (($bs['pay_later_enabled'] ?? '1') === '1') ? ' checked' : '' ?><?= $bsCanEdit ? '' : ' disabled' ?>>
+                  <?= e(t('settings.ob_pay_later')) ?>
+                </label>
+                <p class="muted small"><?= e(t('settings.ob_pay_later_hint')) ?></p>
+              </div>
             </div>
             <?php if ($bsCanEdit): ?>
             <footer class="settings-ob-form-footer"><button class="btn btn-primary" type="submit"><?= e(t('settings.ob_save_rules')) ?></button></footer>
@@ -190,7 +197,7 @@ $obServiceCount = count($bookingServices);
             </p>
             <dl class="settings-ob-dl">
               <dt>Config</dt>
-              <dd><code>Booking/.env</code> — <code>PAYMENT_GATEWAY</code>, <code>RAZORPAY_*</code></dd>
+              <dd><code>Booking/.env</code>: <code>PAYMENT_GATEWAY</code>, <code>RAZORPAY_*</code></dd>
               <?php if (booking_razorpay_webhook_url() !== ''): ?>
                 <dt><?= e(t('settings.ob_webhook')) ?></dt>
                 <dd><code class="settings-ob-code-break"><?= e(booking_razorpay_webhook_url()) ?></code></dd>
