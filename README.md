@@ -279,4 +279,12 @@ Runtime and secret material is listed in `.gitignore`, including:
 
 ## License & attribution
 
-Check the repository license file if present. When you deploy for a live temple, replace demo data, rotate all passwords, remove install probes after go-live (`install.php`, one-off tools), and configure real SMTP, UPI, and gateway keys in environment files - never in this README.
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**. See [`LICENSE`](LICENSE) in the repository root for the full text.
+
+You may use, modify, and share the software under GPL-3.0, including the `crm/` ERP and `Booking/` online booking apps. If you distribute modified versions, you must provide source and license those changes under GPL-3.0 as well.
+
+When you deploy for a live temple:
+
+- Replace demo data and confirm service prices, slots, and temple contact details.
+- Rotate all passwords; delete or block `install.php` and other one-off setup tools after go-live.
+- Put real SMTP, UPI, WhatsApp, and gateway keys only in `.env` and admin settings, never in README or version control.
