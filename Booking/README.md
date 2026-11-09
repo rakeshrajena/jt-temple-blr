@@ -220,3 +220,18 @@ These are **intentionally stubbed** in the preview; the live app already covers 
 2. Run **`booking/`** on staging per [`docs/DEPLOYMENT-CPANEL.md`](docs/DEPLOYMENT-CPANEL.md) and complete [`docs/TESTING.md`](docs/TESTING.md).
 3. Close items in [`docs/TEMPLE-ACTION-ITEMS.md`](docs/TEMPLE-ACTION-ITEMS.md).
 4. Add a “Book seva / prasadam” link on the public temple site pointing to `/Booking` once deployed.
+
+---
+
+## License & attribution
+
+This booking application is part of the **jt-temple-blr** monorepo and is licensed under the **GNU General Public License v3.0 (GPL-3.0)**. The full license text is in [`../LICENSE`](../LICENSE) at the repository root.
+
+If you distribute or deploy a modified copy, GPL-3.0 requires you to provide corresponding source and keep the same license on derivative works. Temple-specific configuration (`.env`, prices, logos, copy) does not change the license on the software itself.
+
+**Before production go-live**
+
+- Replace demo or seed data with the temple’s real catalog and settings.
+- Rotate all passwords and remove one-time setup entry points (`install.php`, probe scripts) after migrations succeed.
+- Configure SMTP, UPI, WhatsApp, and payment gateway credentials only in `.env` (or ERP Settings), never in this README or in Git.
+- Remove or restrict `INSTALL_TOKEN` and lock down `storage/` permissions on the server.
