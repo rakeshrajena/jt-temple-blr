@@ -451,7 +451,7 @@ function send_donation_receipt(int $donationId, array $settings, ?string $to = n
         return ['error' => 'The receipt PDF is not ready to send.'] + $result;
     }
     $subject = 'Receipt ' . $number;
-    $error = send_smtp_message($settings, $email, $subject, receipt_email_body($row, receipt_public_url((string) ($row['receipt_share_token'] ?? ''))), [
+    $error = send_smtp_pdf_message($settings, $email, $subject, receipt_email_body($row, receipt_public_url((string) ($row['receipt_share_token'] ?? ''))), [
         'filename' => $number . '.pdf',
         'content' => $pdf,
         'mime' => 'application/pdf',

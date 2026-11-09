@@ -1,0 +1,169 @@
+.sjt-donation-form-hidden,
+.sjt-legacy-grid-hidden {
+  display: none !important;
+}
+
+#services .sjt-services-online {
+  margin: 0 auto 1rem;
+  text-align: left;
+  color: #2a1b12;
+}
+
+#services .sjt-services-intro {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  margin: 1.25rem auto 1.75rem;
+  max-width: 40rem;
+  text-align: center;
+  color: #4a3f36;
+}
+
+#services .sjt-services-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  margin: 0 0 1.5rem;
+}
+
+@media (min-width: 640px) {
+  #services .sjt-services-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  #services .sjt-services-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+#services .sjt-service-card {
+  margin: 0;
+  height: 100%;
+}
+
+#services .sjt-service-card-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1.35rem 1.25rem 1.15rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e8dcc8;
+  background: #fffdf8;
+  box-shadow: 0 4px 14px rgba(42, 27, 18, 0.06);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+#services .sjt-service-card-inner:hover {
+  border-color: #d9701a;
+  box-shadow: 0 8px 22px rgba(122, 29, 29, 0.1);
+  transform: translateY(-2px);
+}
+
+#services .sjt-service-card-inner:focus-visible {
+  outline: 2px solid #7a1d1d;
+  outline-offset: 2px;
+}
+
+#services .sjt-service-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.85rem;
+  border-radius: 9999px;
+  background: rgba(217, 112, 26, 0.15);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+#services .sjt-service-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #7a1d1d;
+}
+
+#services .sjt-service-text {
+  margin: 0 0 0.85rem;
+  flex: 1;
+  font-size: 0.94rem;
+  line-height: 1.5;
+  color: #5c4e42;
+}
+
+#services .sjt-service-cta {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #d9701a;
+}
+
+#services .sjt-service-card-inner:hover .sjt-service-cta {
+  color: #7a1d1d;
+}
+
+#services .sjt-services-note {
+  font-size: 0.92rem;
+  color: #5c4e42;
+  margin: 0 0 1.25rem;
+  line-height: 1.45;
+  text-align: center;
+  max-width: 36rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#services .sjt-services-actions {
+  text-align: center;
+  margin: 0;
+}
+
+.sjt-donation-cta {
+  margin: 2rem auto 0;
+  max-width: 36rem;
+  text-align: center;
+  padding: 1.5rem 1.25rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.sjt-donation-cta-lead {
+  font-size: 1.125rem;
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
+}
+
+.sjt-donation-cta-note {
+  font-size: 0.95rem;
+  margin: 0 0 1.25rem;
+  opacity: 0.92;
+  line-height: 1.45;
+}
+
+.sjt-donation-cta-btn {
+  display: inline-block;
+  margin: 0 0.5rem 0.75rem;
+  padding: 0.65rem 1.4rem;
+  border-radius: 0.5rem;
+  background: #d9701a;
+  color: #fff !important;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sjt-donation-cta-btn:hover {
+  background: #c45f10;
+}
+
+.sjt-donation-cta-link {
+  display: block;
+  font-size: 0.95rem;
+  color: inherit;
+  text-decoration: underline;
+  opacity: 0.95;
+}
