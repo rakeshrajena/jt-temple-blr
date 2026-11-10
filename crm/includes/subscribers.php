@@ -70,6 +70,97 @@ function subscriber_can_invoice(string $status): bool
     return $status === SUBSCRIBER_INVOICE_STATUS;
 }
 
+function subscription_current_period_label(): string
+{
+    return date('F Y');
+}
+
+function subscriber_period_paid(int $subscriberId, ?string $period = null): bool
+{
+    $period ??= subscription_current_period_label();
+
+    return (int) db_value(
+        "SELECT COUNT(*) FROM subscription_invoices
+         WHERE subscriber_id = ? AND period_label = ? AND status = 'Paid'",
+        [$subscriberId, $period]
+    ) > 0;
+}
+
+/** Unpaid invoice for the current billing period, if any. */
+function subscriber_open_invoice_for_period(int $subscriberId, ?string $period = null): ?array
+{
+    $period ??= subscription_current_period_label();
+
+    return db_one(
+        "SELECT id, invoice_number, status, notification_sent FROM subscription_invoices
+         WHERE subscriber_id = ? AND period_label = ? AND status IN ('Pending','Sent','Overdue','Failed')
+         ORDER BY id DESC LIMIT 1",
+        [$subscriberId, $period]
+    );
+}
+
+/** Marks unpaid invoices past due_date as Overdue. */
+function subscription_mark_overdue_invoices(): void
+{
+    $stmt = db()->prepare(
+        "UPDATE subscription_invoices SET status = 'Overdue'
+         WHERE status IN ('Pending', 'Sent') AND due_date < ?"
+    );
+    $stmt->execute([date('Y-m-d')]);
+}
+
+/**
+ * Active subscribers who need this period's invoice get one row plus SMS log and email (when configured).
+ *
+ * @return array{created: int, notified: int, errors: list<string>}
+ */
+function subscription_auto_issue_due_invoices(): array
+{
+    subscription_mark_overdue_invoices();
+    $stats = ['created' => 0, 'notified' => 0, 'errors' => []];
+    $rows = db_all("SELECT id FROM subscribers WHERE status = 'Active' ORDER BY id");
+    foreach ($rows as $row) {
+        $subId = (int) $row['id'];
+        if (!subscriber_can_generate_invoice($subId)) {
+            continue;
+        }
+        try {
+            $created = create_subscription_invoice($subId);
+        } catch (PDOException $e) {
+            $stats['errors'][] = 'Subscriber #' . $subId;
+            error_log('[jt_blr] subscription auto invoice ' . $subId . ': ' . $e->getMessage());
+            continue;
+        }
+        if ($created['error'] !== null || $created['reused']) {
+            continue;
+        }
+        ++$stats['created'];
+        $notice = notify_invoice($created['id']);
+        if ($notice === null) {
+            continue;
+        }
+        if (($notice['email_error'] ?? null) === null) {
+            ++$stats['notified'];
+        }
+    }
+
+    return $stats;
+}
+
+/** New invoice + auto-email only when this period is not paid and no unpaid invoice exists yet. */
+function subscriber_can_generate_invoice(int $subscriberId): bool
+{
+    $sub = db_one('SELECT status FROM subscribers WHERE id = ?', [$subscriberId]);
+    if ($sub === null || !subscriber_can_invoice((string) $sub['status'])) {
+        return false;
+    }
+    if (subscriber_period_paid($subscriberId)) {
+        return false;
+    }
+
+    return subscriber_open_invoice_for_period($subscriberId) === null;
+}
+
 /** @param array{name: string, mobile: string, email: ?string, family_members: ?string, gotra: ?string, seva_date: ?string, plan_name: string, plan_amount: float, frequency: string, status: string} $values */
 function add_subscriber(array $values): int
 {
@@ -286,7 +377,10 @@ function create_subscription_invoice(int $subscriberId): array
     if (!subscriber_can_invoice((string) $sub['status'])) {
         return ['error' => 'Only an Active subscriber can get a new invoice. Update the status first.'] + $none;
     }
-    $period = date('F Y');
+    $period = subscription_current_period_label();
+    if (subscriber_period_paid($subscriberId, $period)) {
+        return ['error' => 'This billing period (' . $period . ') is already paid. No new invoice is needed.'] + $none;
+    }
     $open = db_one(
         "SELECT id, invoice_number FROM subscription_invoices
          WHERE subscriber_id = ? AND period_label = ? AND status IN ('Pending','Sent','Overdue','Failed')
@@ -336,6 +430,19 @@ function issue_subscription_receipt(int $invoiceId, ?int $userId): array
     $paid = paid_subscription_invoice($invoiceId);
     if ($paid === null) {
         return ['error' => 'A receipt is made only after the invoice is paid.', 'number' => '', 'created' => false];
+    }
+    $existing = db_one(
+        'SELECT receipt_number, receipt_generated FROM donations WHERE id = ?',
+        [$paid['donation_id']]
+    );
+    $number = trim((string) ($existing['receipt_number'] ?? ''));
+    if (
+        $userId === null
+        && $existing !== null
+        && (int) ($existing['receipt_generated'] ?? 0) === 1
+        && $number !== ''
+    ) {
+        return ['error' => null, 'number' => $number, 'created' => false];
     }
     $issued = issue_donation_receipt($paid['donation_id'], $userId);
     return ['error' => null] + $issued;

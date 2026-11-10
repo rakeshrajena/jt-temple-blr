@@ -53,6 +53,7 @@ final class ErpJournalSync
         if (!empty($b['erp_donation_id'])) {
             $id = (int) $b['erp_donation_id'];
             $this->finalizeDonationReceipt($id, $actor);
+            $this->emailErpReceiptOnce($b, $id);
             return $id;
         }
         try {
@@ -62,6 +63,7 @@ final class ErpJournalSync
                     'erp_donation_id' => $donationId,
                     'updated_at' => now(),
                 ], 'id = :id', ['id' => (int) $b['id']]);
+                $this->emailErpReceiptOnce($b, $donationId);
                 return $donationId;
             }
         } catch (\Throwable $e) {
@@ -142,6 +144,7 @@ final class ErpJournalSync
         $add('bookings', 'erp_donation_id', 'INT NULL');
         $add('bookings', 'erp_receipt_cancel_id', 'INT NULL');
         $add('bookings', 'cancellation_status', 'VARCHAR(30) NULL');
+        $add('bookings', 'erp_receipt_emailed_at', 'DATETIME NULL');
         if (!$this->tablesReady()) {
             return;
         }
@@ -235,6 +238,54 @@ final class ErpJournalSync
     {
         $row = $this->db->one('SELECT receipt_number, receipt_generated FROM donations WHERE id = ?', [$donationId]);
         return $row && trim((string) ($row['receipt_number'] ?? '')) !== '' && (int) ($row['receipt_generated'] ?? 0) === 1;
+    }
+
+    /** Temple ERP receipt (PDF + public link), once per booking — separate from the booking invoice email. */
+    private function emailErpReceiptOnce(array $b, int $donationId): void
+    {
+        if (!$this->tablesReady() || $donationId <= 0) {
+            return;
+        }
+        $this->ensureLinkSchema();
+        if (trim((string) ($b['erp_receipt_emailed_at'] ?? '')) !== '') {
+            return;
+        }
+        $email = trim((string) ($b['email'] ?? ''));
+        if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            return;
+        }
+        if (!$this->donationHasReceipt($donationId)) {
+            return;
+        }
+        $token = $this->db->value('SELECT receipt_share_token FROM donations WHERE id = ?', [$donationId]);
+        if (!is_string($token) || preg_match('/^[a-f0-9]{32}$/', $token) !== 1) {
+            return;
+        }
+        $script = TempleLogo::erpRoot() . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'send_donation_receipt_email.php';
+        if (!is_file($script)) {
+            Logger::warning('ERP receipt email script missing', ['path' => $script]);
+            return;
+        }
+        $php = PHP_BINARY ?: 'php';
+        $cmd = escapeshellarg($php) . ' ' . escapeshellarg($script) . ' ' . $donationId . ' ' . escapeshellarg($email);
+        $lines = [];
+        $code = 0;
+        exec($cmd . ' 2>&1', $lines, $code);
+        if ($code !== 0) {
+            Logger::warning('ERP receipt email for booking failed', [
+                'booking' => $b['booking_no'] ?? '',
+                'donation' => $donationId,
+                'output' => implode("\n", $lines),
+            ]);
+            return;
+        }
+        if ($this->columnExists('bookings', 'erp_receipt_emailed_at')) {
+            $this->db->update('bookings', [
+                'erp_receipt_emailed_at' => now(),
+                'updated_at' => now(),
+            ], 'id = :id', ['id' => (int) $b['id']]);
+        }
+        Logger::info('ERP receipt emailed for online booking', ['booking' => $b['booking_no'] ?? '', 'donation' => $donationId]);
     }
 
     private function finalizeDonationReceipt(int $donationId, ?array $actor): void

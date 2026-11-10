@@ -282,6 +282,7 @@ CREATE TABLE subscription_invoices (
     paid_via                VARCHAR(30) NULL,
     payment_reference       VARCHAR(100) NULL,
     linked_donation_id      INT NULL,
+    gateway_order_id        VARCHAR(64) NULL,
     created_at              DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (subscriber_id) REFERENCES subscribers(id),
     FOREIGN KEY (linked_donation_id) REFERENCES donations(id)

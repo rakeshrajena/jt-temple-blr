@@ -277,6 +277,9 @@ function migrate_schema(PDO $pdo): void
     ensure_coupon_schema($pdo);
     ensure_invitation_schema($pdo);
     ensure_subscriber_schema($pdo);
+    if (function_exists('ensure_subscription_gateway_schema')) {
+        ensure_subscription_gateway_schema($pdo);
+    }
     ensure_selection_columns($pdo);
     ensure_write_claims($pdo);
     backfill_receipt_pdfs($pdo);

@@ -115,7 +115,9 @@ try {
     check($again['error'] === null && $again['reused'] && $again['id'] === $first['id'], 'an unpaid invoice for the same period is sent again, not duplicated');
     db_exec("UPDATE subscription_invoices SET status = 'Paid' WHERE id = ?", [$first['id']]);
     $afterPaid = create_subscription_invoice($id);
-    check($afterPaid['error'] === null && !$afterPaid['reused'] && $afterPaid['id'] !== $first['id'], 'a paid invoice does not block the next one');
+    check($afterPaid['error'] !== null && str_contains((string) $afterPaid['error'], 'already paid'), 'a paid billing period does not get another invoice');
+    check(!subscriber_can_generate_invoice($id), '+ Invoice is off when this period is paid');
+    check(subscriber_period_paid($id), 'paid period is detected for the subscriber');
     $paused = subscriber_input(subscriber_post(['mobile' => $mobile, 'plan_amount' => '1200', 'status' => 'Inactive']))['values'];
     update_subscriber($id, $paused, $userId);
     check(create_subscription_invoice($id)['error'] !== null, 'a subscriber who is not Active gets no invoice');

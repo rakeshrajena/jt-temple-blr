@@ -47,6 +47,15 @@ function dispatch_request(): void
         action_pay_confirm($m[1]);
         return;
     }
+    if (preg_match('#^pay/([^/]+)/gateway/(order|verify|sync)$#', $path, $m) === 1 && $method === 'POST') {
+        match ($m[2]) {
+            'order' => action_pay_gateway_order($m[1]),
+            'verify' => action_pay_gateway_verify($m[1]),
+            'sync' => action_pay_gateway_sync($m[1]),
+            default => subscription_gateway_json(404, ['error' => 'Not found.']),
+        };
+        return;
+    }
 
     if ($path === '' || $path === 'dashboard') {
         action_dashboard();
@@ -2603,6 +2612,21 @@ function action_report(string $type): void
 function action_subscriptions(string $method): void
 {
     login_required();
+    if ($method === 'GET') {
+        $auto = subscription_auto_issue_due_invoices();
+        if ($auto['created'] > 0) {
+            $msg = $auto['created'] . ' due invoice(s) created.';
+            if ($auto['notified'] > 0) {
+                $msg .= ' ' . $auto['notified'] . ' payment request(s) emailed (SMS logged for WhatsApp).';
+            } elseif ($auto['created'] > 0) {
+                $msg .= ' Use Send on each row if email was not configured.';
+            }
+            if ($auto['errors'] !== []) {
+                $msg .= ' ' . count($auto['errors']) . ' could not be created.';
+            }
+            flash('success', $msg);
+        }
+    }
     if ($method === 'POST') {
         $input = subscriber_input($_POST);
         if ($input['error'] !== null) {
@@ -2623,7 +2647,7 @@ function action_subscriptions(string $method): void
     $subs = db_all(
         "SELECT s.*,
             (SELECT COUNT(*) FROM subscription_invoices i WHERE i.subscriber_id = s.id AND i.status = 'Paid') AS paid_count,
-            (SELECT COUNT(*) FROM subscription_invoices i WHERE i.subscriber_id = s.id AND i.status IN ('Sent','Pending','Overdue')) AS due_count
+            (SELECT COUNT(*) FROM subscription_invoices i WHERE i.subscriber_id = s.id AND i.status IN ('Sent','Pending','Overdue','Failed')) AS due_count
          FROM subscribers s ORDER BY (s.status = 'Active') DESC, s.name"
     );
     $invoiceFilters = invoice_filters($_GET);
@@ -2674,10 +2698,15 @@ function action_generate_invoice(int $subId): void
         flash('error', $created['error']);
         redirect(url('subscriptions'));
     }
+    if ($created['reused']) {
+        flash(
+            'error',
+            'Invoice ' . $created['number'] . ' for this period is still unpaid. Use Send or Resend on that invoice — a new payment link is not created.'
+        );
+        redirect(url('subscriptions'));
+    }
     $number = $created['number'];
-    $made = $created['reused']
-        ? 'Invoice ' . $number . ' for this month was still unpaid, so no new invoice was made.'
-        : 'Invoice ' . $number . ' created.';
+    $made = 'Invoice ' . $number . ' created.';
     $sub = db_one('SELECT name, email FROM subscribers WHERE id = ?', [$subId]);
     $blocked = subscription_request_block_reason($sub['email'] ?? null, smtp_is_ready(load_messaging_settings()));
     if ($blocked !== null) {
@@ -2811,7 +2840,99 @@ function action_pay(string $token): void
         render('pay_invalid', [], false);
         return;
     }
-    render('pay_invoice', ['inv' => $inv], false);
+    if (($inv['status'] ?? '') === 'Paid') {
+        render('pay_success', [
+            'inv' => $inv,
+            'ref' => (string) ($inv['payment_reference'] ?? ''),
+        ], false);
+        return;
+    }
+    render('pay_invoice', [
+        'inv' => $inv,
+        'gateway' => subscription_gateway_enabled(),
+        'csrf' => csrf_token(),
+    ], false);
+}
+
+function action_pay_gateway_order(string $token): void
+{
+    $inv = find_invoice_by_token($token);
+    if ($inv === null) {
+        subscription_gateway_json(404, ['error' => 'This payment link is not valid.']);
+    }
+    if (($inv['status'] ?? '') === 'Paid') {
+        subscription_gateway_json(200, ['redirect' => url('pay/' . $token)]);
+    }
+    if (!subscription_gateway_enabled()) {
+        subscription_gateway_json(503, ['error' => 'Online payment is not configured. Contact the temple office.']);
+    }
+    try {
+        $order = subscription_gateway_create_order($inv);
+    } catch (Throwable $e) {
+        error_log('[jt_blr] subscription gateway order: ' . $e->getMessage());
+        subscription_gateway_json(502, ['error' => 'Could not start online payment. Please try again later.']);
+    }
+    subscription_gateway_json(200, [
+        'key' => subscription_gateway_public_key(),
+        'order_id' => $order['order_id'],
+        'amount' => $order['amount'],
+        'currency' => 'INR',
+        'name' => app_display_name(),
+        'description' => 'Subscription ' . ($inv['invoice_number'] ?? ''),
+        'prefill' => [
+            'name' => (string) ($inv['name'] ?? ''),
+            'email' => (string) ($inv['email'] ?? ''),
+            'contact' => (string) ($inv['mobile'] ?? ''),
+        ],
+    ]);
+}
+
+function action_pay_gateway_verify(string $token): void
+{
+    $inv = find_invoice_by_token($token);
+    if ($inv === null) {
+        subscription_gateway_json(404, ['error' => 'This payment link is not valid.']);
+    }
+    if (($inv['status'] ?? '') === 'Paid') {
+        subscription_gateway_json(200, ['redirect' => url('pay/' . $token) . '?paid=1']);
+    }
+    $verified = subscription_gateway_verify_post($_POST);
+    if ($verified === null) {
+        subscription_gateway_json(400, ['error' => 'Payment could not be verified.', 'retry_sync' => true]);
+    }
+    $expectedOrder = trim((string) ($inv['gateway_order_id'] ?? ''));
+    if ($expectedOrder !== '' && $verified['order_id'] !== $expectedOrder) {
+        subscription_gateway_json(400, ['error' => 'Payment does not match this invoice.']);
+    }
+    $result = subscription_complete_gateway_payment((int) $inv['id'], $verified['payment_id']);
+    if (!$result['ok']) {
+        subscription_gateway_json(500, ['error' => $result['error'] ?? 'Payment recording failed.']);
+    }
+    subscription_gateway_json(200, ['redirect' => url('pay/' . $token) . '?paid=1']);
+}
+
+function action_pay_gateway_sync(string $token): void
+{
+    $inv = find_invoice_by_token($token);
+    if ($inv === null) {
+        subscription_gateway_json(404, ['error' => 'This payment link is not valid.']);
+    }
+    if (($inv['status'] ?? '') === 'Paid') {
+        subscription_gateway_json(200, ['redirect' => url('pay/' . $token) . '?paid=1']);
+    }
+    $orderId = trim((string) ($inv['gateway_order_id'] ?? ''));
+    if ($orderId === '') {
+        subscription_gateway_json(404, ['error' => 'No pending online payment for this invoice.']);
+    }
+    $paymentId = subscription_gateway_fetch_captured_payment($orderId, subscription_invoice_amount_paise($inv));
+    if ($paymentId === null) {
+        subscription_gateway_json(404, ['error' => 'Payment not found yet. If money was deducted, wait a minute and try again.']);
+    }
+    $result = subscription_complete_gateway_payment((int) $inv['id'], $paymentId);
+    if (!$result['ok']) {
+        subscription_gateway_json(500, ['error' => $result['error'] ?? 'Payment recording failed.']);
+    }
+    subscription_gateway_json(200, ['redirect' => url('pay/' . $token) . '?paid=1']);
 }
 
 function action_pay_confirm(string $token): void
@@ -2824,6 +2945,11 @@ function action_pay_confirm(string $token): void
     }
     if ($inv['status'] === 'Paid') {
         render('pay_success', ['inv' => $inv, 'ref' => (string) ($inv['payment_reference'] ?? '')], false);
+        return;
+    }
+    if (subscription_gateway_enabled()) {
+        http_response_code(400);
+        echo 'Use the Pay now button for online payment.';
         return;
     }
     $paidVia = one_of(post_string('payment_method', 30), ['UPI', 'Card', 'Netbanking'], 'UPI');
@@ -2843,7 +2969,13 @@ function action_pay_confirm(string $token): void
         return;
     }
     try {
-        issue_subscription_receipt((int) $inv['id'], null);
+        $receipt = issue_subscription_receipt((int) $inv['id'], null);
+        if (($receipt['created'] ?? false) === true) {
+            $mail = send_subscription_receipt((int) $inv['id'], load_messaging_settings());
+            if (($mail['error'] ?? null) !== null) {
+                error_log('[jt_blr] subscription receipt email after demo pay: ' . (string) $mail['error']);
+            }
+        }
     } catch (Throwable $e) {
         error_log('[jt_blr] subscription receipt after payment ' . $inv['invoice_number'] . ': ' . $e->getMessage());
     }
@@ -2936,7 +3068,7 @@ function find_invoice_by_token(string $token): ?array
         return null;
     }
     return db_one(
-        'SELECT i.*, s.name, s.mobile, s.plan_name,
+        'SELECT i.*, s.name, s.mobile, s.email, s.plan_name,
                 d.receipt_number, d.receipt_generated, d.receipt_cancelled, d.receipt_share_token
          FROM subscription_invoices i
          JOIN subscribers s ON i.subscriber_id = s.id

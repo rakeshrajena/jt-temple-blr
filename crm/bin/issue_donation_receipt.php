@@ -6,15 +6,9 @@ if (PHP_SAPI !== 'cli') {
     exit(1);
 }
 
+define('JT_INSTALL_MINIMAL', true);
 define('APP_ROOT', dirname(__DIR__));
-require APP_ROOT . '/config.php';
-require APP_ROOT . '/includes/db.php';
-require APP_ROOT . '/includes/PdfDocument.php';
-require APP_ROOT . '/includes/barcode.php';
-require APP_ROOT . '/includes/qrcode.php';
-require APP_ROOT . '/includes/brand_mark.php';
-require APP_ROOT . '/includes/settings.php';
-require APP_ROOT . '/includes/receipt.php';
+require APP_ROOT . '/includes/bootstrap.php';
 
 $donationId = (int) ($argv[1] ?? 0);
 $userId = isset($argv[2]) ? (int) $argv[2] : null;
