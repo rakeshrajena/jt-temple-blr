@@ -6,13 +6,13 @@ $phone = setting('temple_phone');
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title><?= e(($title ? $title . ' · ' : '') . $templeName) ?></title>
 <meta name="description" content="Book pujas, ceremonies and prasadam coupons at <?= e($templeName) ?>.">
 <meta name="theme-color" content="#7a1d1d">
 <meta name="robots" content="<?= str_starts_with(\SJT\Core\App::request()->path, '/b/') ? 'noindex, nofollow' : 'index, follow' ?>">
 <link rel="icon" href="<?= e(temple_logo_url()) ?>" type="<?= e(temple_logo_icon_type()) ?>">
-<link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
+<link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=5">
 <script src="<?= e(asset('js/busy.js')) ?>" defer></script>
 <script src="<?= e(asset('js/app.js')) ?>" defer></script>
 </head>

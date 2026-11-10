@@ -12,11 +12,11 @@ $isActive = fn (string $p) => $p === '/admin' ? $path === '/admin' : str_starts_
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title><?= e(($title ?? 'Admin') . ' · Temple booking admin') ?></title>
 <link rel="icon" href="<?= e(temple_logo_url()) ?>" type="<?= e(temple_logo_icon_type()) ?>">
-<link rel="stylesheet" href="<?= e(asset('css/admin.css')) ?>">
+<link rel="stylesheet" href="<?= e(asset('css/admin.css')) ?>?v=2">
 <script src="<?= e(asset('js/busy.js')) ?>" defer></script>
 <script src="<?= e(asset('js/app.js')) ?>" defer></script>
 </head>

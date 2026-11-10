@@ -26,16 +26,20 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 <html lang="en-IN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <title><?= streaming_escape($title) ?> | Shree Jagannath Temple, Sarjapura</title>
   <style>
     :root { --maroon: #7a1d1d; --cream: #fbf5e9; --ink: #2a1b12; --ok: #1a6b3c; --err: #8b1a1a; }
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: system-ui, 'Segoe UI', sans-serif; background: var(--cream); color: var(--ink); line-height: 1.5; }
-    header { background: var(--maroon); color: #fff3e6; padding: 0.85rem 3.25rem 0.85rem 1.25rem; }
+    html { overflow-x: clip; -webkit-text-size-adjust: 100%; height: 100%; }
+    body {
+      margin: 0; font-family: system-ui, 'Segoe UI', sans-serif; background: var(--cream); color: var(--ink); line-height: 1.5;
+      overflow-x: clip; min-height: 100%; min-height: 100dvh; display: flex; flex-direction: column;
+    }
+    header { flex: none; background: var(--maroon); color: #fff3e6; padding: 0.85rem 3.25rem 0.85rem 1.25rem; }
     header a { color: #f2bd2c; }
-    main { max-width: 56rem; margin: 0 auto; padding: 1.25rem; }
+    main { flex: 1 0 auto; width: 100%; max-width: 56rem; margin: 0 auto; padding: 1.25rem max(1.25rem, env(safe-area-inset-right)) 1.5rem max(1.25rem, env(safe-area-inset-left)); box-sizing: border-box; }
     .player { position: relative; width: 100%; padding-top: 56.25%; background: #111; border-radius: 10px; overflow: hidden;
       box-shadow: 0 4px 20px rgba(42,27,18,.15); }
     .player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
@@ -61,6 +65,17 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
       width: 2.5rem; height: 2.5rem; border-radius: 50%; background: #fffdf8; color: #7a1d1d; border: 1px solid #e3d3bb;
       box-shadow: 0 2px 10px rgba(42, 27, 18, 0.18); cursor: pointer; padding: 0; }
     .stream-corner-icon:hover, .stream-corner-icon:focus { background: #f2bd2c; color: #4a0f0f; outline: 2px solid #f2bd2c; outline-offset: 2px; }
+    @media (max-width: 640px) {
+      header { padding: 0.75rem max(1rem, env(safe-area-inset-right)) 0.75rem max(3rem, env(safe-area-inset-left)); font-size: 0.95rem; }
+      .stream-corner-icon { top: max(0.5rem, env(safe-area-inset-top)); right: max(0.5rem, env(safe-area-inset-right)); }
+      .unavail h1 { font-size: 1.2rem; }
+      .lang { font-size: 1rem; }
+      .modal-actions { flex-direction: column; align-items: stretch; }
+      .modal-actions .btn, .modal-actions .btn-secondary { width: 100%; text-align: center; justify-content: center; }
+    }
+    @media (min-width: 641px) and (max-width: 1024px) {
+      main { padding-top: 1rem; padding-bottom: 1.25rem; }
+    }
   </style>
 </head>
 <body>
