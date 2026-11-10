@@ -32,6 +32,11 @@ python/receipts/*
 !python/uploads/.gitkeep
 !python/receipts/.gitkeep
 
+# Live stream URL (set on server only)
+Streaming/.streaming
+Streaming/.env
+Streaming/storage/
+
 # Booking app — secrets and runtime data (match Booking/ and booking/ for case-sensitive git)
 Booking/.env
 Booking/.env.*

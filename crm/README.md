@@ -96,3 +96,16 @@ crm/
 - Receipt and coupon PDFs are generated in PHP. Excel statements are read with Windows `tar` because this PHP build has no Zip extension. CSV upload works without that.
 - To reset the demo, drop the `sjt_temple_blr` database in AMPPS MySQL and reload the site.
 - Receipt PDFs, coupon PDFs, bank uploads, and logs under `storage/` are created at runtime and are listed in the repo `.gitignore`.
+
+## GoDaddy: `/crm` does not open (but `/Booking` works)
+
+Linux hosting is **case-sensitive**. The folder name must match the URL exactly (`crm/` → `https://yoursite.org/crm/`, `Booking/` → `https://yoursite.org/Booking/`).
+
+1. **Upload the full `crm/` tree** to `public_html/crm/` (not only `index.php`): `includes/`, `views/`, `static/`, `storage/` (with writable subfolders), `.htaccess`, and `index.php`.
+2. **`crm/.env` on the server** with real `DB_*` credentials (copy from `env.example`). Without it you may get 500 or “database connection failed”.
+3. **`storage/` permissions** 755 on folders, writable by PHP (`receipts`, `logs`, `uploads`, etc.).
+4. **First-time DB:** open `https://yoursite.org/crm/install.php` with `INSTALL_TOKEN`, then remove `install.php` and `INSTALL_TOKEN` after setup (same pattern as Booking).
+5. **Still 403?** In cPanel File Manager, confirm `public_html/crm/index.php` exists. Enable **Show Hidden Files** and confirm `crm/.htaccess` uploaded.
+6. **Still 500?** Read `crm/storage/logs/app.log` and the server PHP error log in cPanel.
+
+If you only deployed Booking and the home page so far, **`/crm` will not work until you upload `crm/`**.

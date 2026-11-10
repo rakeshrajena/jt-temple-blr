@@ -11,7 +11,7 @@ $phone = setting('temple_phone');
 <meta name="description" content="Book pujas, ceremonies and prasadam coupons at <?= e($templeName) ?>.">
 <meta name="theme-color" content="#7a1d1d">
 <meta name="robots" content="<?= str_starts_with(\SJT\Core\App::request()->path, '/b/') ? 'noindex, nofollow' : 'index, follow' ?>">
-<link rel="icon" href="<?= e(asset('img/logo.svg')) ?>" type="image/svg+xml">
+<link rel="icon" href="<?= e(temple_logo_url()) ?>" type="<?= e(temple_logo_icon_type()) ?>">
 <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
 <script src="<?= e(asset('js/busy.js')) ?>" defer></script>
 <script src="<?= e(asset('js/app.js')) ?>" defer></script>
@@ -21,7 +21,7 @@ $phone = setting('temple_phone');
 <header class="site-header">
   <div class="wrap header-inner">
     <a class="brand" href="<?= e(url('/')) ?>">
-      <img src="<?= e(asset('img/logo.svg')) ?>" alt="" width="44" height="44">
+      <img src="<?= e(temple_logo_url()) ?>" alt="" width="44" height="44">
       <span class="brand-text"><span class="brand-name"><?= e($templeName) ?></span><span class="brand-sub">Online Seva &amp; Prasadam Booking</span></span>
     </a>
     <nav class="site-nav" aria-label="Main">

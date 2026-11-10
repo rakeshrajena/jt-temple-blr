@@ -15,7 +15,7 @@ $isActive = fn (string $p) => $p === '/admin' ? $path === '/admin' : str_starts_
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title><?= e(($title ?? 'Admin') . ' · Temple booking admin') ?></title>
-<link rel="icon" href="<?= e(asset('img/logo.svg')) ?>" type="image/svg+xml">
+<link rel="icon" href="<?= e(temple_logo_url()) ?>" type="<?= e(temple_logo_icon_type()) ?>">
 <link rel="stylesheet" href="<?= e(asset('css/admin.css')) ?>">
 <script src="<?= e(asset('js/busy.js')) ?>" defer></script>
 <script src="<?= e(asset('js/app.js')) ?>" defer></script>
@@ -23,7 +23,7 @@ $isActive = fn (string $p) => $p === '/admin' ? $path === '/admin' : str_starts_
 <body class="admin">
 <a class="skip-link" href="#main">Skip to main content</a>
 <header class="a-header">
-  <a class="a-brand" href="<?= e(url('/admin')) ?>"><img src="<?= e(asset('img/logo.svg')) ?>" alt="" width="32" height="32"> Temple Booking Admin</a>
+  <a class="a-brand" href="<?= e(url('/admin')) ?>"><img src="<?= e(temple_logo_url()) ?>" alt="" width="32" height="32"> Temple Booking Admin</a>
   <?php if (!empty($admin)): ?>
   <div class="a-user">
     <span><?= e($admin['name']) ?> <small>(<?= $admin['role'] === 'super' ? 'senior admin' : 'staff' ?>)</small></span>

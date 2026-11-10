@@ -4,6 +4,7 @@ declare(strict_types=1);
 use SJT\Core\App;
 use SJT\Core\Env;
 use SJT\Core\Session;
+use SJT\Service\TempleLogo;
 
 /** True when unified install loaded CRM helpers first (same request). */
 function booking_helpers_crm_context(): bool
@@ -258,12 +259,37 @@ if (!function_exists('badge')) {
     }
 }
 
+/** Same logo as CRM Settings › identity (served via /brand/logo). */
+if (!function_exists('temple_logo_url')) {
+    function temple_logo_url(): string
+    {
+        return TempleLogo::publicUrl() ?? asset('img/logo.svg');
+    }
+}
+
+if (!function_exists('temple_logo_icon_type')) {
+    function temple_logo_icon_type(): string
+    {
+        $path = TempleLogo::filePath();
+        if ($path === null) {
+            return 'image/svg+xml';
+        }
+        return match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+            'png' => 'image/png',
+            'jpg', 'jpeg' => 'image/jpeg',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            default => 'image/svg+xml',
+        };
+    }
+}
+
 if (!function_exists('booking_busy_overlay')) {
     function booking_busy_overlay(): void
     {
         echo '<div id="appBusy" class="busy-screen" hidden>'
             . '<div class="busy-card" role="status" aria-live="polite">'
-            . '<img src="' . e(asset('img/logo.svg')) . '" alt="" class="busy-logo">'
+            . '<img src="' . e(temple_logo_url()) . '" alt="" class="busy-logo">'
             . '<div class="busy-spin" aria-hidden="true"></div>'
             . '<p id="appBusyMessage">Please wait…</p>'
             . '</div></div>';
