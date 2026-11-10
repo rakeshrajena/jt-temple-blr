@@ -7,9 +7,40 @@
   var FOOD_BOOKING =
     window.SJT_BOOKING_FOOD_URL ||
     (BOOKING.indexOf('?') === -1 ? BOOKING + '?service=food-only' : BOOKING);
+  var LIVE = (window.SJT_LIVE_DARSHAN_URL || 'https://sjtbengaluru.org/Streaming').replace(/\/$/, '');
+
+  function navMobileClose(template) {
+    if (template.getAttribute('onClick')) {
+      return function () {
+        var menuBtn = document.querySelector('header button.md\\:hidden, header button[class*="md:hidden"]');
+        if (menuBtn && menuBtn.getAttribute('aria-expanded') === 'true') {
+          menuBtn.click();
+        }
+      };
+    }
+    return null;
+  }
+
+  function insertNavLink(ul, before, template, href, label, marker) {
+    if (ul.querySelector('[' + marker + ']')) {
+      return;
+    }
+    var li = document.createElement('li');
+    var a = document.createElement('a');
+    a.href = href;
+    a.setAttribute(marker, '1');
+    a.textContent = label;
+    a.className = template.className;
+    var onClose = navMobileClose(template);
+    if (onClose) {
+      a.addEventListener('click', onClose);
+    }
+    li.appendChild(a);
+    before.parentNode.insertBefore(li, before);
+  }
 
   function patchNavList(ul) {
-    if (!ul || ul.querySelector('[data-sjt-booking-nav]')) {
+    if (!ul) {
       return;
     }
     var donateLi = null;
@@ -28,22 +59,8 @@
     if (!donateLi || !template) {
       return;
     }
-    var li = document.createElement('li');
-    var a = document.createElement('a');
-    a.href = BOOKING;
-    a.setAttribute('data-sjt-booking-nav', '1');
-    a.textContent = 'Online Booking';
-    a.className = template.className;
-    if (template.getAttribute('onClick')) {
-      a.addEventListener('click', function () {
-        var menuBtn = document.querySelector('header button.md\\:hidden, header button[class*="md:hidden"]');
-        if (menuBtn && menuBtn.getAttribute('aria-expanded') === 'true') {
-          menuBtn.click();
-        }
-      });
-    }
-    li.appendChild(a);
-    donateLi.parentNode.insertBefore(li, donateLi);
+    insertNavLink(ul, donateLi, template, BOOKING, 'Online Booking', 'data-sjt-booking-nav');
+    insertNavLink(ul, donateLi, template, LIVE, 'Live Darshan', 'data-sjt-live-nav');
   }
 
   function patchHeaderNav() {
@@ -60,6 +77,30 @@
         a.textContent = 'Online Booking';
         a.setAttribute('data-sjt-booking-cta', '1');
       }
+    });
+  }
+
+  function patchHeroLiveButton() {
+    if (document.querySelector('[data-sjt-hero-live]')) {
+      return;
+    }
+    document.querySelectorAll('a[href="#about"]').forEach(function (learn) {
+      if (!/learn more/i.test((learn.textContent || '').trim())) {
+        return;
+      }
+      var row = learn.closest('.flex');
+      if (!row || row.querySelector('[data-sjt-hero-live]')) {
+        return;
+      }
+      var live = document.createElement('a');
+      live.href = LIVE;
+      live.setAttribute('data-sjt-hero-live', '1');
+      live.textContent = 'Live Darshan';
+      live.className =
+        learn.className ||
+        'inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium h-11 rounded-md px-8 bg-temple-saffron hover:bg-temple-orange text-white';
+      live.setAttribute('role', 'button');
+      row.appendChild(live);
     });
   }
 
@@ -226,6 +267,7 @@
   function run() {
     patchHeaderNav();
     patchHeroButtons();
+    patchHeroLiveButton();
     patchDonateSection();
     patchServicesSection();
   }

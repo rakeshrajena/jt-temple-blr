@@ -227,7 +227,13 @@ First run creates schema and demo data on this machine only.
 2. Open `Booking/install.php` or run `php bin/console.php migrate`.
 3. Public site: `/Booking` · Admin: `/Booking/admin`
 
-### 3. Demo accounts (local install only)
+### 3. Live darshan (`Streaming/`)
+
+1. Upload `Streaming/` to `public_html/Streaming/`.
+2. Copy `Streaming/.streaming.example` → `Streaming/.streaming` and put **one** `https://` stream URL on a line (YouTube live, etc.).
+3. Home page **Live Darshan** opens `/Streaming/`. If the file is missing or empty, devotees see the message in English, Hindi, Odia, and Kannada.
+
+### 4. Demo accounts (local install only)
 
 Passwords are **not documented in this repo**. Change them under **Users** before any shared or production use.
 

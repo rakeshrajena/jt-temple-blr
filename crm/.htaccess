@@ -9,6 +9,9 @@
   </IfModule>
 </FilesMatch>
 
+Options -Indexes -MultiViews
+DirectoryIndex index.php
+
 RewriteEngine On
 
 RewriteRule ^\.env - [F,L]

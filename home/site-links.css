@@ -3,6 +3,11 @@
   display: none !important;
 }
 
+/* Hero: Live Darshan beside Learn More (injected by site-links.js) */
+a[data-sjt-hero-live] {
+  text-decoration: none;
+}
+
 #services .sjt-services-online {
   margin: 0 auto 1rem;
   text-align: left;
