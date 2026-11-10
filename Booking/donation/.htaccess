@@ -1,0 +1,26 @@
+# Standalone online donation (Razorpay). Shares Booking DB and gateway config.
+
+<FilesMatch "(?i)^(\.env.*|schema\.sql)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+Options -Indexes -MultiViews
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^includes/ - [F,L]
+    RewriteRule ^worker/_auth\.php$ - [F,L]
+    RewriteRule ^worker/erp_bootstrap\.php$ - [F,L]
+    RewriteRule (^|/)\. - [F,L]
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+    RewriteRule ^ index.php [L,QSA]
+</IfModule>

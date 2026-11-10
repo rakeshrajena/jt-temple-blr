@@ -8,6 +8,7 @@
     window.SJT_BOOKING_FOOD_URL ||
     (BOOKING.indexOf('?') === -1 ? BOOKING + '?service=food-only' : BOOKING);
   var LIVE = (window.SJT_LIVE_DARSHAN_URL || 'https://sjtbengaluru.org/Streaming').replace(/\/$/, '');
+  var DONATION = (window.SJT_DONATION_URL || '/Booking/donation/').replace(/\/$/, '');
 
   function navMobileClose(template) {
     if (template.getAttribute('onClick')) {
@@ -59,6 +60,12 @@
     if (!donateLi || !template) {
       return;
     }
+    var donateA = donateLi.querySelector('a');
+    if (donateA && !donateA.getAttribute('data-sjt-donation-nav')) {
+      donateA.href = DONATION;
+      donateA.setAttribute('data-sjt-donation-nav', '1');
+    }
+    insertNavLink(ul, donateLi, template, DONATION, 'Donate online', 'data-sjt-donate-nav');
     insertNavLink(ul, donateLi, template, BOOKING, 'Online Booking', 'data-sjt-booking-nav');
     insertNavLink(ul, donateLi, template, LIVE, 'Live Darshan', 'data-sjt-live-nav');
   }
@@ -138,11 +145,14 @@
     box.className = 'sjt-donation-cta';
     box.setAttribute('data-sjt-donation-cta', '1');
     box.innerHTML =
-      '<p class="sjt-donation-cta-lead">Book puja, prasadam, and temple services online. Pay by UPI and receive your invoice by email.</p>' +
-      '<p class="sjt-donation-cta-note">Cash and bank donations are still welcomed at the temple office. The online donation form on this page is temporarily unavailable.</p>' +
+      '<p class="sjt-donation-cta-lead">Support the temple with a secure online donation (up to ₹10,000 per transaction) by card or UPI.</p>' +
+      '<p class="sjt-donation-cta-note">For donations above ₹10,000, please contact temple management for confirmation and pay offline after confirmation.</p>' +
       '<a class="sjt-donation-cta-btn" href="' +
+      DONATION +
+      '">Donate online</a>' +
+      '<a class="sjt-donation-cta-link" href="' +
       BOOKING +
-      '">Book online</a>' +
+      '">Book puja &amp; services</a>' +
       '<a class="sjt-donation-cta-link" href="' +
       LOOKUP +
       '">Look up an existing booking</a>';
@@ -264,12 +274,45 @@
     sec.dataset.sjtServicesPatched = '1';
   }
 
+  function patchFooterDonateLinks() {
+    document.querySelectorAll('footer a[href="#donate"], footer a[href*="donate"]').forEach(function (a) {
+      if (a.getAttribute('data-sjt-footer-donate')) {
+        return;
+      }
+      if (/donate/i.test(a.textContent || '') || a.getAttribute('href') === '#donate') {
+        a.href = DONATION;
+        a.setAttribute('data-sjt-footer-donate', '1');
+      }
+    });
+  }
+
+  function patchBottomCta() {
+    if (document.querySelector('[data-sjt-bottom-cta]')) {
+      return;
+    }
+    var bar = document.createElement('div');
+    bar.className = 'sjt-bottom-cta';
+    bar.setAttribute('data-sjt-bottom-cta', '1');
+    bar.setAttribute('role', 'navigation');
+    bar.setAttribute('aria-label', 'Quick links');
+    bar.innerHTML =
+      '<a class="sjt-bottom-cta-btn sjt-bottom-cta-donate" href="' +
+      DONATION +
+      '">Donate online</a>' +
+      '<a class="sjt-bottom-cta-btn sjt-bottom-cta-book" href="' +
+      BOOKING +
+      '">Book service</a>';
+    document.body.appendChild(bar);
+  }
+
   function run() {
     patchHeaderNav();
     patchHeroButtons();
     patchHeroLiveButton();
     patchDonateSection();
     patchServicesSection();
+    patchFooterDonateLinks();
+    patchBottomCta();
   }
 
   run();

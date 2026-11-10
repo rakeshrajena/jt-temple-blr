@@ -465,8 +465,11 @@ function coupon_code_from_input(string $raw): string
 function app_public_origin(): string
 {
     $configured = rtrim(env_value('APP_URL'), '/');
-    if (preg_match('#^https?://[A-Za-z0-9._:-]+$#', $configured) === 1) {
-        return $configured;
+    if ($configured !== '' && preg_match('#^https?://#i', $configured) === 1) {
+        $parts = parse_url($configured);
+
+        return ($parts['scheme'] ?? 'https') . '://' . ($parts['host'] ?? 'localhost')
+            . (isset($parts['port']) ? ':' . $parts['port'] : '');
     }
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
@@ -474,20 +477,22 @@ function app_public_origin(): string
     if (preg_match('/^[A-Za-z0-9._:-]+$/', $host) !== 1) {
         $host = 'localhost';
     }
+
     return ($https ? 'https' : 'http') . '://' . $host;
 }
 
 function app_web_script(): string
 {
     if (PHP_SAPI !== 'cli') {
-        return app_script();
+        $script = app_script();
+        if (str_contains($script, '/crm/') || str_contains($script, '/php/')) {
+            return $script;
+        }
+
+        return crm_public_index_script();
     }
-    $root = str_replace('\\', '/', APP_ROOT);
-    $local = '/jt_blr/jt-temple-blr/php';
-    if (str_ends_with($root, $local)) {
-        return $local . '/index.php';
-    }
-    return '/index.php';
+
+    return crm_public_index_script();
 }
 
 function coupon_scan_url(string $code): string

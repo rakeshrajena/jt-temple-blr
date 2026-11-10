@@ -96,11 +96,18 @@ $subscriberFields = static function (string $prefix, array $s = []): void {
         <td>
           <div class="subscriber-actions">
             <button class="btn btn-sm btn-outline" type="button" data-reveal="subscriber-edit-<?= e((string) $s['id']) ?>"><?= e(t('common.update')) ?></button>
-            <?php if (subscriber_can_invoice((string) $s['status'])): ?>
+            <?php if (subscriber_can_generate_invoice((int) $s['id'])): ?>
             <form method="POST" action="<?= e(url('subscriptions/' . $s['id'] . '/generate_invoice')) ?>">
               <?= csrf_field() ?>
               <button class="btn btn-sm btn-outline" type="submit" title="<?= e(!empty($s['email']) ? 'Creates this month’s invoice and emails the payment request to ' . $s['email'] : 'Creates this month’s invoice. No email is saved for this subscriber.') ?>">+ Invoice</button>
             </form>
+            <?php elseif (subscriber_can_invoice((string) $s['status'])): ?>
+              <?php if (subscriber_period_paid((int) $s['id'])): ?>
+              <span class="muted small" title="This period is paid"><?= e(subscription_current_period_label()) ?> paid</span>
+              <?php else: ?>
+                <?php $openInv = subscriber_open_invoice_for_period((int) $s['id']); ?>
+              <span class="muted small" title="Use Send or Resend on the invoice list">Unpaid <?= $openInv ? e((string) $openInv['invoice_number']) : 'invoice' ?></span>
+              <?php endif; ?>
             <?php endif; ?>
           </div>
         </td>
@@ -119,7 +126,7 @@ $subscriberFields = static function (string $prefix, array $s = []): void {
     </table>
 </div>
 <div class="panel">
-  <h3 id="invoices"><?= invoice_filters_active($invoiceFilters) ? e(t('ui.invoices_shown', ['shown' => (string) count($invoices), 'total' => (string) $invoiceTotal])) : 'All Invoices (' . count($invoices) . ')' ?><?= help_tip('+ Invoice creates this month’s invoice and emails the subscriber a payment request with the plan, period, amount, due date, and a pay or donate link. If this month’s invoice is still unpaid, it is emailed again instead of making a second one. Without a saved email or outgoing mail in Settings, nothing is emailed. Send writes the message to the log. If outgoing mail is saved in Settings, it is also emailed. WhatsApp opens WhatsApp Web with the message filled in. Nothing is sent through a WhatsApp API. The devotee opens the payment link and pays. The invoice then shows Paid here, and the payment is copied into Donations. A receipt is made at once in the same format as a donation receipt, and its number opens the PDF. Send receipt emails that PDF to the subscriber. Generate receipt makes one if it is missing.') ?></h3>
+  <h3 id="invoices"><?= invoice_filters_active($invoiceFilters) ? e(t('ui.invoices_shown', ['shown' => (string) count($invoices), 'total' => (string) $invoiceTotal])) : 'All Invoices (' . count($invoices) . ')' ?><?= help_tip('+ Invoice appears only when this month is not paid and no unpaid invoice exists yet; it creates one invoice and emails the payment link once. If the period is paid or an unpaid invoice already exists, use Send or Resend on that row instead. Paid invoices never get a new payment link. WhatsApp opens WhatsApp Web with the message filled in. After payment the invoice shows Paid, posts to Donations, and a receipt can be emailed from this list.') ?></h3>
   <form class="filters" method="GET" action="<?= e(app_script()) ?>#invoices">
     <input type="hidden" name="r" value="subscriptions">
     <div class="form-group"><label for="invoice-q"><?= e(t('ui.invoice_search')) ?></label><input id="invoice-q" type="search" name="q" value="<?= e($invoiceFilters['q']) ?>"></div>

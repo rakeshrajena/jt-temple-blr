@@ -1,4 +1,4 @@
-<?php /** @var array<string,mixed> $inv */ ?>
+<?php /** @var array<string,mixed> $inv */ /** @var bool $gateway */ /** @var string $csrf */ ?>
 <!DOCTYPE html>
 <html lang="<?= e(current_locale()) ?>">
 <head>
@@ -19,6 +19,8 @@
     .pay-method input { display: none; }
     .pay-method input:checked + span { color: var(--maroon); font-weight: 700; }
     .pay-method-box:has(input:checked) { border-color: var(--gold); background: var(--amber-bg); }
+    .pay-error { color: var(--red, #b42318); font-size: 13px; text-align: center; margin: 12px 0 0; }
+    .pay-sync { margin-top: 10px; width: 100%; justify-content: center; }
   </style>
 </head>
 <body>
@@ -35,6 +37,11 @@
       <div class="pay-detail-row"><span><?= e(t('common.status')) ?></span><span><span class="badge <?= $inv['status'] === 'Overdue' ? 'badge-red' : ($inv['status'] === 'Paid' ? 'badge-green' : 'badge-amber') ?>"><?= e(t_fixed('status', (string) $inv['status'])) ?></span></span></div>
       <?php if ($inv['status'] === 'Paid'): ?>
         <p style="text-align:center; color:var(--green); font-size:13.5px; margin-top:16px;"><?= e(t('pay.already', ['ref' => (string) $inv['payment_reference']])) ?></p>
+      <?php elseif ($gateway): ?>
+        <p id="sub-pay-error" class="pay-error" hidden></p>
+        <button class="btn btn-primary" type="button" id="sub-pay-btn" style="width:100%; justify-content:center; padding:12px; margin-top:16px;"><?= e(t('pay.now', ['amount' => money($inv['amount'])])) ?></button>
+        <button class="btn btn-secondary pay-sync" type="button" id="sub-pay-sync" hidden><?= e(t('pay.sync', ['default' => 'Money deducted but page stuck? Tap here to finish'])) ?></button>
+        <p style="text-align:center; color:var(--ink-soft); font-size:11px; margin-top:14px;"><?= e(t('pay.gateway_note', ['default' => 'Pay securely with UPI, card, or net banking. Your receipt will be emailed after payment.'])) ?></p>
       <?php else: ?>
       <form method="POST" action="<?= e(url('pay/' . $inv['payment_token'] . '/confirm')) ?>">
         <?= csrf_field() ?>
@@ -52,5 +59,18 @@
     </div>
   </div>
   <?php app_busy_overlay(); ?>
+  <?php if ($inv['status'] !== 'Paid' && !empty($gateway)): ?>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    window.SJT_SUBSCRIPTION_PAY = {
+      token: <?= json_encode((string) $inv['payment_token'], JSON_THROW_ON_ERROR) ?>,
+      csrf: <?= json_encode($csrf, JSON_THROW_ON_ERROR) ?>,
+      orderUrl: <?= json_encode(url('pay/' . $inv['payment_token'] . '/gateway/order'), JSON_THROW_ON_ERROR) ?>,
+      verifyUrl: <?= json_encode(url('pay/' . $inv['payment_token'] . '/gateway/verify'), JSON_THROW_ON_ERROR) ?>,
+      syncUrl: <?= json_encode(url('pay/' . $inv['payment_token'] . '/gateway/sync'), JSON_THROW_ON_ERROR) ?>
+    };
+  </script>
+  <script src="<?= e(asset('js/pay-gateway.js')) ?>?v=1"></script>
+  <?php endif; ?>
 </body>
 </html>

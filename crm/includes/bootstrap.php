@@ -36,6 +36,7 @@ require APP_ROOT . '/includes/settings.php';
 require APP_ROOT . '/includes/brand_mark.php';
 require APP_ROOT . '/includes/selections.php';
 require APP_ROOT . '/includes/subscribers.php';
+require APP_ROOT . '/includes/subscription_gateway.php';
 require APP_ROOT . '/includes/suggest.php';
 require APP_ROOT . '/includes/accounts.php';
 require APP_ROOT . '/includes/invitations.php';

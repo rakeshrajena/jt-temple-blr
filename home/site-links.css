@@ -172,3 +172,53 @@ a[data-sjt-hero-live] {
   text-decoration: underline;
   opacity: 0.95;
 }
+
+/* Fixed quick actions at bottom of home page (loaded after React mount) */
+.sjt-bottom-cta {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9990;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 0.65rem 1rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+  background: rgba(45, 24, 16, 0.94);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.2);
+}
+
+.sjt-bottom-cta-btn {
+  display: inline-block;
+  padding: 0.6rem 1.15rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none;
+  text-align: center;
+  min-width: 8.5rem;
+}
+
+.sjt-bottom-cta-donate {
+  background: #d9701a;
+  color: #fff !important;
+}
+
+.sjt-bottom-cta-donate:hover {
+  background: #c45f10;
+}
+
+.sjt-bottom-cta-book {
+  background: #fff;
+  color: #3d2014 !important;
+}
+
+.sjt-bottom-cta-book:hover {
+  background: #f3ebe4;
+}
+
+body:has(.sjt-bottom-cta) {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+}

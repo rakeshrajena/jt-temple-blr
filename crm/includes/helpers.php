@@ -17,6 +17,42 @@ function app_dir_url(): string
     return rtrim(str_replace('\\', '/', dirname(app_script())), '/');
 }
 
+/** Path to CRM front controller for public links (receipts, coupons). Works under CLI and nested workers. */
+function crm_public_index_script(): string
+{
+    $configured = rtrim(env_value('APP_URL'), '/');
+    if ($configured !== '' && preg_match('#^https?://#i', $configured) === 1) {
+        $path = parse_url($configured, PHP_URL_PATH);
+        if (is_string($path) && $path !== '' && $path !== '/') {
+            return rtrim($path, '/') . '/index.php';
+        }
+    }
+
+    $booking = rtrim(env_value('BOOKING_APP_URL'), '/');
+    if ($booking !== '' && preg_match('#^https?://#i', $booking) === 1) {
+        $path = (string) (parse_url($booking, PHP_URL_PATH) ?? '');
+        $path = rtrim($path, '/');
+        if ($path !== '') {
+            $parent = preg_replace('#/Booking$#i', '', $path);
+            $erpFolder = basename(str_replace('\\', '/', defined('APP_ROOT') ? APP_ROOT : 'crm'));
+            if (!in_array($erpFolder, ['crm', 'php'], true)) {
+                $erpFolder = 'crm';
+            }
+
+            return ($parent !== '' ? $parent : '') . '/' . $erpFolder . '/index.php';
+        }
+    }
+
+    $root = str_replace('\\', '/', defined('APP_ROOT') ? APP_ROOT : '');
+    foreach (['/jt_blr/jt-temple-blr/crm', '/jt_blr/jt-temple-blr/php'] as $local) {
+        if ($root !== '' && str_ends_with($root, $local)) {
+            return $local . '/index.php';
+        }
+    }
+
+    return '/crm/index.php';
+}
+
 function url(string $path = '', array $query = []): string
 {
     $path = trim($path, '/');
