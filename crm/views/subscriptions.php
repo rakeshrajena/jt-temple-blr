@@ -167,7 +167,7 @@ $subscriberFields = static function (string $prefix, array $s = []): void {
     <?= csrf_field() ?>
     <div class="toolbar">
       <button class="btn btn-gold btn-sm" type="submit" id="bulkSendBtn" disabled>📲 Send Selected (<span id="selCount">0</span>)</button>
-      <span style="color:var(--ink-soft); font-size:12.5px;">Select invoices below, or use the header checkbox to select all unpaid invoices.</span>
+      <span class="panel-table-hint">Select invoices below, or use the header checkbox to select all unpaid invoices.</span>
     </div>
     <table class="data-table">
       <tr>

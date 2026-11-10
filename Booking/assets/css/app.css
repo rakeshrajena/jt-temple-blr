@@ -23,10 +23,19 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-text-size-adjust: 100%;
+  overflow-x: clip;
+  height: 100%;
+}
 body {
   margin: 0; background: var(--cream); color: var(--ink);
   font: 18px/1.55 var(--sans);
+  overflow-x: clip;
+  min-height: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 img, svg { max-width: 100%; height: auto; }
 a { color: var(--maroon); text-underline-offset: 3px; }
@@ -44,27 +53,106 @@ p { margin: 0 0 1em; }
 .skip-link { position: absolute; left: -999px; top: 0; background: #fff; padding: .6rem 1rem; z-index: 10; }
 .skip-link:focus { left: 1rem; }
 
-.wrap { max-width: 980px; margin: 0 auto; padding: 0 16px; }
-main.wrap { padding-top: 20px; padding-bottom: 40px; min-height: 60vh; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); }
+main.wrap {
+  flex: 1 0 auto;
+  width: 100%;
+  padding-top: 20px;
+  padding-bottom: 32px;
+}
 main:focus { outline: none; }
 
 /* ---------- header / footer */
 .site-header {
+  flex: none;
   background: var(--maroon); color: #fff;
   border-bottom: 5px solid var(--turmeric);
   box-shadow: inset 0 -9px 0 -5px var(--saffron);
 }
 .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; padding-bottom: 12px; flex-wrap: wrap; }
-.brand { display: flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; }
+.brand { display: flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; min-width: 0; }
 .brand img { flex: none; background: var(--paper); border-radius: 50%; padding: 3px; }
-.brand-text { display: flex; flex-direction: column; }
-.brand-name { font-family: var(--serif); font-weight: 700; font-size: 1.05rem; line-height: 1.2; }
-.brand-sub { font-size: .8rem; opacity: .9; }
-.site-nav { display: flex; gap: 6px; }
-.site-nav a { color: #fff; text-decoration: none; padding: .45rem .8rem; border-radius: 999px; border: 1px solid rgba(255,255,255,.35); font-size: .95rem; }
+.brand-text { display: flex; flex-direction: column; min-width: 0; }
+.brand-name { font-family: var(--serif); font-weight: 700; font-size: 1.05rem; line-height: 1.25; overflow-wrap: anywhere; }
+.brand-sub { font-size: .8rem; opacity: .9; line-height: 1.3; }
+.site-nav { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+.site-nav a {
+  display: inline-flex; align-items: center; justify-content: center; text-align: center;
+  color: #fff; text-decoration: none; line-height: 1.25;
+  padding: .5rem .75rem; border-radius: 999px; border: 1px solid rgba(255,255,255,.35); font-size: .95rem;
+}
 .site-nav a:hover { background: rgba(255,255,255,.12); color: #fff; }
 
-.site-footer { background: var(--maroon-dark); color: #f6e7d2; padding: 24px 0; font-size: .95rem; text-align: center; }
+@media (max-width: 720px) {
+  .header-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding-bottom: 14px;
+  }
+  .brand { width: 100%; }
+  .site-nav {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .site-nav a {
+    min-height: 44px;
+    padding: .45rem .55rem;
+    font-size: .875rem;
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .site-nav {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Laptop / tablet desktop: restore header row + pill nav (overrides phone grid) */
+@media (min-width: 721px) {
+  .header-inner {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+  }
+  .brand { width: auto; }
+  .site-nav {
+    width: auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    grid-template-columns: unset;
+  }
+  .site-nav a {
+    min-height: 0;
+    border-radius: 999px;
+    font-size: .95rem;
+    padding: .5rem .75rem;
+  }
+}
+
+/* Tablet: two home cards per row; third centered */
+@media (min-width: 481px) and (max-width: 719px) {
+  .home-paths { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-paths > li:last-child:nth-child(3) {
+    grid-column: 1 / -1;
+    max-width: 22rem;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+.site-footer {
+  flex: none;
+  margin-top: auto;
+  background: var(--maroon-dark); color: #f6e7d2; padding: 24px 0; font-size: .95rem; text-align: center;
+}
 .site-footer a { color: #ffe3a6; }
 .site-footer p { margin: .3em 0; }
 .jai { font-family: var(--serif); color: var(--turmeric); letter-spacing: .05em; }
@@ -338,6 +426,7 @@ fieldset.card > legend { float: left; width: 100%; padding-top: 2px; }
 fieldset.card > legend + * { clear: both; }
 
 /* Availability alert when a chosen date is closed or full */
+.avail-dialog:not([open]) { display: none; }
 .avail-dialog {
   border: 0; padding: 0; max-width: min(520px, calc(100vw - 32px));
   border-radius: var(--radius); box-shadow: 0 12px 40px rgba(40, 20, 10, .25);
@@ -364,3 +453,26 @@ fieldset.card > legend + * { clear: both; }
 .busy-spin { width: 36px; height: 36px; margin: 0 auto 14px; border: 3px solid #e6dcc8; border-top-color: var(--maroon); border-radius: 50%; animation: busy-spin 0.8s linear infinite; }
 @keyframes busy-spin { to { transform: rotate(360deg); } }
 body.is-busy { overflow: hidden; }
+
+@media (max-width: 480px) {
+  .brand-name { font-size: 0.98rem; }
+  .brand-sub { font-size: 0.72rem; line-height: 1.25; }
+  .header-inner { padding-top: 8px; padding-bottom: 10px; }
+  .step-nav { flex-direction: column; align-items: stretch; }
+  .step-nav .btn-primary { margin-left: 0; width: 100%; }
+  .pay-card .pay-head { flex-direction: column; align-items: stretch; }
+  .amount { font-size: 1.85rem; overflow-wrap: anywhere; }
+  dl.kv { grid-template-columns: 1fr; gap: 2px 0; }
+  dl.kv dt { margin-top: 6px; }
+  .field-narrow { max-width: none; width: 100%; }
+  .actions { flex-direction: column; align-items: stretch; }
+  .actions .btn { width: 100%; }
+  .row-between { flex-direction: column; align-items: stretch; }
+}
+
+/* Tablet: prasad coupon cards in two columns when room allows */
+@media (min-width: 481px) and (max-width: 900px) {
+  .coupons { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+
+body > #appBusy[hidden] { display: none; }
