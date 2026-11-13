@@ -17,6 +17,7 @@ $filterable = $reportType === 'donations' || $reportType === 'expenses';
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <?php app_favicon_link(); ?>
   <title><?= e($title) ?></title>
   <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=32">
 </head>

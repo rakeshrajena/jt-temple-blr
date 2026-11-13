@@ -6,6 +6,7 @@ define('APP_ROOT', dirname(__DIR__));
 
 require APP_ROOT . '/config.php';
 require APP_ROOT . '/includes/helpers.php';
+require APP_ROOT . '/includes/settings.php';
 require APP_ROOT . '/includes/db.php';
 require APP_ROOT . '/includes/staff_session.php';
 

@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Manage data — Admin only</title>
+  <?php app_favicon_link(); ?>
   <link rel="stylesheet" href="assets/manage.css">
 </head>
 <body>

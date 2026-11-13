@@ -77,6 +77,7 @@ $csrf = manage_data_csrf_token();
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <title>Manage data — <?= e(APP_NAME) ?></title>
+  <?php app_favicon_link(); ?>
   <link rel="stylesheet" href="assets/manage.css?v=2">
 </head>
 <body>

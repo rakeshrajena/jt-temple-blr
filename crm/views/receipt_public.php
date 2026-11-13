@@ -16,6 +16,7 @@ if (is_array($gift)) {
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex">
   <title><?= e(is_array($gift) ? (string) $gift['receipt_number'] : 'Gift') ?> — <?= e(app_display_name()) ?></title>
+  <?php app_favicon_link(); ?>
   <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=48">
 </head>
 <body>

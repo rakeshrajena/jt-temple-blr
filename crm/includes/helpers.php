@@ -53,6 +53,32 @@ function crm_public_index_script(): string
     return '/crm/index.php';
 }
 
+/** CRM static files; always under the ERP front controller, not nested apps (e.g. manage_data). */
+function crm_asset_url(string $path): string
+{
+    $dir = rtrim(dirname(crm_public_index_script()), '/');
+    if ($dir === '' || $dir === '.') {
+        $dir = '/crm';
+    }
+
+    return $dir . '/static/' . ltrim($path, '/');
+}
+
+/** Route URLs on CRM index.php (receipts, brand/logo, etc.) from any subdirectory script. */
+function crm_route_url(string $path = '', array $query = []): string
+{
+    $path = trim($path, '/');
+    if ($path !== '') {
+        $query = ['r' => $path] + $query;
+    }
+    $base = crm_public_index_script();
+    if ($query === []) {
+        return $base;
+    }
+
+    return $base . '?' . http_build_query($query);
+}
+
 function url(string $path = '', array $query = []): string
 {
     $path = trim($path, '/');

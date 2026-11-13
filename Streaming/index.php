@@ -4,6 +4,7 @@ declare(strict_types=1);
 require __DIR__ . '/includes/stream.php';
 require __DIR__ . '/includes/auth.php';
 require __DIR__ . '/includes/icons.php';
+require __DIR__ . '/includes/favicon.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['stream_url'])) {
     streaming_save_stream_from_post();
@@ -28,6 +29,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
+  <?= streaming_favicon_link() . "\n" ?>
   <title><?= streaming_escape($title) ?> | Shree Jagannath Temple, Sarjapura</title>
   <style>
     :root { --maroon: #7a1d1d; --cream: #fbf5e9; --ink: #2a1b12; --ok: #1a6b3c; --err: #8b1a1a; }

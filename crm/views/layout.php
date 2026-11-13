@@ -80,6 +80,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><?= e($title) ?> — <?= e(app_display_name()) ?></title>
+  <?php app_favicon_link(); ?>
   <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=48">
 </head>
 <body data-table-filter-label="<?= e(t('ui.table_filter')) ?>" data-table-filter-count="<?= e(t('ui.table_filter_count')) ?>">

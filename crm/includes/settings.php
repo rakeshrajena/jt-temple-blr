@@ -792,6 +792,68 @@ function app_logo_url(): string
     return url('brand/logo', ['v' => (string) filemtime($path)]);
 }
 
+/**
+ * Brand logo file on disk only (no DB). Safe for manage_data and other minimal bootstraps.
+ * Order matches Booking {@see TempleLogo} / receipt branding.
+ */
+function brand_logo_disk_path(): ?string
+{
+    $dir = APP_ROOT . '/storage/brand';
+    $print = $dir . DIRECTORY_SEPARATOR . 'logo-print.png';
+    if (is_file($print)) {
+        return $print;
+    }
+    foreach (['logo.png', 'logo.jpg', 'logo.jpeg', 'logo.webp', 'logo.gif'] as $name) {
+        $candidate = $dir . DIRECTORY_SEPARATOR . $name;
+        if (!is_file($candidate)) {
+            continue;
+        }
+        $real = realpath($candidate);
+        $root = realpath($dir);
+        if ($real === false || $root === false || !str_starts_with($real, $root . DIRECTORY_SEPARATOR)) {
+            continue;
+        }
+        return $real;
+    }
+
+    return null;
+}
+
+/** MIME type for favicon (same logo file as Booking temple_logo_icon_type). */
+function app_favicon_type(): string
+{
+    $path = brand_logo_disk_path();
+    if ($path === null) {
+        return 'image/svg+xml';
+    }
+
+    return match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+        'png' => 'image/png',
+        'jpg', 'jpeg' => 'image/jpeg',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+        default => 'image/svg+xml',
+    };
+}
+
+function app_favicon_href(): string
+{
+    $path = brand_logo_disk_path();
+    if ($path === null) {
+        $fallback = APP_ROOT . '/static/logo.svg';
+        $version = is_file($fallback) ? (string) filemtime($fallback) : '1';
+
+        return crm_asset_url('logo.svg') . '?v=' . rawurlencode($version);
+    }
+
+    return crm_route_url('brand/logo', ['v' => (string) filemtime($path)]);
+}
+
+function app_favicon_link(): void
+{
+    echo '<link rel="icon" href="' . e(app_favicon_href()) . '" type="' . e(app_favicon_type()) . '">' . "\n";
+}
+
 function brand_has_custom_logo(): bool
 {
     return brand_logo_path() !== null;
@@ -970,7 +1032,7 @@ function save_brand_identity(
 
 function serve_brand_logo(): void
 {
-    $path = brand_logo_path();
+    $path = brand_logo_disk_path() ?? brand_logo_path();
     if ($path === null) {
         http_response_code(404);
         echo 'Logo not found.';
