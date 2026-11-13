@@ -11,7 +11,7 @@ if (PHP_VERSION_ID < 80100) {
     http_response_code(500);
     exit('This application needs PHP 8.1 or newer. Select it in cPanel > MultiPHP Manager.');
 }
-require APP_ROOT . '/app/autoload.php';
+require_once APP_ROOT . '/app/autoload.php';
 
 $bookingRoot = sjt_booking_root();
 SJT\Core\Env::load($bookingRoot . '/.env');

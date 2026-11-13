@@ -44,10 +44,5 @@ function donation_serve_receipt_by_ref(string $refNo, bool $download): void
         echo 'Receipt not found.';
         exit;
     }
-    $_GET['t'] = $summary['links']['share_token'];
-    if ($download) {
-        $_GET['download'] = '1';
-    }
-    require DONATION_ROOT . '/receipt.php';
-    exit;
+    donation_serve_receipt_pdf_by_token((string) $summary['links']['share_token'], $download);
 }

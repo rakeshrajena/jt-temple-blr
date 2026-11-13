@@ -52,7 +52,7 @@ spl_autoload_register(static function (string $class) use ($bookingRoot): void {
     }
 });
 
-require $bookingRoot . '/app/helpers.php';
+require_once $bookingRoot . '/app/helpers.php';
 
 // Unified install loads crm/bootstrap first (same qr + PDF libs). Skip duplicates.
 if (!function_exists('qr_matrix')) {

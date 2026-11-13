@@ -11,7 +11,7 @@ if (!defined('DONATION_ROOT')) {
     define('DONATION_ROOT', __DIR__);
 }
 
-require BOOKING_ROOT . '/app/bootstrap.php';
+require_once BOOKING_ROOT . '/app/bootstrap.php';
 
 use SJT\Core\App;
 

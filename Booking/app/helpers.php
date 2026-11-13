@@ -7,9 +7,11 @@ use SJT\Core\Session;
 use SJT\Service\TempleLogo;
 
 /** True when unified install loaded CRM helpers first (same request). */
-function booking_helpers_crm_context(): bool
-{
-    return function_exists('e') && !function_exists('app_script');
+if (!function_exists('booking_helpers_crm_context')) {
+    function booking_helpers_crm_context(): bool
+    {
+        return function_exists('e') && !function_exists('app_script');
+    }
 }
 
 /** Read an environment value (from .env or the real environment). */
