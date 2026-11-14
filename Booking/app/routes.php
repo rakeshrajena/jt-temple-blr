@@ -47,6 +47,7 @@ $r->get('/admin/login', [A::class, 'loginForm']);
 $r->post('/admin/login', [A::class, 'login']);
 $r->post('/admin/logout', [A::class, 'logout'], $admin);
 $r->get('/admin', [A::class, 'dashboard'], $admin);
+$r->get('/admin/prasad', [A::class, 'prasad'], $admin);
 $r->get('/admin/password', [A::class, 'passwordForm'], $admin);
 $r->post('/admin/password', [A::class, 'password'], $admin);
 

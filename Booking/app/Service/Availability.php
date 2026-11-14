@@ -56,6 +56,49 @@ final class Availability
         );
     }
 
+    /** Persons booked for one prasadam item on a date for a single booking status (pending or confirmed). */
+    public function prasadamQuantityForStatus(int $couponId, string $date, string $bookingStatus): int
+    {
+        if (!in_array($bookingStatus, ['pending', 'confirmed'], true)) {
+            return 0;
+        }
+        return (int) $this->db->value(
+            "SELECT COALESCE(SUM(i.quantity), 0) FROM booking_items i JOIN bookings b ON b.id = i.booking_id
+             WHERE i.item_type = 'food' AND i.coupon_id = ? AND i.cancelled_at IS NULL AND b.service_date = ? AND b.booking_status = ?",
+            [$couponId, $date, $bookingStatus]
+        );
+    }
+
+    /**
+     * Admin dashboard: one row per active prasadam / food coupon from settings (no schema changes).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function prasadamDashboardForDate(string $date): array
+    {
+        $out = [];
+        foreach ($this->catalog->coupons() as $c) {
+            $id = (int) $c['id'];
+            $dailyMax = $c['daily_max'] ?? null;
+            $confirmed = $this->prasadamQuantityForStatus($id, $date, 'confirmed');
+            $pending = $this->prasadamQuantityForStatus($id, $date, 'pending');
+            $used = $confirmed + $pending;
+            $out[] = [
+                'id' => $id,
+                'name' => (string) $c['name'],
+                'description' => (string) ($c['description'] ?? ''),
+                'price_paise' => (int) $c['price_paise'],
+                'max_per_booking' => (int) $c['max_per_booking'],
+                'daily_max' => $dailyMax,
+                'confirmed' => $confirmed,
+                'pending' => $pending,
+                'used' => $used,
+                'remaining' => $dailyMax === null ? null : max(0, (int) $dailyMax - $used),
+            ];
+        }
+        return $out;
+    }
+
     /**
      * Why this quantity cannot be added for the prasadam item on this date (null = allowed).
      * A null daily_max means there is no cap across bookings.

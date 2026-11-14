@@ -8,6 +8,8 @@ use SJT\Repo\Bookings;
 use SJT\Repo\Settings;
 
 /** Builds the invoice as HTML (print view) and as a PDF from the same data. */
+final class InvoiceRenderer
+{
     public function __construct(private Bookings $bookings, private Settings $settings, private UpiPayment $upi)
     {
     }
@@ -28,13 +30,12 @@ use SJT\Repo\Settings;
             'payment' => $verified[0] ?? null,
             'temple' => [
                 'name' => TempleIdentity::name(),
-                'address' => $this->settings->get('temple_address', ''),
-                'phone' => $this->settings->get('temple_phone', ''),
-                'address' => (string) (TempleIdentity::get('temple_address') ?? ''),
-                'phone' => (string) (TempleIdentity::get('temple_phone') ?? ''),
+                'address' => (string) (TempleIdentity::get('temple_address') ?? $this->settings->get('temple_address', '')),
+                'phone' => (string) (TempleIdentity::get('temple_phone') ?? $this->settings->get('temple_phone', '')),
                 'email' => (string) (TempleIdentity::get('temple_email') ?? ''),
                 'website' => (string) (TempleIdentity::get('temple_website') ?? ''),
                 'gstin' => (string) (TempleIdentity::get('temple_gstin') ?? ''),
+            ],
             'qr' => $qr,
             'terms' => $this->settings->get('terms_text', ''),
             'logo_url' => TempleLogo::publicUrl(),

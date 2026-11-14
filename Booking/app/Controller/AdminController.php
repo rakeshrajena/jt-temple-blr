@@ -100,6 +100,19 @@ final class AdminController extends Controller
         ]);
     }
 
+    public function prasad(Request $req): Response
+    {
+        $prasadDate = $req->str('date', today());
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $prasadDate)) {
+            $prasadDate = today();
+        }
+        return $this->adminView('prasad', [
+            'title' => 'Food / Prasad booking',
+            'prasadDate' => $prasadDate,
+            'prasadCards' => Container::availability()->prasadamDashboardForDate($prasadDate),
+        ]);
+    }
+
     public function passwordForm(Request $req): Response
     {
         return $this->adminView('password', ['title' => 'Change password']);
