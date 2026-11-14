@@ -6,6 +6,8 @@ require __DIR__ . '/lib/auth.php';
 require __DIR__ . '/lib/dbutil.php';
 require __DIR__ . '/lib/purge.php';
 require __DIR__ . '/lib/receipts.php';
+require __DIR__ . '/lib/coupons.php';
+require __DIR__ . '/lib/receipt_regen.php';
 
 $admin = manage_data_admin();
 $keyConfigured = trim(env_value('MANAGE_DATA_KEY', '')) !== '';
@@ -17,7 +19,12 @@ if ($admin === null) {
     exit;
 }
 
-$tab = ($_GET['tab'] ?? 'data') === 'receipts' ? 'receipts' : 'data';
+$tabRaw = (string) ($_GET['tab'] ?? 'data');
+$tab = match ($tabRaw) {
+    'receipts', 'coupons', 'regen' => $tabRaw,
+    default => 'data',
+};
+$regenResults = [];
 $flash = null;
 $flashType = 'ok';
 
@@ -56,6 +63,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($action === 'receipt_zip') {
         manage_data_stream_receipt_zip(is_array($_POST['files'] ?? null) ? array_map('strval', $_POST['files']) : []);
+    } elseif ($action === 'coupon_purge') {
+        if (trim((string) ($_POST['confirm'] ?? '')) !== 'DELETE') {
+            $flash = 'Type DELETE to remove coupons and linked scan/donation rows.';
+            $flashType = 'bad';
+        } else {
+            $result = manage_data_purge_coupons(
+                (string) ($_POST['coupon_scope'] ?? ''),
+                (string) ($_POST['coupon_input'] ?? ''),
+                !empty($_POST['coupon_whole_batch'])
+            );
+            $flash = $result['message'];
+            $flashType = $result['ok'] ? 'ok' : 'bad';
+            if ($result['ok']) {
+                $tab = 'coupons';
+            }
+        }
+    } elseif ($action === 'receipt_regen') {
+        $result = manage_data_regenerate_receipts(
+            (string) ($_POST['receipt_refs'] ?? ''),
+            !empty($_POST['only_missing'])
+        );
+        $flash = $result['message'];
+        $flashType = $result['ok'] ? 'ok' : 'bad';
+        $regenResults = $result['results'];
+        $tab = 'regen';
     }
 }
 
@@ -63,6 +95,8 @@ $search = trim((string) ($_GET['q'] ?? ''));
 $from = manage_data_valid_date($_GET['from'] ?? null) ?? '';
 $to = manage_data_valid_date($_GET['to'] ?? null) ?? '';
 $receipts = $tab === 'receipts' ? manage_data_list_receipt_pdfs($search, $from !== '' ? $from : null, $to !== '' ? $to : null) : [];
+$couponBatches = $tab === 'coupons' ? manage_data_coupon_batch_preview(manage_data_pdo()) : [];
+$missingReceipts = $tab === 'regen' ? manage_data_missing_receipt_pdfs(manage_data_pdo()) : [];
 $staffUsers = manage_data_staff_users();
 
 $self = htmlspecialchars((string) ($_SERVER['SCRIPT_NAME'] ?? 'index.php'), ENT_QUOTES, 'UTF-8');
@@ -96,6 +130,8 @@ $csrf = manage_data_csrf_token();
     <nav class="tabs" aria-label="Sections">
       <a href="<?= $self ?>?tab=data<?= $keyQ ?>"<?= $tab === 'data' ? ' aria-current="page"' : '' ?>>Database records</a>
       <a href="<?= $self ?>?tab=receipts<?= $keyQ ?>"<?= $tab === 'receipts' ? ' aria-current="page"' : '' ?>>Receipt PDFs</a>
+      <a href="<?= $self ?>?tab=regen<?= $keyQ ?>"<?= $tab === 'regen' ? ' aria-current="page"' : '' ?>>Recreate receipts</a>
+      <a href="<?= $self ?>?tab=coupons<?= $keyQ ?>"<?= $tab === 'coupons' ? ' aria-current="page"' : '' ?>>Food coupons</a>
     </nav>
 
     <?php if ($tab === 'data'): ?>
@@ -157,6 +193,141 @@ $csrf = manage_data_csrf_token();
           </div>
         </form>
       </div>
+    <?php elseif ($tab === 'regen'): ?>
+      <section class="card">
+        <p class="muted">Rebuilds <code>storage/receipts/{RCPT-….}.pdf</code> from the existing gift row. Same receipt number, amounts, and status — nothing is inserted or updated in donations, ledger, cash book, or booking tables.</p>
+
+        <?php if ($missingReceipts !== []): ?>
+          <h2>Gifts with no PDF on disk</h2>
+          <div class="table-scroll">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th>Receipt</th>
+                  <th>Date</th>
+                  <th>Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($missingReceipts as $m): ?>
+                  <tr>
+                    <td><code><?= e($m['receipt_number']) ?></code></td>
+                    <td><?= e((string) ($m['donation_date'] ?? '—')) ?></td>
+                    <td><?= e($m['source']) ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php endif; ?>
+
+        <form method="post" action="<?= $self ?>?tab=regen<?= $keyQ ?>">
+          <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+          <input type="hidden" name="action" value="receipt_regen">
+          <?php if ($keyConfigured): ?><input type="hidden" name="key" value="<?= e((string) ($_GET['key'] ?? '')) ?>"><?php endif; ?>
+
+          <label for="receipt_refs">Receipt number or reference</label>
+          <textarea id="receipt_refs" name="receipt_refs" rows="5" placeholder="RCPT-1736899200-0042&#10;ODN-20250927-XXXX&#10;BK-… booking reference"><?php if (!empty($_POST['receipt_refs']) && ($_POST['action'] ?? '') === 'receipt_regen'): ?><?= e((string) $_POST['receipt_refs']) ?><?php endif; ?></textarea>
+          <p class="muted">One per line or comma-separated: <strong>RCPT-…</strong>, online donation <strong>ODN-…</strong>, booking ref, or numeric gift ID.</p>
+
+          <p style="margin-top:12px;">
+            <label><input type="checkbox" name="only_missing" value="1" checked> Only recreate when the PDF file is missing (skip if already on disk)</label>
+          </p>
+
+          <div class="actions">
+            <button class="btn" type="submit">Recreate PDF(s)</button>
+          </div>
+        </form>
+
+        <?php if ($regenResults !== []): ?>
+          <h2>Last run</h2>
+          <div class="table-scroll">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th>You entered</th>
+                  <th>Receipt no.</th>
+                  <th>Result</th>
+                  <th>Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($regenResults as $r): ?>
+                  <tr>
+                    <td><?= e($r['ref']) ?></td>
+                    <td><?= $r['number'] !== '' ? e($r['number']) : '—' ?></td>
+                    <td><?= e($r['status']) ?></td>
+                    <td><?= e($r['detail']) ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php endif; ?>
+      </section>
+    <?php elseif ($tab === 'coupons'): ?>
+      <section class="card">
+        <div class="warn"><strong>Destructive.</strong> Removes food coupon rows, linked scan donations (ledger/cash book), receipts, and the batch approval. ERP “remove batch” refuses when coupons are redeemed — this tool removes them anyway.</div>
+
+        <?php if ($couponBatches !== []): ?>
+          <h2>Recent batches</h2>
+          <div class="table-scroll">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Date</th>
+                  <th>Qty</th>
+                  <th>Approval</th>
+                  <th>Scanned</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($couponBatches as $b): ?>
+                  <tr>
+                    <td><?= (int) $b['id'] ?></td>
+                    <td><?= e((string) $b['coupon_name']) ?></td>
+                    <td><?= e((string) $b['created_date']) ?></td>
+                    <td><?= (int) $b['quantity'] ?></td>
+                    <td><?= e((string) ($b['approval_status'] ?? '—')) ?></td>
+                    <td><?= (int) ($b['redeemed'] ?? 0) ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php endif; ?>
+
+        <form method="post" action="<?= $self ?>?tab=coupons<?= $keyQ ?>">
+          <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+          <input type="hidden" name="action" value="coupon_purge">
+          <?php if ($keyConfigured): ?><input type="hidden" name="key" value="<?= e((string) ($_GET['key'] ?? '')) ?>"><?php endif; ?>
+
+          <h2>What to remove</h2>
+          <div class="checks">
+            <label><input type="radio" name="coupon_scope" value="codes" checked> By coupon code(s)</label>
+            <label><input type="radio" name="coupon_scope" value="batch"> Whole batch (ID, name, or any code in batch)</label>
+            <label><input type="radio" name="coupon_scope" value="all"> <strong>All</strong> coupon batches and every scanned/unscanned coupon</label>
+          </div>
+
+          <label for="coupon_input">Coupon code(s), batch ID, or batch name</label>
+          <textarea id="coupon_input" name="coupon_input" rows="4" placeholder="CU-1790447400-0006&#10;CU-1790447400-0007&#10;Or batch: MahapRasad&#10;Or batch ID: 12"></textarea>
+          <p class="muted">One or more lines. For <em>batch</em> mode you can enter batch ID (e.g. <code>12</code>), partial name (<code>MahapRasad</code>), or any serial such as <code>CU-1790447400-0001</code>.</p>
+
+          <p style="margin-top:12px;">
+            <label><input type="checkbox" name="coupon_whole_batch" value="1"> When using codes, delete the <strong>entire batch</strong> that contains the listed code(s) (all serials CU-…-0001 … CU-…-0200)</label>
+          </p>
+
+          <h2>Confirm</h2>
+          <label for="confirm-coupon">Type <code>DELETE</code></label>
+          <input type="text" id="confirm-coupon" name="confirm" autocomplete="off" placeholder="DELETE">
+
+          <div class="actions">
+            <button class="btn btn-danger" type="submit">Remove coupons &amp; linked donations</button>
+          </div>
+        </form>
+      </section>
     <?php else: ?>
       <section class="card">
         <form method="get" action="<?= $self ?>" class="grid-2" style="align-items:end;margin-bottom:12px;">

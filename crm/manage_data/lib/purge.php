@@ -267,13 +267,31 @@ function manage_data_purge_bookings(
     return $counts;
 }
 
-/** @param list<int> $ids */
-function manage_data_purge_donation_ids(PDO $pdo, array $ids): void
+/**
+ * Remove donations and ledger links (receipt PDFs, corrections, bank match, etc.).
+ *
+ * @param list<int> $ids
+ * @return array<string,int>
+ */
+function manage_data_delete_donations_deep(PDO $pdo, array $ids): array
 {
+    $counts = ['donations' => 0, 'receipt_pdfs' => 0, 'receipts_rows' => 0];
     if ($ids === [] || !manage_data_table_exists($pdo, 'donations')) {
-        return;
+        return $counts;
+    }
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn (int $i): bool => $i > 0)));
+    if ($ids === []) {
+        return $counts;
     }
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
+
+    $rows = $pdo->prepare("SELECT id, receipt_number FROM donations WHERE id IN ($placeholders)");
+    $rows->execute($ids);
+    $donations = $rows->fetchAll(PDO::FETCH_ASSOC);
+    if ($donations === []) {
+        return $counts;
+    }
+
     if (manage_data_table_exists($pdo, 'bank_transactions')) {
         $pdo->prepare("UPDATE bank_transactions SET matched_donation_id = NULL WHERE matched_donation_id IN ($placeholders)")
             ->execute($ids);
@@ -282,20 +300,54 @@ function manage_data_purge_donation_ids(PDO $pdo, array $ids): void
         $pdo->prepare("UPDATE subscription_invoices SET linked_donation_id = NULL WHERE linked_donation_id IN ($placeholders)")
             ->execute($ids);
     }
-    if (manage_data_table_exists($pdo, 'receipts')) {
-        $pdo->prepare("DELETE FROM receipts WHERE donation_id IN ($placeholders)")->execute($ids);
+    if (manage_data_table_exists($pdo, 'inventory_items')) {
+        $pdo->prepare("UPDATE inventory_items SET donation_id = NULL WHERE donation_id IN ($placeholders)")
+            ->execute($ids);
     }
-    if (manage_data_table_exists($pdo, 'receipt_cancellations')) {
-        $pdo->prepare("DELETE FROM receipt_cancellations WHERE donation_id IN ($placeholders)")->execute($ids);
-    }
-    if (manage_data_table_exists($pdo, 'donation_edits')) {
-        $pdo->prepare("DELETE FROM donation_edits WHERE donation_id IN ($placeholders)")->execute($ids);
+    if (manage_data_table_exists($pdo, 'vastra_items')) {
+        $pdo->prepare("UPDATE vastra_items SET donation_id = NULL WHERE donation_id IN ($placeholders)")
+            ->execute($ids);
     }
     if (manage_data_table_exists($pdo, 'corrections')) {
         $pdo->prepare("DELETE FROM corrections WHERE subject_type = 'donation' AND subject_id IN ($placeholders)")
             ->execute($ids);
     }
-    $pdo->prepare("DELETE FROM donations WHERE id IN ($placeholders)")->execute($ids);
+    if (manage_data_table_exists($pdo, 'receipt_cancellations')) {
+        $pdo->prepare("DELETE FROM receipt_cancellations WHERE donation_id IN ($placeholders)")
+            ->execute($ids);
+    }
+    if (manage_data_table_exists($pdo, 'donation_edits')) {
+        $pdo->prepare("DELETE FROM donation_edits WHERE donation_id IN ($placeholders)")
+            ->execute($ids);
+    }
+    if (manage_data_table_exists($pdo, 'receipts')) {
+        $stmt = $pdo->prepare("DELETE FROM receipts WHERE donation_id IN ($placeholders)");
+        $stmt->execute($ids);
+        $counts['receipts_rows'] = $stmt->rowCount();
+    }
+    if (manage_data_table_exists($pdo, 'bookings')) {
+        $pdo->prepare("UPDATE bookings SET erp_donation_id = NULL, erp_receipt_cancel_id = NULL WHERE erp_donation_id IN ($placeholders)")
+            ->execute($ids);
+    }
+
+    foreach ($donations as $row) {
+        $num = trim((string) ($row['receipt_number'] ?? ''));
+        if ($num !== '' && manage_data_delete_receipt_pdf($num)) {
+            ++$counts['receipt_pdfs'];
+        }
+    }
+
+    $stmt = $pdo->prepare("DELETE FROM donations WHERE id IN ($placeholders)");
+    $stmt->execute($ids);
+    $counts['donations'] = $stmt->rowCount();
+
+    return $counts;
+}
+
+/** @param list<int> $ids */
+function manage_data_purge_donation_ids(PDO $pdo, array $ids): void
+{
+    manage_data_delete_donations_deep($pdo, $ids);
 }
 
 /** @return array<string,int> */

@@ -22,6 +22,8 @@ Optional: set `MANAGE_DATA_KEY` in `crm/.env` and add `?key=YOUR_SECRET` to ever
 
 1. **Database records** — delete by type and date range (or all dates): donations/ledger, online bookings (+ notifications/payments), online donation intents, subscription invoices. Refreshes `storage/install/books.jsonl` when possible.
 2. **Receipt PDFs** — list files in `crm/storage/receipts/`, filter, download ZIP, delete PDFs (optionally all matching filter).
+3. **Recreate receipts** — rebuild missing PDFs for an existing **RCPT-…** (or lookup by **ODN-…**, booking ref, gift ID). Same receipt number and filename; does not change donations, ledger, or journals.
+4. **Food coupons** — remove scanned/unscanned coupons by code, delete a whole batch (e.g. MahapRasad / CU-1790447400-0001…0200), or purge **all** batches. Linked donation rows from coupon scans are removed from the books (receipts, corrections, bank links). Batch print PDFs under `storage/coupons/` are deleted when a batch is removed.
 
 **Confirmation:** type `DELETE` before destructive actions.
 
