@@ -101,6 +101,26 @@ APIs cache responses for ~2 minutes.
 
 ---
 
+## Public website maintenance page
+
+Folder: `maintenance/index.html` — **one self-contained file** (inline CSS + JS), temple logo, English + Hindi + Odia + Kannada text.
+
+**Preview (site still live):**  
+`https://your-domain/maintenance/`
+
+**Turn on maintenance for the home SPA only** — add at the **top** of root `public_html/.htaccess` (inside `mod_rewrite`), then upload:
+
+```apache
+# --- Maintenance ON: show maintenance/index.html for home + gallery SPA ---
+RewriteRule ^$ maintenance/index.html [L]
+RewriteRule ^index\.html$ maintenance/index.html [L]
+RewriteRule ^gallery/?$ maintenance/index.html [L]
+# Booking, crm, Streaming, home/api, home/photos still work as normal.
+# --- Maintenance OFF: comment out or remove the three rules above ---
+```
+
+CRM, Booking, donation, and Streaming are **not** affected unless you add more rules.
+
 ## Apache / `.htaccess`
 
 Root `.htaccess` must stay enabled:

@@ -31,6 +31,7 @@ Contents of the repo go **directly** under `public_html/`:
 | `crm/` | Temple ERP |
 | `crm/manage_data/` | Admin data maintenance (upload with `crm/`) |
 | `Streaming/` | Live darshan |
+| `maintenance/` | Optional public-site maintenance page (single `index.html`) |
 
 **Do not upload:** `.env`, `.env.local`, `storage/logs`, session files, local uploads, `node_modules/`, git metadata.
 

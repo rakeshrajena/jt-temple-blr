@@ -17,11 +17,13 @@ $required = @(
     'home\api\gallery-images.php',
     'home\api\hero-media.php',
     'home\api\temple-identity.php',
+    'home\api\favicon.php',
     'Booking\.env.example',
     'crm\env.example',
     'crm\manage_data\index.php',
     'Booking\donation\index.php',
-    'Streaming\index.php'
+    'Streaming\index.php',
+    'maintenance\index.html'
 )
 $missing = @()
 foreach ($rel in $required) {

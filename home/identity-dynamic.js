@@ -43,6 +43,14 @@
     }
     link.href = href;
     link.type = type;
+    var apple =
+      document.querySelector('link[rel="apple-touch-icon"]') ||
+      document.createElement('link');
+    if (!apple.getAttribute('rel')) {
+      apple.rel = 'apple-touch-icon';
+      document.head.appendChild(apple);
+    }
+    apple.href = href;
   }
 
   function setMetaContent(selector, value) {

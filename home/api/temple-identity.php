@@ -20,6 +20,7 @@ define('APP_ROOT', $crmRoot);
 
 require APP_ROOT . '/config.php';
 require APP_ROOT . '/includes/db.php';
+require __DIR__ . '/brand_logo.php';
 
 /**
  * @return array<string, string>
@@ -68,63 +69,6 @@ function identity_pick(array $app, array $booking, string $appKey, string $booki
     return $v !== '' ? $v : $default;
 }
 
-function identity_logo_disk_path(): ?string
-{
-    $dir = APP_ROOT . '/storage/brand';
-    $print = $dir . DIRECTORY_SEPARATOR . 'logo-print.png';
-    if (is_file($print)) {
-        return $print;
-    }
-    foreach (['logo.png', 'logo.jpg', 'logo.jpeg', 'logo.webp', 'logo.gif'] as $name) {
-        $candidate = $dir . DIRECTORY_SEPARATOR . $name;
-        if (is_file($candidate)) {
-            return realpath($candidate) ?: $candidate;
-        }
-    }
-
-    return null;
-}
-
-function identity_favicon_type(?string $path): string
-{
-    if ($path === null) {
-        return 'image/svg+xml';
-    }
-
-    return match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
-        'png' => 'image/png',
-        'jpg', 'jpeg' => 'image/jpeg',
-        'webp' => 'image/webp',
-        'gif' => 'image/gif',
-        default => 'image/svg+xml',
-    };
-}
-
-function identity_site_script_base(): string
-{
-    $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
-    $base = preg_replace('#/home/api/.*$#', '', $script);
-    if (!is_string($base) || $base === '') {
-        return '/crm/index.php';
-    }
-
-    return rtrim($base, '/') . '/crm/index.php';
-}
-
-function identity_brand_logo_url(?string $path): string
-{
-    $crmIndex = identity_site_script_base();
-    if ($path === null) {
-        $fallback = APP_ROOT . '/static/logo.svg';
-        $v = is_file($fallback) ? (string) filemtime($fallback) : '1';
-        $dir = rtrim(dirname($crmIndex), '/');
-
-        return $dir . '/static/logo.svg?v=' . rawurlencode($v);
-    }
-
-    return $crmIndex . '?' . http_build_query(['r' => 'brand/logo', 'v' => (string) filemtime($path)]);
-}
-
 try {
     $pdo = db_connect();
     $keys = [
@@ -145,9 +89,9 @@ try {
     $website = identity_pick($app, $booking, 'brand_website', 'temple_website');
     $gstin = identity_pick($app, $booking, 'brand_gstin', 'temple_gstin');
 
-    $logoPath = identity_logo_disk_path();
-    $faviconUrl = identity_brand_logo_url($logoPath);
-    $logoUrl = $faviconUrl;
+    $logoPath = home_api_brand_logo_path(APP_ROOT, $pdo);
+    $faviconUrl = home_api_favicon_url();
+    $logoUrl = home_api_brand_public_url(APP_ROOT, $logoPath);
 
     $addressLines = array_values(array_filter(array_map('trim', preg_split('/\r\n|\n|\r/', $address) ?: [])));
     if ($addressLines === [] && $address !== '') {
@@ -180,7 +124,7 @@ try {
             'website' => $website,
             'gstin' => $gstin,
             'faviconUrl' => $faviconUrl,
-            'faviconType' => identity_favicon_type($logoPath),
+            'faviconType' => home_api_brand_mime($logoPath),
             'logoUrl' => $logoUrl,
         ],
         JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE

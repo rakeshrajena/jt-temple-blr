@@ -8,7 +8,12 @@ Options -Indexes
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  # Maintenance ON (public home only): uncomment the next 3 lines — see maintenance/index.html and docs/DEPLOY-PRODUCTION.md
+  # RewriteRule ^$ maintenance/index.html [L]
+  # RewriteRule ^index\.html$ maintenance/index.html [L]
+  # RewriteRule ^gallery/?$ maintenance/index.html [L]
   # Serve home photos, gallery, and gallery API from home/ (do not redirect to root).
+  RewriteRule ^favicon\.ico$ home/api/favicon.php [L]
   RewriteRule ^home/(photos|gallery|api)/ - [L]
   # React Router: /gallery is a page, not a disk folder.
   RewriteRule ^gallery/?$ index.html [L]

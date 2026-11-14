@@ -820,10 +820,31 @@ function brand_logo_disk_path(): ?string
     return null;
 }
 
-/** MIME type for favicon (same logo file as Booking temple_logo_icon_type). */
+function app_favicon_href(): string
+{
+    $path = brand_logo_path();
+    if ($path === null) {
+        $path = brand_logo_disk_path();
+    }
+    if ($path === null) {
+        $fallback = APP_ROOT . '/static/logo.svg';
+        $version = is_file($fallback) ? (string) filemtime($fallback) : '1';
+
+        return crm_asset_url('logo.svg') . '?v=' . rawurlencode($version);
+    }
+
+    return crm_route_url('brand/logo', ['v' => (string) filemtime($path)]);
+}
+
 function app_favicon_type(): string
 {
-    $path = brand_logo_disk_path();
+    $path = brand_logo_path() ?? brand_logo_disk_path();
+
+    return app_favicon_mime_for_path($path);
+}
+
+function app_favicon_mime_for_path(?string $path): string
+{
     if ($path === null) {
         return 'image/svg+xml';
     }
@@ -837,22 +858,12 @@ function app_favicon_type(): string
     };
 }
 
-function app_favicon_href(): string
-{
-    $path = brand_logo_disk_path();
-    if ($path === null) {
-        $fallback = APP_ROOT . '/static/logo.svg';
-        $version = is_file($fallback) ? (string) filemtime($fallback) : '1';
-
-        return crm_asset_url('logo.svg') . '?v=' . rawurlencode($version);
-    }
-
-    return crm_route_url('brand/logo', ['v' => (string) filemtime($path)]);
-}
-
 function app_favicon_link(): void
 {
-    echo '<link rel="icon" href="' . e(app_favicon_href()) . '" type="' . e(app_favicon_type()) . '">' . "\n";
+    $href = app_favicon_href();
+    $type = app_favicon_type();
+    echo '<link rel="icon" href="' . e($href) . '" type="' . e($type) . '">' . "\n";
+    echo '<link rel="apple-touch-icon" href="' . e($href) . '">' . "\n";
 }
 
 function brand_has_custom_logo(): bool
