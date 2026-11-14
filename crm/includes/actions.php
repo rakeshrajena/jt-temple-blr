@@ -992,6 +992,7 @@ function action_print_coupons(int $batchId): void
 function action_vastra(string $method): void
 {
     login_required();
+    ensure_vastra_schema(db());
     if ($method === 'POST') {
         if (post_string('action', 20) === 'move') {
             $result = record_vastra_movement(
