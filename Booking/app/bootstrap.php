@@ -26,6 +26,13 @@ if (!$skipRepoEnv && is_file($localEnv)) {
         'SMTP_ONLY_LOCAL_MTA', 'SMTP_PREFER_LOCAL_MTA', 'SMTP_SKIP_LOCAL_MTA', 'SMTP_DISABLE_PHP_MAIL',
     ]);
 }
+$bookingLocal = $bookingRoot . '/.env.local';
+if (!$skipRepoEnv && is_file($bookingLocal)) {
+    SJT\Core\Env::load($bookingLocal, [
+        'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_PASSWORD',
+        'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE',
+    ]);
+}
 date_default_timezone_set(SJT\Core\Env::get('APP_TIMEZONE', 'Asia/Kolkata'));
 mb_internal_encoding('UTF-8');
 SJT\Core\Logger::init($bookingRoot . '/storage/logs');

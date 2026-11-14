@@ -1,4 +1,9 @@
-<?php /** @var list<array<string,mixed>> $expenses */ /** @var list<string> $categories */ /** @var string $today */ ?>
+<?php
+/** @var list<array<string,mixed>> $expenses */
+/** @var list<string> $categories */
+/** @var string $today */
+/** @var list<array<string,mixed>> $unmatchedDebits */
+?>
 <div class="reveal-group">
 <div class="action-bar">
   <button class="btn btn-outline" type="button" data-reveal="reveal-expense"><?= e(t('ui.record_expense')) ?></button>
@@ -41,9 +46,15 @@
 <div class="panel">
   <h3><?= e(t('ui.all_expenses')) ?> (<?= count($expenses) ?>)</h3>
   <?php if ($expenses): ?>
-  <table class="data-table">
-    <tr><th><?= e(t('common.voucher')) ?></th><th><?= e(t('common.date')) ?></th><th><?= e(t('common.category')) ?></th><th><?= e(t('common.description')) ?></th><th><?= e(t('common.paid_to')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('common.payment')) ?></th><th><?= e(t('common.approval')) ?></th><th><?= e(t('common.bill')) ?></th><th><?= e(t('ui.bank_match')) ?></th></tr>
+  <p style="color:var(--ink-soft); font-size:13px; margin-top:0;">Approved expenses with a bank debit on your statement can be linked here (manual match) or from <a href="<?= e(url('bank')) ?>">Bank</a> after upload. Auto-match from statements is unchanged.</p>
+  <table class="data-table reveal-group">
+    <tr><th><?= e(t('common.voucher')) ?></th><th><?= e(t('common.date')) ?></th><th><?= e(t('common.category')) ?></th><th><?= e(t('common.description')) ?></th><th><?= e(t('common.paid_to')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('common.payment')) ?></th><th><?= e(t('common.approval')) ?></th><th><?= e(t('common.bill')) ?></th><th class="col-actions"><?= e(t('ui.bank_match')) ?></th></tr>
     <?php foreach ($expenses as $row): ?>
+    <?php
+      $expenseApproved = (string) ($row['approval_status'] ?? '') === 'Approved';
+      $expenseOpen = $expenseApproved && empty($row['reconciled_bank_txn_id']);
+      $bankMatchForm = 'expBankMatch' . (string) $row['id'];
+    ?>
     <tr>
       <td><?= e(dash($row['voucher_number'] ?? '')) ?></td>
       <td><?= e($row['expense_date']) ?></td>
@@ -87,11 +98,56 @@
         <?php endif; ?>
       </td>
       <td><?php if (!empty($row['bill_filename'])): ?><a href="<?= e(url('expenses/' . $row['id'] . '/bill')) ?>">Bill</a><?php elseif (!empty($row['receipt_ref'])): ?><?= e((string) $row['receipt_ref']) ?><?php else: ?>—<?php endif; ?></td>
-      <td><?php if (!empty($row['reconciled_bank_txn_id'])): ?><span class="badge badge-green">Reconciled</span><?php else: ?><span class="badge badge-grey">Not yet</span><?php endif; ?></td>
+      <td class="col-actions">
+        <div class="table-row-actions">
+        <?php if (!empty($row['reconciled_bank_txn_id'])): ?>
+          <span class="badge badge-green" style="width:100%;text-align:center;box-sizing:border-box;">Reconciled</span>
+        <?php elseif (!$expenseApproved): ?>
+          <span class="share-placeholder">Approve first</span>
+        <?php elseif ($unmatchedDebits === []): ?>
+          <a class="btn btn-sm btn-outline" href="<?= e(url('bank')) ?>">Bank page</a>
+        <?php else: ?>
+          <button class="btn btn-sm btn-outline" type="button" data-reveal="exp-bank-<?= e((string) $row['id']) ?>">Match bank</button>
+        <?php endif; ?>
+        </div>
+      </td>
     </tr>
+    <?php if ($expenseOpen && $unmatchedDebits !== []): ?>
+    <tr class="reveal-panel" id="exp-bank-<?= e((string) $row['id']) ?>" hidden>
+      <td colspan="10">
+        <div class="panel" style="margin:8px 0;">
+          <h4>Link bank debit · <?= e(dash($row['voucher_number'] ?? '')) ?> · <?= e(money($row['amount'])) ?></h4>
+          <p style="color:var(--ink-soft); font-size:13px; margin:0 0 12px;">Choose the statement line that paid this expense. Same rules as manual link on the Bank page.</p>
+          <div class="form-grid cols-2">
+            <div class="form-group full">
+              <label for="exp-bank-txn-<?= e((string) $row['id']) ?>">Unmatched bank debit</label>
+              <select id="exp-bank-txn-<?= e((string) $row['id']) ?>" name="txn_id" form="<?= e($bankMatchForm) ?>" required>
+                <?php foreach ($unmatchedDebits as $bt): ?>
+                <option value="<?= e((string) $bt['id']) ?>"><?= e($bt['txn_date']) ?> · <?= e(money($bt['amount'], 2)) ?> · <?= e(dash((string) ($bt['description'] ?? ''))) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="submit" form="<?= e($bankMatchForm) ?>" data-busy="Linking">Link to this expense</button>
+          </div>
+        </div>
+      </td>
+    </tr>
+    <?php endif; ?>
     <?php endforeach; ?>
   </table>
   <?php else: ?>
   <div class="empty-state"><?= e(t('dash.no_expenses')) ?></div>
   <?php endif; ?>
 </div>
+<?php foreach ($expenses as $row): ?>
+  <?php if ((string) ($row['approval_status'] ?? '') === 'Approved' && empty($row['reconciled_bank_txn_id']) && $unmatchedDebits !== []): ?>
+  <form method="POST" action="<?= e(url('bank/manual_match')) ?>" id="expBankMatch<?= e((string) $row['id']) ?>">
+    <?= csrf_field() ?>
+    <input type="hidden" name="match_type" value="expense">
+    <input type="hidden" name="match_id" value="<?= e((string) $row['id']) ?>">
+    <input type="hidden" name="return_to" value="expenses">
+  </form>
+  <?php endif; ?>
+<?php endforeach; ?>

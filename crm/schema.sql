@@ -123,6 +123,24 @@ CREATE TABLE vastra_items (
     notes           TEXT
 ) ENGINE=InnoDB;
 
+CREATE TABLE vastra_movements (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    vastra_id           INT NOT NULL,
+    movement_type       VARCHAR(20) NOT NULL,
+    quantity            INT NOT NULL,
+    note                VARCHAR(255) NULL,
+    movement_date       DATE NOT NULL,
+    status_before       VARCHAR(30) NULL,
+    status_after        VARCHAR(30) NULL,
+    related_vastra_id   INT NULL,
+    logged_by           INT NULL,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (vastra_id) REFERENCES vastra_items(id),
+    FOREIGN KEY (logged_by) REFERENCES users(id),
+    KEY idx_vastra_movement_item (vastra_id),
+    KEY idx_vastra_movement_date (movement_date)
+) ENGINE=InnoDB;
+
 CREATE TABLE donors (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     name            VARCHAR(150) NOT NULL,

@@ -264,6 +264,14 @@ function latest_subscriber_status_changes(array $ids): array
 }
 
 const SUBSCRIPTION_INVOICE_STATUSES = ['Pending', 'Sent', 'Overdue', 'Paid', 'Failed'];
+
+/** Unpaid invoice rows that may receive counter / manual payment. */
+const SUBSCRIPTION_UNPAID_STATUSES = ['Pending', 'Sent', 'Overdue', 'Failed'];
+
+function subscription_invoice_is_unpaid(string $status): bool
+{
+    return in_array($status, SUBSCRIPTION_UNPAID_STATUSES, true);
+}
 const INVOICE_RECEIPT_FILTERS = ['with', 'without'];
 
 /**
@@ -342,10 +350,12 @@ function invoice_list(array $filters): array
         $where[] = "(i.status = 'Paid' AND (d.id IS NULL OR d.receipt_generated = 0))";
     }
     $sql = "SELECT i.*, s.name AS subscriber_name, s.mobile, s.email,
-                   d.receipt_number, d.receipt_generated, d.receipt_cancelled
+                   d.receipt_number, d.receipt_generated, d.receipt_cancelled, d.receipt_share_token,
+                   don.name AS donor_name, d.donation_date, d.purpose, d.payment_mode, d.amount AS donation_amount
             FROM subscription_invoices i
             JOIN subscribers s ON i.subscriber_id = s.id
-            LEFT JOIN donations d ON d.id = i.linked_donation_id"
+            LEFT JOIN donations d ON d.id = i.linked_donation_id
+            LEFT JOIN donors don ON don.id = d.donor_id"
         . ($where === [] ? '' : ' WHERE ' . implode(' AND ', $where))
         . " ORDER BY (i.status = 'Overdue') DESC, (i.status = 'Sent') DESC, (i.status = 'Pending') DESC, i.due_date DESC, i.id DESC";
     return db_all($sql, $params);
@@ -449,6 +459,29 @@ function issue_subscription_receipt(int $invoiceId, ?int $userId): array
 }
 
 /**
+ * Creates a receipt when missing after payment. Does not regenerate an existing receipt (use Generate / Update on the row).
+ *
+ * @return array{error: ?string, number: string, created: bool, skipped: bool}
+ */
+function issue_subscription_receipt_if_missing(int $invoiceId, int $userId): array
+{
+    $paid = paid_subscription_invoice($invoiceId);
+    if ($paid === null) {
+        return ['error' => 'A receipt is made only after the invoice is paid.', 'number' => '', 'created' => false, 'skipped' => false];
+    }
+    $existing = db_one(
+        'SELECT receipt_number, receipt_generated FROM donations WHERE id = ?',
+        [$paid['donation_id']]
+    );
+    $number = trim((string) ($existing['receipt_number'] ?? ''));
+    if ($existing !== null && (int) ($existing['receipt_generated'] ?? 0) === 1 && $number !== '') {
+        return ['error' => null, 'number' => $number, 'created' => false, 'skipped' => true];
+    }
+    $issued = issue_donation_receipt($paid['donation_id'], $userId);
+    return ['error' => null, 'number' => $issued['number'], 'created' => $issued['created'], 'skipped' => false];
+}
+
+/**
  * Emails the receipt of a paid invoice to the subscriber, or to the devotee email when the subscriber has none.
  *
  * @param array<string, string> $settings Messaging settings.
@@ -527,6 +560,69 @@ function subscription_request_email(array $invoice, string $payUrl): array
         'subject' => "Seva contribution request — {$period} ({$number})",
         'text' => implode("\n", $lines),
         'html' => $html,
+    ];
+}
+
+/**
+ * @param array<string, mixed> $post
+ * @return array{
+ *   error: ?string,
+ *   values: array{
+ *     payment_mode: string,
+ *     paid_date: string,
+ *     reference: string,
+ *     upi_reference: ?string,
+ *     cheque_number: ?string,
+ *     cheque_date: ?string,
+ *   },
+ * }
+ */
+function subscription_manual_payment_input(array $post): array
+{
+    $none = [
+        'payment_mode' => '',
+        'paid_date' => '',
+        'reference' => '',
+        'upi_reference' => null,
+        'cheque_number' => null,
+        'cheque_date' => null,
+    ];
+    $paymentMode = one_of(trim((string) ($post['payment_mode'] ?? '')), money_payment_modes(), 'Cash');
+    $paidRaw = trim((string) ($post['paid_date'] ?? ''));
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $paidRaw) === 1) {
+        $paidDate = $paidRaw;
+    } else {
+        $paidDate = date('Y-m-d');
+    }
+    $reference = mb_substr(trim((string) ($post['payment_reference'] ?? '')), 0, 64);
+    if ($reference === '') {
+        $reference = 'SUB-' . strtoupper(bin2hex(random_bytes(4)));
+    }
+    $upi = mb_substr(trim((string) ($post['upi_reference'] ?? '')), 0, 64);
+    $chequeNo = mb_substr(trim((string) ($post['cheque_number'] ?? '')), 0, 30);
+    $chequeRaw = trim((string) ($post['cheque_date'] ?? ''));
+    $chequeDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', $chequeRaw) === 1 ? $chequeRaw : null;
+    if ($paymentMode === 'UPI' && $upi === '') {
+        return ['error' => 'Enter the UPI reference for this payment.', 'values' => $none];
+    }
+    if ($paymentMode === 'Cheque') {
+        if ($chequeNo === '') {
+            return ['error' => 'Enter the cheque number.', 'values' => $none];
+        }
+        if ($chequeDate === null) {
+            return ['error' => 'Enter the cheque date.', 'values' => $none];
+        }
+    }
+    return [
+        'error' => null,
+        'values' => [
+            'payment_mode' => $paymentMode,
+            'paid_date' => $paidDate,
+            'reference' => $reference,
+            'upi_reference' => $paymentMode === 'UPI' ? $upi : null,
+            'cheque_number' => $paymentMode === 'Cheque' ? $chequeNo : null,
+            'cheque_date' => $paymentMode === 'Cheque' ? $chequeDate : null,
+        ],
     ];
 }
 

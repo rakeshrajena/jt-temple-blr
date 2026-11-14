@@ -241,8 +241,16 @@ function dispatch_request(): void
         action_bank_match();
         return;
     }
+    if ($path === 'bank/manual_entry' && $method === 'POST') {
+        action_bank_manual_entry();
+        return;
+    }
     if ($path === 'reports') {
         action_reports();
+        return;
+    }
+    if (preg_match('#^reports/([a-z]+)/export$#', $path, $m) === 1 && $method === 'GET') {
+        action_report_export($m[1]);
         return;
     }
     if (preg_match('#^reports/([a-z]+)$#', $path, $m) === 1 && $method === 'GET') {
@@ -273,6 +281,10 @@ function dispatch_request(): void
     }
     if (preg_match('#^subscriptions/invoice/(\d+)/send$#', $path, $m) === 1 && $method === 'POST') {
         action_send_invoice((int) $m[1]);
+        return;
+    }
+    if (preg_match('#^subscriptions/invoice/(\d+)/record_payment$#', $path, $m) === 1 && $method === 'POST') {
+        action_subscription_record_payment((int) $m[1]);
         return;
     }
     if ($path === 'demo') {
@@ -978,6 +990,18 @@ function action_vastra(string $method): void
 {
     login_required();
     if ($method === 'POST') {
+        if (post_string('action', 20) === 'move') {
+            $result = record_vastra_movement(
+                (int) ($_POST['vastra_id'] ?? 0),
+                post_string('movement_type', 20),
+                max(1, (int) ($_POST['quantity'] ?? 0)),
+                post_string('note', 255),
+                post_string('movement_date', 10) ?: date('Y-m-d'),
+                (int) $_SESSION['user_id']
+            );
+            flash($result['error'] !== null ? 'error' : 'success', $result['error'] ?? 'Vastra movement recorded.');
+            redirect(url('vastra'));
+        }
         $deity = one_of(post_string('deity_name', 100), selection_values('deities'), 'Jagannath');
         $item = post_string('item_name', 150);
         if ($item === '') {
@@ -994,7 +1018,7 @@ function action_vastra(string $method): void
                 max(1, (int) ($_POST['quantity'] ?? 1)),
                 one_of(post_string('source', 30), selection_values('sources'), 'Purchased'),
                 date('Y-m-d'),
-                one_of(post_string('status', 30), selection_values('vastra_statuses'), 'In Store'),
+                'In Store',
                 post_string('notes', 500) ?: null,
             ]
         );
@@ -1005,7 +1029,18 @@ function action_vastra(string $method): void
         'title' => t('nav.vastra'),
         'pageTitle' => t('page.vastra'),
         'active' => 'vastra',
-        'items' => db_all('SELECT * FROM vastra_items ORDER BY deity_name, item_name'),
+        'items' => db_all('SELECT * FROM vastra_items WHERE quantity > 0 ORDER BY deity_name, item_name, status, id'),
+        'movements' => vastra_movement_types(),
+        'today' => date('Y-m-d'),
+        'history' => db_all(
+            'SELECT m.*, v.deity_name, v.item_name, v.color, u.full_name AS logged_name
+             FROM vastra_movements m
+             JOIN vastra_items v ON v.id = m.vastra_id
+             LEFT JOIN users u ON u.id = m.logged_by
+             ORDER BY m.movement_date DESC, m.id DESC LIMIT 25'
+        ),
+        'totals' => vastra_status_totals(),
+        'summary' => vastra_stock_summary(),
     ]);
 }
 
@@ -2144,17 +2179,12 @@ function action_ledger(): void
         $range['to'] = $fallback['to'];
     }
     $heads = build_ledgers(load_ledger_lines($range['from'], $range['to']), $range['from'], $range['to']);
+    $headIndex = isset($_GET['h']) && is_numeric($_GET['h']) ? (int) $_GET['h'] : null;
     $selectedName = trim((string) ($_GET['head'] ?? ''));
     if (mb_strlen($selectedName) > 200) {
         $selectedName = mb_substr($selectedName, 0, 200);
     }
-    $selected = null;
-    foreach ($heads as $head) {
-        if ($head['head'] === $selectedName) {
-            $selected = $head;
-            break;
-        }
-    }
+    $selected = ledger_select_head($heads, $headIndex, $selectedName);
     render('ledger', [
         'title' => t('page.ledger'),
         'pageTitle' => t('page.ledger'),
@@ -2407,6 +2437,11 @@ function action_expenses(string $method): void
         ),
         'categories' => selection_values('expense_categories'),
         'today' => date('Y-m-d'),
+        'unmatchedDebits' => db_all(
+            "SELECT id, txn_date, description, amount FROM bank_transactions
+             WHERE reconciled_status = 'Unmatched' AND txn_type = 'Debit'
+             ORDER BY txn_date DESC, id DESC"
+        ),
     ]);
 }
 
@@ -2488,17 +2523,37 @@ function action_bank(string $method): void
              LEFT JOIN expenses e ON bt.matched_expense_id = e.id
              WHERE bt.reconciled_status IN ('Matched','Manual') ORDER BY bt.txn_date DESC"
         ),
-        'openDonations' => db_all(
-            'SELECT d.id, don.name, d.amount, d.donation_date FROM donations d
-             JOIN donors don ON d.donor_id = don.id
-             WHERE d.reconciled_bank_txn_id IS NULL AND d.amount IS NOT NULL'
-        ),
-        'openExpenses' => db_all(
-            "SELECT e.id, e.description, e.amount, e.expense_date FROM expenses e
-             JOIN approvals a ON a.subject_type = 'expense' AND a.subject_id = e.id AND a.status = 'Approved'
-             WHERE e.reconciled_bank_txn_id IS NULL"
-        ),
+        'openDonations' => bank_open_donations_for_match(),
+        'openExpenses' => bank_open_expenses_for_match(),
+        'today' => date('Y-m-d'),
     ]);
+}
+
+function action_bank_manual_entry(): void
+{
+    login_required();
+    $txnDate = post_date('txn_date');
+    $description = post_string('description', 255);
+    $amountRaw = trim((string) ($_POST['amount'] ?? ''));
+    $amount = is_numeric($amountRaw) ? round((float) $amountRaw, 2) : 0.0;
+    $txnType = one_of(post_string('txn_type', 10), ['Credit', 'Debit'], 'Debit');
+    $balanceRaw = trim((string) ($_POST['balance'] ?? ''));
+    $balance = $balanceRaw === '' || !is_numeric($balanceRaw) ? null : round((float) $balanceRaw, 2);
+    $matchId = (int) ($_POST['match_id'] ?? 0);
+    $result = bank_create_manual_match([
+        'txn_date' => $txnDate,
+        'description' => $description,
+        'amount' => $amount,
+        'txn_type' => $txnType,
+        'balance' => $balance,
+        'match_id' => $matchId,
+    ], (int) $_SESSION['user_id']);
+    if ($result['error'] !== null) {
+        flash('error', $result['error']);
+    } else {
+        flash('success', 'Manual bank line saved and linked.');
+    }
+    redirect(url('bank'));
 }
 
 function action_bank_match(): void
@@ -2560,6 +2615,9 @@ function action_bank_match(): void
         error_log('[jt_blr] match: ' . $e->getMessage());
         flash('error', 'Could not link the transaction.');
     }
+    if (post_string('return_to', 20) === 'expenses') {
+        redirect(url('expenses'));
+    }
     redirect(url('bank'));
 }
 
@@ -2573,10 +2631,9 @@ function action_reports(): void
     ]);
 }
 
-function action_report(string $type): void
+function report_titles(): array
 {
-    login_required();
-    $titles = [
+    return [
         'donations' => 'Donation Report',
         'expenses' => 'Expense Report',
         'inventory' => 'Inventory Report',
@@ -2584,29 +2641,95 @@ function action_report(string $type): void
         'vastra' => 'Deity Vastra Report',
         'reconciliation' => 'Bank Reconciliation Report',
     ];
+}
+
+function action_report(string $type): void
+{
+    login_required();
+    $titles = report_titles();
     if (!isset($titles[$type])) {
         http_response_code(404);
         echo 'Unknown report.';
         return;
     }
-    $start = optional_date(isset($_GET['start']) && is_string($_GET['start']) ? $_GET['start'] : null);
-    $end = optional_date(isset($_GET['end']) && is_string($_GET['end']) ? $_GET['end'] : null);
-    $data = match ($type) {
-        'donations' => donation_report($start, $end),
-        'expenses' => expense_report($start, $end),
-        'inventory' => inventory_report(),
-        'food' => food_stock_report(),
-        'vastra' => vastra_report(),
-        'reconciliation' => reconciliation_report(),
-    };
+    $dateFiltered = report_uses_date_filter($type);
+    $applyDefaultRange = $dateFiltered && !isset($_GET['start']) && !isset($_GET['end']);
+    $period = report_resolve_period(
+        isset($_GET['start']) && is_string($_GET['start']) ? $_GET['start'] : null,
+        isset($_GET['end']) && is_string($_GET['end']) ? $_GET['end'] : null,
+        $applyDefaultRange
+    );
+    $start = $period['start'];
+    $end = $period['end'];
+    $filters = report_filters_from_request($type);
+    $dataAll = report_fetch_rows($type, $dateFiltered ? $start : null, $dateFiltered ? $end : null);
+    $data = report_filter_data($type, $dataAll, $filters);
     render('report', [
         'title' => $titles[$type],
         'reportType' => $type,
         'data' => $data,
+        'dataTotal' => count($dataAll),
         'start' => $start,
         'end' => $end,
+        'dateFiltered' => $dateFiltered,
+        'filters' => $filters,
+        'filterOptions' => report_filter_options($type, $dataAll),
+        'filtersActive' => report_filters_active($filters),
         'generatedOn' => date('d-M-Y H:i'),
     ], false);
+}
+
+function action_report_export(string $type): void
+{
+    login_required();
+    $titles = report_titles();
+    if (!isset($titles[$type])) {
+        http_response_code(404);
+        echo 'Unknown report.';
+        return;
+    }
+    $format = isset($_GET['format']) && is_string($_GET['format']) ? trim($_GET['format']) : '';
+    $dateFiltered = report_uses_date_filter($type);
+    $applyDefaultRange = $dateFiltered && !isset($_GET['start']) && !isset($_GET['end']);
+    $period = report_resolve_period(
+        isset($_GET['start']) && is_string($_GET['start']) ? $_GET['start'] : null,
+        isset($_GET['end']) && is_string($_GET['end']) ? $_GET['end'] : null,
+        $applyDefaultRange
+    );
+    $filters = report_filters_from_request($type);
+    try {
+        $pack = report_export_query($type, $period['start'], $period['end'], $format, $filters);
+    } catch (InvalidArgumentException) {
+        flash('error', 'Choose PDF, CSV, or Excel to download.');
+        redirect('reports/' . $type);
+    } catch (RuntimeException $e) {
+        flash('error', $e->getMessage());
+        redirect('reports/' . $type);
+    }
+    if ($pack['format'] === 'csv') {
+        send_download_string(
+            report_build_csv($pack['headers'], $pack['rows']),
+            $pack['filename'],
+            'text/csv; charset=UTF-8'
+        );
+    } elseif ($pack['format'] === 'pdf') {
+        send_download_string(
+            report_build_pdf($pack['title'], $pack['period'], $pack['headers'], $pack['rows']),
+            $pack['filename'],
+            'application/pdf'
+        );
+    } elseif ($pack['format'] === 'xlsx') {
+        try {
+            $excel = report_excel_download_payload($pack['headers'], $pack['rows'], $pack['filename']);
+            if ($excel['path'] !== null) {
+                send_file($excel['path'], $excel['filename'], $excel['mime'], true);
+            }
+            send_download_string((string) $excel['body'], $excel['filename'], $excel['mime']);
+        } catch (RuntimeException $e) {
+            flash('error', $e->getMessage());
+            redirect('reports/' . $type);
+        }
+    }
 }
 
 function action_subscriptions(string $method): void
@@ -2664,6 +2787,8 @@ function action_subscriptions(string $method): void
         'mrr' => (float) db_value("SELECT COALESCE(SUM(plan_amount),0) FROM subscribers WHERE status = 'Active' AND frequency = 'Monthly'"),
         'pendingAmount' => (float) db_value("SELECT COALESCE(SUM(amount),0) FROM subscription_invoices WHERE status IN ('Sent','Pending','Overdue')"),
         'messaging' => messaging_for_page(),
+        'moneyModes' => money_payment_modes(),
+        'today' => date('Y-m-d'),
     ]);
 }
 
@@ -2745,6 +2870,62 @@ function action_send_subscription_receipt(int $invoiceId): void
     login_required();
     receipt_send_flash(send_subscription_receipt($invoiceId, load_messaging_settings()));
     redirect(url('subscriptions'));
+}
+
+function action_subscription_record_payment(int $invoiceId): void
+{
+    login_required();
+    $row = db_one('SELECT id, status, invoice_number FROM subscription_invoices WHERE id = ?', [$invoiceId]);
+    if ($row === null) {
+        flash('error', 'Invoice not found.');
+        redirect(url('subscriptions') . '#invoices');
+    }
+    if (!subscription_invoice_is_unpaid((string) $row['status'])) {
+        flash('error', 'Record payment applies only to unpaid (due) invoices. This one is already paid — use Update receipt on the row if the PDF needs refreshing.');
+        redirect(url('subscriptions') . '#invoices');
+    }
+    $input = subscription_manual_payment_input($_POST);
+    if ($input['error'] !== null) {
+        flash('error', $input['error']);
+        redirect(url('subscriptions') . '#invoices');
+    }
+    $values = $input['values'];
+    $saved = record_paid_invoice(
+        $invoiceId,
+        $values['payment_mode'],
+        $values['reference'],
+        [
+            'payment_mode' => $values['payment_mode'],
+            'donation_date' => $values['paid_date'],
+            'paid_at' => $values['paid_date'] . ' ' . date('H:i:s'),
+            'upi_reference' => $values['upi_reference'],
+            'cheque_number' => $values['cheque_number'],
+            'cheque_date' => $values['cheque_date'],
+            'created_by' => (int) $_SESSION['user_id'],
+        ]
+    );
+    if ($saved === 'paid') {
+        flash('error', 'This invoice is already marked paid.');
+        redirect(url('subscriptions') . '#invoices');
+    }
+    if ($saved !== 'saved') {
+        flash('error', 'Payment could not be recorded. Check the invoice and try again.');
+        redirect(url('subscriptions') . '#invoices');
+    }
+    try {
+        $issued = issue_subscription_receipt_if_missing($invoiceId, (int) $_SESSION['user_id']);
+        if ($issued['error'] !== null) {
+            flash('success', 'Payment recorded. Receipt: ' . ($issued['number'] !== '' ? $issued['number'] : 'could not be generated — use Generate receipt on the row.'));
+        } elseif ($issued['skipped']) {
+            flash('success', 'Payment recorded. Receipt ' . $issued['number'] . ' was already on file (not changed).');
+        } else {
+            flash('success', 'Payment recorded. Receipt ' . $issued['number'] . ($issued['created'] ? ' generated' : ' saved') . '. Posted to Donations and the cash book.');
+        }
+    } catch (Throwable $e) {
+        error_log('[jt_blr] subscription manual pay receipt: ' . $e->getMessage());
+        flash('success', 'Payment recorded and posted to Donations. Generate receipt from the invoice row if needed.');
+    }
+    redirect(url('subscriptions') . '#invoices');
 }
 
 function action_send_invoice(int $invoiceId): void
@@ -2982,7 +3163,19 @@ function action_pay_confirm(string $token): void
     render('pay_success', ['inv' => find_invoice_by_token($token) ?? $inv, 'ref' => $ref], false);
 }
 
-function record_paid_invoice(int $invoiceId, string $paidVia, string $ref): string
+/**
+ * @param array{
+ *   payment_mode?: string,
+ *   donation_date?: string,
+ *   paid_at?: string,
+ *   upi_reference?: ?string,
+ *   cheque_number?: ?string,
+ *   cheque_date?: ?string,
+ *   cheque_cleared?: int,
+ *   created_by?: int,
+ * } $options
+ */
+function record_paid_invoice(int $invoiceId, string $paidVia, string $ref, array $options = []): string
 {
     $pdo = db();
     $own = !$pdo->inTransaction();
@@ -3023,26 +3216,54 @@ function record_paid_invoice(int $invoiceId, string $paidVia, string $ref): stri
                 db_exec("UPDATE donors SET email = ? WHERE id = ? AND (email IS NULL OR email = '')", [$subscriberEmail, $donorId]);
             }
         }
-        $donationMode = $paidVia === 'Netbanking' ? 'Netbanking' : ($paidVia === 'Card' ? 'Card' : 'UPI');
+        $modeOpt = trim((string) ($options['payment_mode'] ?? ''));
+        $donationMode = in_array($modeOpt, money_payment_modes(), true)
+            ? $modeOpt
+            : ($paidVia === 'Netbanking' ? 'Netbanking' : ($paidVia === 'Card' ? 'Card' : 'UPI'));
+        $donationDate = trim((string) ($options['donation_date'] ?? ''));
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $donationDate) !== 1) {
+            $donationDate = date('Y-m-d');
+        }
+        $paidAt = trim((string) ($options['paid_at'] ?? ''));
+        if ($paidAt === '') {
+            $paidAt = date('Y-m-d H:i:s');
+        }
+        $createdBy = (int) ($options['created_by'] ?? 1);
+        $upiRef = $options['upi_reference'] ?? null;
+        if ($upiRef === null && $donationMode === 'UPI') {
+            $upiRef = $ref;
+        }
+        $chequeNumber = trim((string) ($options['cheque_number'] ?? ''));
+        $chequeNumber = $chequeNumber !== '' ? $chequeNumber : null;
+        $chequeDate = trim((string) ($options['cheque_date'] ?? ''));
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $chequeDate) !== 1) {
+            $chequeDate = null;
+        }
+        $chequeCleared = (int) ($options['cheque_cleared'] ?? 0);
         $donationId = db_exec(
-            'INSERT INTO donations (donor_id, donation_type, amount, purpose, donation_date, payment_mode, upi_reference, receipt_generated, created_by)
-             VALUES (?,?,?,?,?,?,?,0,1)',
+            'INSERT INTO donations (donor_id, donation_type, amount, purpose, donation_date, payment_mode, cheque_number, cheque_date, cheque_cleared, upi_reference, receipt_generated, created_by)
+             VALUES (?,?,?,?,?,?,?,?,?,?,0,?)',
             [
                 $donorId,
                 'Cash',
                 $inv['amount'],
                 'Subscription — ' . $inv['plan_name'] . ' (' . $inv['period_label'] . ')',
-                date('Y-m-d'),
+                $donationDate,
                 $donationMode,
-                $donationMode === 'UPI' ? $ref : null,
+                $chequeNumber,
+                $chequeDate,
+                $chequeCleared,
+                $upiRef,
+                $createdBy,
             ]
         );
+        $invoicePaidVia = in_array($paidVia, money_payment_modes(), true) ? $paidVia : $paidVia;
         $marked = db()->prepare(
             "UPDATE subscription_invoices
              SET status = 'Paid', paid_date = ?, payment_reference = ?, paid_via = ?, linked_donation_id = ?
              WHERE id = ? AND status <> 'Paid'"
         );
-        $marked->execute([date('Y-m-d H:i:s'), $ref, $paidVia, $donationId, $invoiceId]);
+        $marked->execute([$paidAt, $ref, $invoicePaidVia, $donationId, $invoiceId]);
         if ($marked->rowCount() !== 1) {
             throw new RuntimeException('Invoice was already paid.');
         }

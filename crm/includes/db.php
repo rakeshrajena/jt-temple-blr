@@ -272,6 +272,7 @@ function migrate_schema(PDO $pdo): void
     ensure_donation_edit_schema($pdo);
     ensure_donor_schema($pdo);
     ensure_stock_schema($pdo);
+    ensure_vastra_schema($pdo);
     ensure_messaging_schema($pdo);
     ensure_receipt_share_schema($pdo);
     ensure_coupon_schema($pdo);

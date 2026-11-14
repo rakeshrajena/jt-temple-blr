@@ -375,3 +375,14 @@ function notify_log(string $channel, string $to, string $message): void
     $line = sprintf("[%s] %s to %s: %s\n", date('c'), $channel, $to, str_replace(["\r", "\n"], ' ', $message));
     file_put_contents(APP_ROOT . '/storage/logs/notifications.log', $line, FILE_APPEND | LOCK_EX);
 }
+
+function send_download_string(string $body, string $filename, string $mimeType): never
+{
+    header('Content-Type: ' . $mimeType);
+    header('Cache-Control: private, no-store');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Content-Length: ' . (string) strlen($body));
+    header('X-Content-Type-Options: nosniff');
+    echo $body;
+    exit;
+}

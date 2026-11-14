@@ -27,6 +27,16 @@ function env_values(): array
         }
         $values = array_merge($values, $parsed);
     }
+    // Same folder as index.php — used when AMPPS cannot read ../.env (open_basedir). Do not upload.
+    $localApp = $app . '/.env.local';
+    if (is_file($localApp)) {
+        $raw = file_get_contents($localApp);
+        if (is_string($raw)) {
+            $parsed = env_parse($raw);
+            $parsed = array_intersect_key($parsed, array_flip(env_local_override_keys()));
+            $values = array_merge($values, $parsed);
+        }
+    }
     return $values;
 }
 
