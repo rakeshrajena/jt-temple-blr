@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const DEFAULT_MESSAGE_TEMPLATE = 'Namaskar {name}, your {period} seva contribution of Rs.{amount} is due. Pay here: {link} — Shree Jagannath Temple, invoice {invoice}.';
+const DEFAULT_MESSAGE_TEMPLATE = 'Namaskar {name}, your {period} seva contribution of Rs.{amount} is due. Pay here: {link} — {temple}, invoice {invoice}.';
 
 function ensure_messaging_schema(PDO $pdo): void
 {
@@ -185,6 +185,7 @@ function invoice_notice_text(array $invoice, string $payUrl, array $settings): s
         'amount' => number_format((float) ($invoice['amount'] ?? 0), 0),
         'link' => $payUrl,
         'invoice' => (string) ($invoice['invoice_number'] ?? ''),
+        'temple' => app_display_name(),
     ]);
 }
 
@@ -941,7 +942,8 @@ function save_brand_identity(
     bool $useDefaultLogo,
     ?string $receiptWatermark = null,
     ?string $couponWatermark = null,
-    ?string $place = null
+    ?string $place = null,
+    ?array $contact = null
 ): ?string
 {
     $name = trim($name);
@@ -968,6 +970,13 @@ function save_brand_identity(
         }
         if (brand_watermark_error((string) $couponWatermark) !== null) {
             return 'Enter a coupon watermark from 0 to 100.';
+        }
+    }
+
+    if ($contact !== null) {
+        $contactError = temple_identity_contact_error($contact);
+        if ($contactError !== null) {
+            return $contactError;
         }
     }
 
@@ -1012,21 +1021,13 @@ function save_brand_identity(
             brand_clear_print_png();
             db_exec('DELETE FROM app_settings WHERE setting_key = ?', [BRAND_LOGO_KEY]);
         }
+        if ($contact !== null) {
+            temple_identity_persist_contact($contact);
+        }
         if ($own) {
             $pdo->commit();
         }
-        return null;
-    } catch (Throwable $e) {
-        if ($written !== null && is_file($written)) {
-            unlink($written);
-        }
-        if ($own && $pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        if ($e->getMessage() === 'The logo could not be prepared for receipts.') {
-            return 'This server could not prepare that logo for receipts and coupons. Upload a PNG or JPG image.';
-        }
-        throw $e;
+        if (function_exists('temple_identity_sync_to_booking_settings')) {
     }
 }
 

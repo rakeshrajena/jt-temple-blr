@@ -109,7 +109,7 @@ function donation_api_order(array $post): void
 
     $db->update('online_donation_intents', ['gateway_order_id' => $orderId], 'id = :id', ['id' => $intentId]);
 
-    $temple = (string) App::settings()->get('temple_name', 'Shree Jagannatha Temple Bengaluru');
+    $temple = (string) (\SJT\Service\TempleIdentity::name());
     $digits = preg_replace('/\D/', '', $phone) ?? '';
 
     donation_json(200, [

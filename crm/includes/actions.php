@@ -3257,7 +3257,8 @@ function action_settings(string $method): void
                 isset($_POST['use_default_logo']),
                 is_string($receiptWatermark) ? trim($receiptWatermark) : '',
                 is_string($couponWatermark) ? trim($couponWatermark) : '',
-                post_string('app_place', 80)
+                post_string('app_place', 80),
+                temple_identity_contact_from_post()
             );
         } catch (Throwable $e) {
             error_log('[jt_blr] brand: ' . $e->getMessage());

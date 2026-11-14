@@ -1,0 +1,46 @@
+.sjt-hero-slideshow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+.sjt-hero-slideshow__layer {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1.1s ease-in-out;
+  pointer-events: none;
+}
+
+.sjt-hero-slideshow__layer.is-active {
+  opacity: 1;
+}
+
+.sjt-hero-slideshow__layer img,
+.sjt-hero-slideshow__layer video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sjt-hero-slideshow__dim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.5));
+  pointer-events: none;
+  z-index: 1;
+}
+
+section.sjt-hero-has-slideshow {
+  background-image: none !important;
+  background-attachment: scroll !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sjt-hero-slideshow__layer {
+    transition: none;
+  }
+}

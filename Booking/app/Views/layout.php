@@ -1,6 +1,6 @@
 <?php
 /** @var string $content */
-$templeName = setting('temple_name', 'Shree Jagannatha Temple Bengaluru');
+$templeName = setting('temple_name', \SJT\Service\TempleIdentity::DEFAULT_NAME);
 $phone = setting('temple_phone');
 ?><!doctype html>
 <html lang="en">
@@ -45,7 +45,9 @@ $phone = setting('temple_phone');
     <?php if ($phone || setting('temple_email')): ?>
     <p>Temple office: <?php if ($phone): ?><a href="tel:<?= e(preg_replace('/[^\d+]/', '', $phone)) ?>"><?= e($phone) ?></a><?php endif; ?><?php if ($phone && setting('temple_email')): ?> · <?php endif; ?><?php if (setting('temple_email')): ?><a href="mailto:<?= e(setting('temple_email')) ?>"><?= e(setting('temple_email')) ?></a><?php endif; ?></p>
     <?php endif; ?>
-    <p><a href="<?= e(setting('temple_website', 'https://sjtbengaluru.org')) ?>">Temple website</a></p>
+    <?php $site = setting('temple_website'); if ($site): ?>
+    <p><a href="<?= e($site) ?>">Temple website</a></p>
+    <?php endif; ?>
   </div>
 </footer>
 <?php booking_busy_overlay(); ?>

@@ -5,6 +5,7 @@ require __DIR__ . '/includes/stream.php';
 require __DIR__ . '/includes/auth.php';
 require __DIR__ . '/includes/icons.php';
 require __DIR__ . '/includes/favicon.php';
+require __DIR__ . '/includes/identity.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['stream_url'])) {
     streaming_save_stream_from_post();

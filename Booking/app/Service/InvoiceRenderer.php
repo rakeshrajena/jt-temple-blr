@@ -8,8 +8,6 @@ use SJT\Repo\Bookings;
 use SJT\Repo\Settings;
 
 /** Builds the invoice as HTML (print view) and as a PDF from the same data. */
-final class InvoiceRenderer
-{
     public function __construct(private Bookings $bookings, private Settings $settings, private UpiPayment $upi)
     {
     }
@@ -29,14 +27,14 @@ final class InvoiceRenderer
             'items' => $this->bookings->items($id),
             'payment' => $verified[0] ?? null,
             'temple' => [
-                'name' => $this->settings->get('temple_name', 'Shree Jagannatha Temple Bengaluru'),
+                'name' => TempleIdentity::name(),
                 'address' => $this->settings->get('temple_address', ''),
                 'phone' => $this->settings->get('temple_phone', ''),
-                'email' => $this->settings->get('temple_email', ''),
-                'website' => $this->settings->get('temple_website', ''),
-                'gstin' => $this->settings->get('temple_gstin', ''),
-            ],
-            'upi_vpa' => $this->upi->mode() === 'dynamic' ? $this->settings->get('upi_vpa') : null,
+                'address' => (string) (TempleIdentity::get('temple_address') ?? ''),
+                'phone' => (string) (TempleIdentity::get('temple_phone') ?? ''),
+                'email' => (string) (TempleIdentity::get('temple_email') ?? ''),
+                'website' => (string) (TempleIdentity::get('temple_website') ?? ''),
+                'gstin' => (string) (TempleIdentity::get('temple_gstin') ?? ''),
             'qr' => $qr,
             'terms' => $this->settings->get('terms_text', ''),
             'logo_url' => TempleLogo::publicUrl(),

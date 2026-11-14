@@ -1,14 +1,15 @@
 (function () {
   'use strict';
 
-  var BOOKING = (window.SJT_BOOKING_URL || '/Booking/book').replace(/\/$/, '');
-  var LOOKUP =
-    (window.SJT_BOOKING_LOOKUP_URL || 'https://sjtbengaluru.org/Booking/lookup').replace(/\/$/, '');
+  var base = (window.SJT_PUBLIC_BASE || '/').replace(/\/?$/, '/');
+  var origin = window.location.origin || '';
+  var BOOKING = (window.SJT_BOOKING_URL || origin + base + 'Booking/book').replace(/\/$/, '');
+  var LOOKUP = (window.SJT_BOOKING_LOOKUP_URL || origin + base + 'Booking/lookup').replace(/\/$/, '');
   var FOOD_BOOKING =
     window.SJT_BOOKING_FOOD_URL ||
     (BOOKING.indexOf('?') === -1 ? BOOKING + '?service=food-only' : BOOKING);
-  var LIVE = (window.SJT_LIVE_DARSHAN_URL || 'https://sjtbengaluru.org/Streaming').replace(/\/$/, '');
-  var DONATION = (window.SJT_DONATION_URL || '/Booking/donation/').replace(/\/$/, '');
+  var LIVE = (window.SJT_LIVE_DARSHAN_URL || origin + base + 'Streaming').replace(/\/$/, '');
+  var DONATION = (window.SJT_DONATION_URL || origin + base + 'Booking/donation/').replace(/\/$/, '');
 
   function navMobileClose(template) {
     if (template.getAttribute('onClick')) {

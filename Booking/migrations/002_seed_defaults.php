@@ -14,7 +14,7 @@ return function (Database $db): void {
     $services = [
         [
             'code' => 'special-puja', 'name' => 'Special Puja', 'price' => 50100,
-            'description' => 'Special puja offered to Lord Jagannatha on your behalf, with sankalpa in your family\'s name.',
+            'description' => 'Special puja offered to Lord Jagannath on your behalf, with sankalpa in your family\'s name.',
             'approval' => 0, 'slot' => 1, 'participants' => 1, 'max_p' => 20, 'food' => 1,
             'fields' => [$f('sankalpa_names', 'Name(s) for sankalpa', 'text', true), $f('gotra', 'Gotra'), $f('occasion', 'Occasion (birthday, anniversary, etc.)')],
             'slots' => [['Morning (7:00 AM – 9:00 AM)', '07:00', 10], ['Evening (5:30 PM – 7:00 PM)', '17:30', 10]],
@@ -111,8 +111,8 @@ return function (Database $db): void {
     }
 
     $settings = [
-        'temple_name' => 'Shree Jagannatha Temple Bengaluru',
-        'temple_address' => 'Bengaluru, Karnataka',
+        'temple_name' => 'Shree Jagannath Temple',
+        'temple_address' => '',
         'temple_phone' => '',
         'temple_email' => '',
         'temple_website' => 'https://sjtbengaluru.org',
@@ -125,7 +125,7 @@ return function (Database $db): void {
         'additional_charge_label' => '',
         'additional_charge_paise' => '0',
         'upi_vpa' => '',
-        'upi_payee_name' => 'Shree Jagannatha Temple Bengaluru',
+        'upi_payee_name' => 'Shree Jagannath Temple',
         'upi_qr_mode' => 'dynamic',
         'upi_include_tr' => '0',
         'upi_verified' => '0',

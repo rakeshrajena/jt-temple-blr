@@ -4,6 +4,7 @@ declare(strict_types=1);
 use SJT\Core\App;
 use SJT\Core\Env;
 use SJT\Core\Session;
+use SJT\Service\TempleIdentity;
 use SJT\Service\TempleLogo;
 
 /** True when unified install loaded CRM helpers first (same request). */
@@ -217,6 +218,10 @@ if (!function_exists('flash')) {
 if (!function_exists('setting')) {
     function setting(string $key, ?string $default = null): ?string
     {
+        if (str_starts_with($key, 'temple_')) {
+            return TempleIdentity::get($key, $default);
+        }
+
         return App::settings()->get($key, $default);
     }
 }
