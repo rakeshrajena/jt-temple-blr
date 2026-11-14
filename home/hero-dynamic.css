@@ -4,6 +4,7 @@
   z-index: 0;
   overflow: hidden;
   background: #1a1a1a;
+  pointer-events: none;
 }
 
 .sjt-hero-slideshow__layer {
@@ -39,8 +40,99 @@ section.sjt-hero-has-slideshow {
   background-attachment: scroll !important;
 }
 
+.sjt-hero-dots {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(1.15rem + env(safe-area-inset-bottom, 0px));
+  z-index: 12;
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  pointer-events: auto;
+  padding: 0.4rem 0.7rem;
+  border-radius: 9999px;
+  background: rgba(22, 12, 8, 0.42);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.sjt-hero-dot {
+  position: relative;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  border: none;
+  padding: 0;
+  background: rgba(255, 252, 245, 0.5);
+  cursor: pointer;
+  overflow: hidden;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.35s ease,
+    transform 0.35s ease;
+}
+
+.sjt-hero-dot:hover {
+  background: rgba(255, 252, 245, 0.75);
+  transform: scale(1.08);
+}
+
+.sjt-hero-dot.is-active {
+  width: 2rem;
+  background: rgba(217, 112, 26, 0.92);
+}
+
+.sjt-hero-dot.is-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.38);
+  animation: sjt-hero-dot-fill var(--sjt-hero-dot-duration, 7s) linear forwards;
+}
+
+.sjt-hero-dot:focus-visible {
+  outline: 2px solid #e8c96a;
+  outline-offset: 2px;
+}
+
+@keyframes sjt-hero-dot-fill {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .sjt-hero-dots {
+    bottom: calc(0.85rem + env(safe-area-inset-bottom, 0px));
+    gap: 0.35rem;
+    padding: 0.35rem 0.55rem;
+  }
+
+  .sjt-hero-dot.is-active {
+    width: 1.5rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sjt-hero-slideshow__layer {
+    transition: none;
+  }
+
+  .sjt-hero-dot.is-active::after {
+    animation: none;
+    width: 100%;
+    opacity: 0.35;
+  }
+
+  .sjt-hero-dot {
     transition: none;
   }
 }

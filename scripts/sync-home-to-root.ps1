@@ -13,7 +13,7 @@ if (Test-Path $srcAssets) {
     New-Item -ItemType Directory -Force -Path $dstAssets | Out-Null
     Copy-Item (Join-Path $srcAssets '*') -Destination $dstAssets -Force
 }
-foreach ($name in @('index.html', 'site-links.js', 'site-links.css', 'gallery-dynamic.js', 'hero-dynamic.js', 'hero-dynamic.css', 'robots.txt', 'sitemap.xml', 'favicon.ico', 'placeholder.svg')) {
+foreach ($name in @('index.html', 'site-links.js', 'site-links.css', 'gallery-dynamic.js', 'gallery-dynamic.css', 'hero-dynamic.js', 'hero-dynamic.css', 'identity-dynamic.js', 'home-renovation.js', 'home-renovation.css', 'robots.txt', 'sitemap.xml', 'favicon.ico', 'placeholder.svg')) {
     $src = Join-Path $homeDir $name
     if (Test-Path $src) {
         Copy-Item $src -Destination $root -Force

@@ -1,0 +1,357 @@
+/**
+ * Shree Jagannath Temple — site-wide visual theme (elegance, warmth, dharmik tone).
+ * Colours, type, borders, shadows only — no content or layout structure changes.
+ */
+:root {
+  --sjt-maroon: #7a1d1d;
+  --sjt-maroon-deep: #5c1414;
+  --sjt-saffron: #d9701a;
+  --sjt-saffron-soft: #e8954a;
+  --sjt-gold: #d4af37;
+  --sjt-gold-light: #e8c96a;
+  --sjt-cream: #f9f4eb;
+  --sjt-parchment: #f3ebe0;
+  --sjt-ink: #2a1b12;
+  --sjt-muted: #5c4e42;
+  --sjt-gold-line: rgba(212, 175, 55, 0.55);
+  --sjt-card-border: rgba(212, 175, 55, 0.34);
+  --sjt-radius: 0.65rem;
+  --sjt-radius-lg: 0.85rem;
+  --sjt-shadow: 0 10px 32px rgba(42, 27, 18, 0.08);
+  --sjt-shadow-hover: 0 16px 40px rgba(42, 27, 18, 0.12);
+  --sjt-font-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --sjt-font-body: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* —— Base —— */
+body.sjt-home-renovated {
+  font-family: var(--sjt-font-body);
+  background-color: var(--sjt-cream);
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4af37' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(ellipse 95% 50% at 50% -8%, rgba(212, 175, 55, 0.11), transparent 62%),
+    linear-gradient(180deg, var(--sjt-cream) 0%, var(--sjt-parchment) 55%, #efe4d6 100%);
+  color: var(--sjt-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+body.sjt-home-renovated ::selection {
+  background: rgba(217, 112, 26, 0.25);
+  color: var(--sjt-maroon-deep);
+}
+
+/* —— Typography —— */
+body.sjt-home-renovated h1,
+body.sjt-home-renovated h2,
+body.sjt-home-renovated h3,
+body.sjt-home-renovated h4,
+body.sjt-home-renovated .temple-title {
+  font-family: var(--sjt-font-display);
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  color: var(--sjt-maroon);
+}
+
+body.sjt-home-renovated h2 {
+  font-size: clamp(1.75rem, 4vw, 2.35rem);
+  line-height: 1.2;
+}
+
+body.sjt-home-renovated h3 {
+  font-size: clamp(1.2rem, 2.5vw, 1.45rem);
+  font-weight: 600;
+}
+
+body.sjt-home-renovated main p,
+body.sjt-home-renovated .temple-section p {
+  color: var(--sjt-muted);
+  line-height: 1.7;
+}
+
+/* Section headings — gold rule */
+body.sjt-home-renovated .temple-section > h2,
+body.sjt-home-renovated main > div h2.text-center,
+body.sjt-home-renovated section h2.text-center {
+  position: relative;
+  padding-bottom: 0.65rem;
+  margin-bottom: 0.35rem;
+}
+
+body.sjt-home-renovated .temple-section > h2::after,
+body.sjt-home-renovated main > div h2.text-center::after,
+body.sjt-home-renovated section h2.text-center::after {
+  content: '';
+  display: block;
+  width: 4.5rem;
+  height: 3px;
+  margin: 0.75rem auto 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--sjt-gold), transparent);
+}
+
+/* Hero typography stays luminous on imagery */
+body.sjt-home-renovated section.h-screen h1 {
+  color: #fff;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.5);
+}
+
+body.sjt-home-renovated section.h-screen p {
+  color: rgba(255, 252, 245, 0.95);
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.45);
+  line-height: 1.65;
+}
+
+body.sjt-home-renovated .sjt-hero-slideshow__dim {
+  background: linear-gradient(
+    180deg,
+    rgba(45, 20, 12, 0.52) 0%,
+    rgba(45, 20, 12, 0.22) 48%,
+    rgba(45, 20, 12, 0.55) 100%
+  ) !important;
+}
+
+/* Hero CTAs */
+body.sjt-home-renovated section.h-screen a.inline-block,
+body.sjt-home-renovated section.h-screen button {
+  border-radius: var(--sjt-radius);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+body.sjt-home-renovated section.h-screen a.inline-block:hover,
+body.sjt-home-renovated section.h-screen button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
+/* —— Header —— */
+body.sjt-home-renovated nav.fixed.bg-white,
+body.sjt-home-renovated nav.fixed[class*='bg-white'] {
+  background-color: rgba(249, 244, 235, 0.94) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--sjt-gold-line);
+  box-shadow: 0 4px 20px rgba(42, 27, 18, 0.07);
+}
+
+body.sjt-home-renovated nav .temple-title,
+body.sjt-home-renovated nav a.font-semibold {
+  color: var(--sjt-maroon) !important;
+  font-family: var(--sjt-font-display);
+  font-weight: 700;
+}
+
+/* Logo — natural image only, no frame or fill behind it */
+body.sjt-home-renovated nav a:has(> img),
+body.sjt-home-renovated nav a:has(img) {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+body.sjt-home-renovated nav img,
+body.sjt-home-renovated header img {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: none !important;
+  background-color: transparent !important;
+}
+
+body.sjt-home-renovated nav a:not(.bg-temple-saffron):hover {
+  color: var(--sjt-saffron) !important;
+}
+
+body.sjt-home-renovated nav a.bg-temple-saffron,
+body.sjt-home-renovated nav .bg-temple-saffron {
+  background: linear-gradient(135deg, var(--sjt-saffron) 0%, #c45f10 100%) !important;
+  border-radius: var(--sjt-radius);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 14px rgba(217, 112, 26, 0.35);
+}
+
+/* —— Sections —— */
+body.sjt-home-renovated .temple-section {
+  position: relative;
+}
+
+body.sjt-home-renovated .temple-section.bg-temple-cream\/30,
+body.sjt-home-renovated .temple-section[class*='temple-cream'] {
+  background-color: rgba(249, 244, 235, 0.72);
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+body.sjt-home-renovated .temple-section.bg-white {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* —— Cards & grids —— */
+body.sjt-home-renovated [class*='border-temple-gold'],
+body.sjt-home-renovated .rounded-lg.border,
+body.sjt-home-renovated .rounded-xl.border {
+  border-color: var(--sjt-card-border) !important;
+  border-radius: var(--sjt-radius-lg) !important;
+  box-shadow: var(--sjt-shadow);
+  background-color: rgba(255, 253, 248, 0.96);
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+}
+
+body.sjt-home-renovated #events .grid > div:hover,
+body.sjt-home-renovated #services .grid > div:hover {
+  box-shadow: var(--sjt-shadow-hover);
+  transform: translateY(-3px);
+  border-color: rgba(217, 112, 26, 0.45) !important;
+}
+
+body.sjt-home-renovated #about img.rounded-full {
+  border: 3px solid var(--sjt-gold-line);
+  box-shadow: 0 14px 40px rgba(122, 29, 29, 0.14);
+}
+
+body.sjt-home-renovated #events h3 {
+  color: var(--sjt-maroon);
+}
+
+body.sjt-home-renovated #events .text-temple-saffron,
+body.sjt-home-renovated .text-temple-saffron {
+  color: var(--sjt-saffron) !important;
+}
+
+body.sjt-home-renovated .text-temple-maroon {
+  color: var(--sjt-maroon) !important;
+}
+
+body.sjt-home-renovated .text-temple-gold {
+  color: var(--sjt-gold) !important;
+}
+
+/* Online service cards */
+body.sjt-home-renovated #services .sjt-service-card-inner {
+  border-color: var(--sjt-card-border);
+  background: rgba(255, 253, 248, 0.98);
+  border-radius: var(--sjt-radius-lg);
+}
+
+body.sjt-home-renovated #services .sjt-service-title {
+  font-family: var(--sjt-font-display);
+  font-size: 1.28rem;
+}
+
+body.sjt-home-renovated #services .sjt-service-icon {
+  background: linear-gradient(145deg, rgba(217, 112, 26, 0.18), rgba(212, 175, 55, 0.22));
+  border: 1px solid var(--sjt-card-border);
+}
+
+/* —— Gallery —— */
+body.sjt-home-renovated.sjt-on-gallery main,
+body.sjt-home-renovated .gallery-grid {
+  padding-top: 0.25rem;
+}
+
+body.sjt-home-renovated .gallery-item img,
+body.sjt-home-renovated .sjt-gallery-dynamic-item img,
+body.sjt-home-renovated [data-sjt-gallery-dynamic] img {
+  border: 2px solid var(--sjt-card-border);
+  border-radius: var(--sjt-radius);
+}
+
+body.sjt-home-renovated .sjt-gallery-tab {
+  font-family: var(--sjt-font-body);
+}
+
+body.sjt-home-renovated #sjt-gallery-lightbox {
+  backdrop-filter: blur(4px);
+}
+
+/* —— Donate —— */
+body.sjt-home-renovated .sjt-donation-cta {
+  border: 1px solid var(--sjt-gold-line);
+  border-radius: var(--sjt-radius-lg);
+  background: rgba(255, 253, 248, 0.15);
+}
+
+body.sjt-home-renovated #donate .temple-section,
+body.sjt-home-renovated [id='donate'] {
+  position: relative;
+}
+
+/* —— Footer —— */
+body.sjt-home-renovated footer.bg-temple-darkblue,
+body.sjt-home-renovated footer[class*='temple-dark'] {
+  background: linear-gradient(180deg, #3d2014 0%, #2a1610 100%) !important;
+  border-top: 3px solid var(--sjt-gold-line);
+  box-shadow: inset 0 1px 0 rgba(232, 201, 106, 0.15);
+}
+
+body.sjt-home-renovated footer h3.text-temple-gold,
+body.sjt-home-renovated footer .text-temple-gold {
+  color: var(--sjt-gold-light) !important;
+  font-family: var(--sjt-font-display);
+}
+
+body.sjt-home-renovated footer p,
+body.sjt-home-renovated footer li,
+body.sjt-home-renovated footer a {
+  color: rgba(249, 244, 235, 0.88);
+}
+
+body.sjt-home-renovated footer a:hover {
+  color: var(--sjt-gold-light) !important;
+}
+
+/* —— Buttons & links (sitewide) —— */
+body.sjt-home-renovated .bg-temple-saffron,
+body.sjt-home-renovated a.sjt-donation-cta-btn,
+body.sjt-home-renovated .sjt-bottom-cta-donate,
+body.sjt-home-renovated button.bg-temple-saffron {
+  background: linear-gradient(135deg, var(--sjt-saffron) 0%, #c45f10 100%) !important;
+  border-radius: var(--sjt-radius);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+body.sjt-home-renovated .bg-temple-maroon {
+  background-color: var(--sjt-maroon) !important;
+  border-radius: var(--sjt-radius);
+}
+
+body.sjt-home-renovated a:focus-visible,
+body.sjt-home-renovated button:focus-visible {
+  outline: 2px solid var(--sjt-gold);
+  outline-offset: 2px;
+}
+
+/* Bottom quick actions */
+body.sjt-home-renovated .sjt-bottom-cta {
+  background: linear-gradient(180deg, rgba(45, 24, 16, 0.97), rgba(35, 18, 12, 0.98));
+  border-top: 2px solid var(--sjt-gold-line);
+}
+
+body.sjt-home-renovated .sjt-bottom-cta-book {
+  border: 1px solid var(--sjt-card-border);
+  border-radius: var(--sjt-radius);
+}
+
+/* —— Inner routes (About, Gallery page, etc.) —— */
+body.sjt-home-renovated main h1 {
+  font-size: clamp(2rem, 4.5vw, 2.75rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  body.sjt-home-renovated #events .grid > div:hover,
+  body.sjt-home-renovated #services .grid > div:hover,
+  body.sjt-home-renovated section.h-screen a.inline-block:hover {
+    transform: none;
+  }
+}

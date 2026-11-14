@@ -230,7 +230,7 @@
     }).join('');
   }
 
-  function patchServicesSection() {
+  function hideDuplicateServiceGrids() {
     var sec = document.getElementById('services');
     if (!sec) {
       return;
@@ -239,10 +239,27 @@
     if (!container) {
       return;
     }
-    var grid = container.querySelector('.grid');
-    if (grid) {
+    container.querySelectorAll('.grid').forEach(function (grid) {
+      if (grid.classList.contains('sjt-services-grid')) {
+        return;
+      }
+      if (grid.closest('[data-sjt-services-online]')) {
+        return;
+      }
       grid.classList.add('sjt-legacy-grid-hidden');
       grid.setAttribute('hidden', '');
+      grid.setAttribute('aria-hidden', 'true');
+    });
+  }
+
+  function patchServicesSection() {
+    var sec = document.getElementById('services');
+    if (!sec) {
+      return;
+    }
+    var container = sec.querySelector('.container, [class*="container"]');
+    if (!container) {
+      return;
     }
     var existing = container.querySelector('[data-sjt-services-online]');
     if (existing && existing.getAttribute('data-sjt-version') === '3') {
@@ -273,6 +290,7 @@
       container.prepend(box);
     }
     sec.dataset.sjtServicesPatched = '1';
+    hideDuplicateServiceGrids();
   }
 
   function patchFooterDonateLinks() {
@@ -288,22 +306,68 @@
   }
 
   function patchBottomCta() {
-    if (document.querySelector('[data-sjt-bottom-cta]')) {
+    if (!document.querySelector('[data-sjt-bottom-cta]')) {
+      var bar = document.createElement('div');
+      bar.className = 'sjt-bottom-cta';
+      bar.setAttribute('data-sjt-bottom-cta', '1');
+      bar.setAttribute('role', 'navigation');
+      bar.setAttribute('aria-label', 'Quick links');
+      bar.innerHTML =
+        '<a class="sjt-bottom-cta-btn sjt-bottom-cta-donate" href="' +
+        DONATION +
+        '">Donate online</a>' +
+        '<a class="sjt-bottom-cta-btn sjt-bottom-cta-book" href="' +
+        BOOKING +
+        '">Book service</a>';
+      document.body.appendChild(bar);
+    }
+
+    if (document.querySelector('[data-sjt-fab]')) {
       return;
     }
-    var bar = document.createElement('div');
-    bar.className = 'sjt-bottom-cta';
-    bar.setAttribute('data-sjt-bottom-cta', '1');
-    bar.setAttribute('role', 'navigation');
-    bar.setAttribute('aria-label', 'Quick links');
-    bar.innerHTML =
-      '<a class="sjt-bottom-cta-btn sjt-bottom-cta-donate" href="' +
+
+    var fab = document.createElement('div');
+    fab.className = 'sjt-fab';
+    fab.setAttribute('data-sjt-fab', '1');
+    fab.innerHTML =
+      '<div class="sjt-fab-menu" role="menu" aria-label="Quick actions">' +
+      '<a class="sjt-fab-menu-item sjt-fab-donate" role="menuitem" href="' +
       DONATION +
       '">Donate online</a>' +
-      '<a class="sjt-bottom-cta-btn sjt-bottom-cta-book" href="' +
+      '<a class="sjt-fab-menu-item sjt-fab-book" role="menuitem" href="' +
       BOOKING +
-      '">Book service</a>';
-    document.body.appendChild(bar);
+      '">Book service</a>' +
+      '</div>' +
+      '<button type="button" class="sjt-fab-toggle" aria-expanded="false" aria-haspopup="true" aria-label="Open services: donate and booking">' +
+      '<span class="sjt-fab-toggle-icon" aria-hidden="true">+</span>' +
+      '<span class="sjt-fab-toggle-label">Services</span>' +
+      '</button>';
+
+    var toggle = fab.querySelector('.sjt-fab-toggle');
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var open = fab.classList.toggle('is-open');
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!fab.classList.contains('is-open')) {
+        return;
+      }
+      if (!fab.contains(e.target)) {
+        fab.classList.remove('is-open');
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && fab.classList.contains('is-open')) {
+        fab.classList.remove('is-open');
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    document.body.appendChild(fab);
   }
 
   function run() {
@@ -312,6 +376,7 @@
     patchHeroLiveButton();
     patchDonateSection();
     patchServicesSection();
+    hideDuplicateServiceGrids();
     patchFooterDonateLinks();
     patchBottomCta();
   }

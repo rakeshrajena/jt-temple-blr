@@ -1028,7 +1028,17 @@ function save_brand_identity(
             $pdo->commit();
         }
         if (function_exists('temple_identity_sync_to_booking_settings')) {
+            $actor = (string) ($_SESSION['username'] ?? 'settings');
+            temple_identity_sync_to_booking_settings($actor);
+        }
+    } catch (Throwable $e) {
+        if ($own && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
     }
+
+    return null;
 }
 
 function serve_brand_logo(): void

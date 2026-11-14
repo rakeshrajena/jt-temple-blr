@@ -11,7 +11,9 @@
 
 Put full-size gallery images in **`../gallery/`** (sibling folder, not here).
 
-- Supported: `.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`
+- **Subfolders** under `gallery/` become **tabs** on `/gallery` only when that folder has at least one image (empty folders are ignored; no tabs if everything is only in `gallery/` root).
+- When subfolder tabs exist, root images appear under **General** (and **All**).
+- Supported images include: `.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`, `.avif`, `.bmp`, `.svg`, `.ico`, `.tif`, `.tiff`, `.heic`, `.heif`
 - Files are listed **newest first** on the home “Gallery Highlights” and `/gallery` page.
 - No code changes needed when adding images.
 - Filenames with `phone`, `screenshot`, or `thumb` in the name are ignored.

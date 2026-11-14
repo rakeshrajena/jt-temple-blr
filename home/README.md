@@ -14,6 +14,8 @@ Production serves this content from **document root** (`public_html/`), not from
 
 API: `home/api/gallery-images.php` (JSON list, sorted by file date).
 
+**Identity (name, address, phone, email, favicon/logo)** comes from CRM **Settings → Identity** via `home/api/temple-identity.php`, same source as Booking and Donation.
+
 See `photos/README.md` for staff notes.
 
 ## Deploy

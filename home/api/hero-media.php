@@ -53,17 +53,7 @@ foreach ($iterator as $entry) {
     ];
 }
 
-usort(
-    $items,
-    static function (array $a, array $b): int {
-        $ta = $a['type'] === 'video' ? 1 : 0;
-        $tb = $b['type'] === 'video' ? 1 : 0;
-        if ($ta !== $tb) {
-            return $ta <=> $tb;
-        }
-        return strcasecmp($a['name'], $b['name']);
-    }
-);
+usort($items, static fn(array $a, array $b): int => $b['mtime'] <=> $a['mtime']);
 
 echo json_encode(
     [
