@@ -409,6 +409,18 @@ table.vastra-stock-table tfoot .report-total-row td {
   background: #FBF7F1;
   border-top: 2px solid var(--border);
 }
+table.vastra-stock-table tbody tr.vastra-all-in-store td {
+  background: #fde8e8;
+}
+table.vastra-stock-table tbody tr.vastra-all-in-store:hover td {
+  background: #f9d4d4;
+}
+.vastra-all-in-store-sample {
+  display: inline-block;
+  padding: 0 0.35rem;
+  border-radius: 3px;
+  background: #fde8e8;
+}
 table.data-table tbody tr:hover td { background: #FBF8F4; }
 table.data-table tr:last-child td { border-bottom: none; }
 table.data-table.fit {

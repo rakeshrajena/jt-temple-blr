@@ -104,7 +104,7 @@ $summarySum = vastra_summary_roll_up($summary);
 </div>
 <div class="panel">
   <h3>Stock by item (<?= count($summary) ?> types)</h3>
-  <p class="sub">One row per deity and item — quantities are combined, not duplicate lines.</p>
+  <p class="sub">One row per deity and item — quantities are combined, not duplicate lines. Rows highlighted in <span class="vastra-all-in-store-sample">red</span> have <strong>In store = 0</strong> (none left in stock for that item).</p>
   <?php if ($summary): ?>
   <div class="table-scroll">
     <table class="data-table vastra-stock-table">
@@ -122,8 +122,10 @@ $summarySum = vastra_summary_roll_up($summary);
         </tr>
       </thead>
       <tbody>
-        <?php foreach ($summary as $row): ?>
-        <tr>
+        <?php foreach ($summary as $row):
+          $noInStore = (int) $row['total'] > 0 && (int) $row['in_store'] === 0;
+        ?>
+        <tr<?= $noInStore ? ' class="vastra-all-in-store"' : '' ?>>
           <td class="col-text"><?= e($row['deity_name']) ?></td>
           <td class="col-text col-item"><?= e($row['item_name']) ?></td>
           <td class="col-text"><?= e(dash($row['color'])) ?></td>
