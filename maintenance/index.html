@@ -57,10 +57,58 @@
       height: 4px;
       background: linear-gradient(90deg, var(--maroon-deep), var(--saffron), var(--gold), var(--saffron), var(--maroon-deep));
     }
+    .brand-header {
+      margin: 0 0 1.15rem;
+    }
+    .symbol-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1.25rem;
+      margin-bottom: 0.85rem;
+    }
+    .symbol {
+      flex-shrink: 0;
+      color: var(--maroon);
+    }
+    .symbol-namaste-wrap {
+      position: relative;
+      width: 52px;
+      height: 52px;
+    }
+    .symbol-namaste-wrap img,
+    .symbol-namaste-wrap .symbol-namaste {
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      display: block;
+    }
+    .symbol-namaste-wrap img.is-hidden {
+      display: none;
+    }
+    .symbol-maint {
+      width: 44px;
+      height: 44px;
+      color: var(--saffron);
+    }
+    .symbol-divider {
+      width: 1px;
+      height: 40px;
+      background: linear-gradient(180deg, transparent, rgba(212, 175, 55, 0.65), transparent);
+    }
+    .namaste-label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--saffron);
+      margin-bottom: 0.75rem;
+    }
     .logo-wrap {
-      width: 88px;
-      height: 88px;
-      margin: 0 auto 1rem;
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 0.85rem;
       border-radius: 50%;
       border: 3px solid rgba(212, 175, 55, 0.55);
       padding: 4px;
@@ -70,17 +118,14 @@
       justify-content: center;
       overflow: hidden;
     }
-  .logo-wrap img {
+    .logo-wrap.is-hidden {
+      display: none;
+    }
+    .logo-wrap img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       border-radius: 50%;
-    }
-    .logo-fallback {
-      display: none;
-      width: 52px;
-      height: 52px;
-      color: var(--maroon);
     }
     h1 {
       margin: 0 0 0.35rem;
@@ -110,7 +155,7 @@
       border-radius: 999px;
       margin-bottom: 1.1rem;
     }
-    .badge svg { flex-shrink: 0; }
+    .badge .badge-icon { flex-shrink: 0; width: 1rem; height: 1rem; color: var(--saffron); }
     .lead {
       margin: 0 0 1.25rem;
       font-size: 1rem;
@@ -164,17 +209,29 @@
 </head>
 <body>
   <main class="card" role="main">
-    <div class="logo-wrap" aria-hidden="true">
-      <img src="../home/photos/branding/logo.jpg" width="80" height="80" alt="" id="logo-img">
-      <svg class="logo-fallback" id="logo-fallback" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-        <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="2"/>
-        <path d="M32 14v36M22 24h20M22 40h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
+    <div class="brand-header">
+      <span class="namaste-label">Namaste · जय जगन्नाथ</span>
+      <div class="symbol-row" aria-hidden="true">
+        <div class="symbol-namaste-wrap">
+          <img id="namaste-png" src="../crm/static/namaste.png" width="52" height="52" alt="">
+          <svg class="symbol symbol-namaste" id="namaste-svg" viewBox="0 0 48 56" role="img" aria-label="Namaste" fill="currentColor" hidden>
+            <path d="M24 2c-4.5 0-8 3.2-8.5 7.8V26l-9.5 4.2c-3.8 1.7-5.8 5.8-4.5 9.6 1.8 5.2 6.8 9.4 22.5 9.4s20.7-4.2 22.5-9.4c1.3-3.8-.7-7.9-4.5-9.6L32.5 26V9.8C32 5.2 28.5 2 24 2zm0 6c2.2 0 3.5 1.2 3.5 3.2V27l6.8 3.1c1.1.5 1.4 1.4.9 2.4-.6 1.2-2.4 2-11.2 2s-10.6-.8-11.2-2c-.5-1 .2-1.9.9-2.4L20.5 27V11.2c0-2 1.3-3.2 3.5-3.2z"/>
+          </svg>
+        </div>
+        <span class="symbol-divider" aria-hidden="true"></span>
+        <!-- Maintenance (settings / upkeep) -->
+        <svg class="symbol symbol-maint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-label="Under maintenance">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+        </svg>
+      </div>
+      <div class="logo-wrap" id="logo-wrap">
+        <img src="../home/photos/branding/logo.jpg" width="80" height="80" alt="" id="logo-img">
+      </div>
     </div>
     <p class="badge">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>
-        <circle cx="12" cy="12" r="6"/>
+      <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
       </svg>
       Under maintenance
     </p>
@@ -199,22 +256,34 @@
     (function () {
       var y = document.getElementById('yr');
       if (y) y.textContent = String(new Date().getFullYear());
-      var img = document.getElementById('logo-img');
-      var fb = document.getElementById('logo-fallback');
-      if (img && fb) {
-        img.addEventListener('error', function () {
-          img.style.display = 'none';
-          fb.style.display = 'block';
+      var namastePng = document.getElementById('namaste-png');
+      var namasteSvg = document.getElementById('namaste-svg');
+      var namastePaths = ['../crm/static/namaste.png', '/crm/static/namaste.png'];
+      if (namastePng && namasteSvg) {
+        namastePng.addEventListener('error', function () {
+          var src = namastePng.getAttribute('src') || '';
+          var i = namastePaths.indexOf(src);
+          if (i >= 0 && i < namastePaths.length - 1) {
+            namastePng.src = namastePaths[i + 1];
+            return;
+          }
+          namastePng.classList.add('is-hidden');
+          namasteSvg.hidden = false;
         });
       }
+      var img = document.getElementById('logo-img');
+      var wrap = document.getElementById('logo-wrap');
       var bases = ['../home/photos/branding/logo.jpg', '/home/photos/branding/logo.jpg'];
-      if (img && window.location.pathname.indexOf('/maintenance') !== -1) {
+      if (img && wrap) {
         img.addEventListener('error', function tryAlt() {
-          var i = bases.indexOf(img.getAttribute('src') || '');
+          var src = img.getAttribute('src') || '';
+          var i = bases.indexOf(src);
           if (i >= 0 && i < bases.length - 1) {
             img.src = bases[i + 1];
+            return;
           }
-        }, { once: false });
+          wrap.classList.add('is-hidden');
+        });
       }
       var btn = document.getElementById('retry-btn');
       if (btn) {

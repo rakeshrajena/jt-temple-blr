@@ -8,14 +8,31 @@ Options -Indexes
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  # Maintenance ON (public home only): uncomment the next 3 lines — see maintenance/index.html and docs/DEPLOY-PRODUCTION.md
+
+  # --- Auto maintenance: if root index.html and index.php are missing, show maintenance/index.html ---
+  RewriteCond %{DOCUMENT_ROOT}/maintenance/index.html -f
+  RewriteCond %{DOCUMENT_ROOT}/index.html !-f
+  RewriteCond %{DOCUMENT_ROOT}/index.php !-f
+  RewriteRule ^$ maintenance/index.html [L]
+  RewriteCond %{DOCUMENT_ROOT}/maintenance/index.html -f
+  RewriteCond %{DOCUMENT_ROOT}/index.html !-f
+  RewriteCond %{DOCUMENT_ROOT}/index.php !-f
+  RewriteRule ^index\.html$ maintenance/index.html [L]
+  RewriteCond %{DOCUMENT_ROOT}/maintenance/index.html -f
+  RewriteCond %{DOCUMENT_ROOT}/index.html !-f
+  RewriteCond %{DOCUMENT_ROOT}/index.php !-f
+  RewriteRule ^gallery/?$ maintenance/index.html [L]
+
+  # Manual maintenance ON (force even when index.html exists): uncomment next 3 rules
   # RewriteRule ^$ maintenance/index.html [L]
   # RewriteRule ^index\.html$ maintenance/index.html [L]
   # RewriteRule ^gallery/?$ maintenance/index.html [L]
-  # Serve home photos, gallery, and gallery API from home/ (do not redirect to root).
+
   RewriteRule ^favicon\.ico$ home/api/favicon.php [L]
+  # Serve home photos, gallery, and gallery API from home/ (do not redirect to root).
   RewriteRule ^home/(photos|gallery|api)/ - [L]
-  # React Router: /gallery is a page, not a disk folder.
+  # React Router: /gallery is a page, not a disk folder (only when SPA shell exists).
+  RewriteCond %{DOCUMENT_ROOT}/index.html -f
   RewriteRule ^gallery/?$ index.html [L]
   # Old URLs: /home/... → site root (other paths only).
   RewriteRule ^home/?$ / [R=301,L]

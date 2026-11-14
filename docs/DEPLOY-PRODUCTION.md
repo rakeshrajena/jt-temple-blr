@@ -108,18 +108,12 @@ Folder: `maintenance/index.html` — **one self-contained file** (inline CSS + J
 **Preview (site still live):**  
 `https://your-domain/maintenance/`
 
-**Turn on maintenance for the home SPA only** — add at the **top** of root `public_html/.htaccess` (inside `mod_rewrite`), then upload:
+**Maintenance routing** (root `.htaccess`):
 
-```apache
-# --- Maintenance ON: show maintenance/index.html for home + gallery SPA ---
-RewriteRule ^$ maintenance/index.html [L]
-RewriteRule ^index\.html$ maintenance/index.html [L]
-RewriteRule ^gallery/?$ maintenance/index.html [L]
-# Booking, crm, Streaming, home/api, home/photos still work as normal.
-# --- Maintenance OFF: comment out or remove the three rules above ---
-```
+- **Automatic:** if `index.html` and `index.php` are both missing in document root but `maintenance/index.html` exists, `/`, `/index.html`, and `/gallery` serve the maintenance page.
+- **Manual (site still has index.html):** uncomment the three `RewriteRule` lines marked “Manual maintenance ON” in `.htaccess`.
 
-CRM, Booking, donation, and Streaming are **not** affected unless you add more rules.
+Booking, CRM, donation, and Streaming are **not** affected unless you add more rules.
 
 ## Apache / `.htaccess`
 
