@@ -1,6 +1,6 @@
 <?php
 /** @var string $content */
-$templeName = setting('temple_name', 'Shree Jagannatha Temple Bengaluru');
+$templeName = setting('temple_name', \SJT\Service\TempleIdentity::DEFAULT_NAME);
 $phone = setting('temple_phone');
 ?><!doctype html>
 <html lang="en">
@@ -12,6 +12,7 @@ $phone = setting('temple_phone');
 <meta name="theme-color" content="#7a1d1d">
 <meta name="robots" content="<?= str_starts_with(\SJT\Core\App::request()->path, '/b/') ? 'noindex, nofollow' : 'index, follow' ?>">
 <link rel="icon" href="<?= e(temple_logo_url()) ?>" type="<?= e(temple_logo_icon_type()) ?>">
+<link rel="apple-touch-icon" href="<?= e(temple_logo_url()) ?>">
 <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=5">
 <script src="<?= e(asset('js/busy.js')) ?>" defer></script>
 <script src="<?= e(asset('js/app.js')) ?>" defer></script>
@@ -45,7 +46,9 @@ $phone = setting('temple_phone');
     <?php if ($phone || setting('temple_email')): ?>
     <p>Temple office: <?php if ($phone): ?><a href="tel:<?= e(preg_replace('/[^\d+]/', '', $phone)) ?>"><?= e($phone) ?></a><?php endif; ?><?php if ($phone && setting('temple_email')): ?> · <?php endif; ?><?php if (setting('temple_email')): ?><a href="mailto:<?= e(setting('temple_email')) ?>"><?= e(setting('temple_email')) ?></a><?php endif; ?></p>
     <?php endif; ?>
-    <p><a href="<?= e(setting('temple_website', 'https://sjtbengaluru.org')) ?>">Temple website</a></p>
+    <?php $site = setting('temple_website'); if ($site): ?>
+    <p><a href="<?= e($site) ?>">Temple website</a></p>
+    <?php endif; ?>
   </div>
 </footer>
 <?php booking_busy_overlay(); ?>

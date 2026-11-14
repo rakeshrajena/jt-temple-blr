@@ -1,17 +1,11 @@
 <?php
 declare(strict_types=1);
 
-/** Shared auth for donation HTTP workers (no Booking APP_ROOT — CRM workers define APP_ROOT). */
+/** Shared auth for donation HTTP workers (no full bootstrap — same .env rules as Booking). */
 function donation_worker_verify(): void
 {
-    require_once dirname(__DIR__, 2) . '/app/Core/Env.php';
-
-    $bookingRoot = dirname(__DIR__, 2);
-    \SJT\Core\Env::load($bookingRoot . '/.env');
-    $repoEnv = dirname($bookingRoot) . DIRECTORY_SEPARATOR . '.env';
-    if (is_file($repoEnv)) {
-        \SJT\Core\Env::load($repoEnv, ['APP_KEY', 'INSTALL_TOKEN', 'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_PASSWORD']);
-    }
+    require_once dirname(__DIR__, 2) . '/app/autoload.php';
+    sjt_booking_load_env();
 
     $secret = trim((string) \SJT\Core\Env::get('APP_KEY', ''));
     if ($secret === '') {

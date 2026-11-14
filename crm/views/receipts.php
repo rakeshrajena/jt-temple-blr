@@ -11,7 +11,7 @@
 <div class="panel">
   <h3><?= e(t('ui.all_receipts')) ?></h3>
   <p style="color:var(--ink-soft); font-size:13px; margin-top:0;">
-    Click a receipt number to open the PDF. <strong>Email</strong> sends that PDF from the saved mail account. <strong>WhatsApp</strong> opens the devotee's chat with the receipt link in the message. On a phone, the same button also attaches the PDF when the device can share a file. <strong>Bulk email</strong> and <strong>Bulk WhatsApp</strong> open a message box for the selected receipts; Send delivers it and Cancel closes the box. Cancelling a receipt keeps the number and the file, and it waits for approval. <?php if ($isAdmin): ?>Bulk download is limited to Admin.<?php else: ?>Ask an Admin to download several at once.<?php endif; ?>
+    Click a receipt number to open the PDF. <strong>Email</strong> sends that PDF from the saved mail account. <strong>WhatsApp</strong> opens <strong>WhatsApp Web</strong> with the receipt link in the message (same as Subscriptions). On a phone only, the button may offer to attach the PDF when your browser supports file sharing. <strong>Bulk email</strong> and <strong>Bulk WhatsApp</strong> open a message box for the selected receipts; Send delivers it and Cancel closes the box. Cancelling a receipt keeps the number and the file, and it waits for approval. <?php if ($isAdmin): ?>Bulk download is limited to Admin.<?php else: ?>Ask an Admin to download several at once.<?php endif; ?>
   </p>
   <?php if ($receipts === []): ?>
     <p>No receipts yet. Generate one from <a href="<?= e(url('donations')) ?>">Donations</a>.</p>
@@ -38,7 +38,7 @@
         <th><?= e(t('common.purpose')) ?></th>
         <th><?= e(t('ui.generated')) ?></th>
         <th><?= e(t('ui.file')) ?></th>
-        <th><?= e(t('ui.share')) ?></th>
+        <th class="col-actions"><?= e(t('ui.share')) ?></th>
       </tr>
       <?php foreach ($receipts as $row): ?>
       <?php
@@ -65,7 +65,8 @@
         <td><?= e(dash((string) ($row['purpose'] ?? ''))) ?></td>
         <td><?= e($generatedOn !== '' ? $generatedOn : '—') ?><?php if ($generatedBy !== ''): ?><br><span style="color:var(--ink-soft);font-size:12px;"><?= e($generatedBy) ?></span><?php endif; ?></td>
         <td><?php if ($ready): ?><span class="badge badge-green">Ready</span><?php else: ?><span class="badge badge-amber">Missing</span><?php endif; ?></td>
-        <td style="white-space:nowrap;">
+        <td class="col-actions col-share">
+          <div class="table-row-actions">
           <?php
             $shareEmail = trim((string) ($row['donor_email'] ?? ''));
             $waUrl = whatsapp_web_url((string) ($row['donor_phone'] ?? ''), $shareText, $countryCode);
@@ -73,13 +74,14 @@
           <?php if ($shareEmail !== ''): ?>
           <button class="btn btn-sm btn-gold" type="submit" form="shareEmail<?= e((string) $row['donation_id']) ?>">Email</button>
           <?php else: ?>
-          <span style="color:var(--ink-soft);font-size:12px;">No email</span>
+          <span class="share-placeholder">No email</span>
           <?php endif; ?>
           <?php if ($waUrl !== null): ?>
           <a class="btn btn-sm btn-outline wa-share" href="<?= e($waUrl) ?>" target="_blank" rel="noopener"<?php if ($publicUrl !== ''): ?> data-pdf="<?= e(url('receipts/' . $number . '.pdf')) ?>" data-file="<?= e($number . '.pdf') ?>" data-text="<?= e($shareText) ?>"<?php endif; ?>><?= e(t('common.whatsapp')) ?></a>
           <?php else: ?>
-          <span style="color:var(--ink-soft);font-size:12px;">No phone</span>
+          <span class="share-placeholder">No phone</span>
           <?php endif; ?>
+          </div>
         </td>
       </tr>
       <?php endforeach; ?>
@@ -126,12 +128,21 @@
       event.preventDefault();
     }
   });
+  function useWhatsAppWebOnly() {
+    if (/Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+      return false;
+    }
+    if (window.matchMedia && window.matchMedia('(pointer: fine)').matches && window.innerWidth >= 768) {
+      return true;
+    }
+    return false;
+  }
   document.querySelectorAll('.wa-share').forEach(function (link) {
     link.addEventListener('click', function (event) {
       const pdfUrl = link.getAttribute('data-pdf') || '';
       const filename = link.getAttribute('data-file') || 'receipt.pdf';
       const text = link.getAttribute('data-text') || '';
-      if (pdfUrl === '' || typeof navigator.canShare !== 'function') {
+      if (useWhatsAppWebOnly() || pdfUrl === '' || typeof navigator.canShare !== 'function') {
         return;
       }
       event.preventDefault();

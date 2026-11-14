@@ -15,7 +15,7 @@ Full feature list: [`docs/SYSTEM-OVERVIEW.md`](docs/SYSTEM-OVERVIEW.md). Online 
 
 Use one database (e.g. **`sjt_temple_blr`**) for both apps. Point booking `.env` at the **same** `DB_NAME`, `DB_USER`, and `DB_PASS` as `crm/.env` / `crm/config.php`.
 
-1. ERP tables already exist from `crm/install.php` or first visit.
+1. ERP tables already exist from `crm/install.php` or first visit. When you upgrade CRM code on an existing server, open `/crm/` once so `migrate_schema()` adds any new ERP tables (for example `vastra_movements`) — no manual SQL script.
 2. From this **`booking/`** folder: copy `.env.example` → `.env`, set `APP_KEY` and `INSTALL_TOKEN`, then either:
  - **Browser:** open `https://your-site/Booking/install.php`, or
  - **SSH:** `php bin/console.php migrate` and `php bin/console.php create-admin …`

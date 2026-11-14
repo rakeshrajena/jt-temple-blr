@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace SJT\Repo;
 
 use SJT\Core\Database;
+use SJT\Service\TempleIdentity;
 
 /** Key/value settings editable from the admin dashboard (never secrets — those live in .env). */
 final class Settings

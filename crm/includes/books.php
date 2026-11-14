@@ -618,6 +618,32 @@ function build_ledgers(array $lines, string $from, string $to): array
     return array_values($heads);
 }
 
+/**
+ * @param list<array<string, mixed>> $heads
+ * @return array<string, mixed>|null
+ */
+function ledger_select_head(array $heads, ?int $index, string $headName): ?array
+{
+    if ($index !== null && $index >= 0 && isset($heads[$index])) {
+        return $heads[$index];
+    }
+    $headName = trim($headName);
+    if ($headName === '') {
+        return null;
+    }
+    foreach ($heads as $head) {
+        if ((string) $head['head'] === $headName) {
+            return $head;
+        }
+    }
+    foreach ($heads as $head) {
+        if (strcasecmp((string) $head['head'], $headName) === 0) {
+            return $head;
+        }
+    }
+    return null;
+}
+
 /** @return list<array<string, mixed>> */
 function load_ledger_lines(string $from, string $to): array
 {

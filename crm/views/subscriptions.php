@@ -8,6 +8,8 @@
 /** @var float $pendingAmount */
 /** @var array{country_code: string, template: string, smtp_ready: bool} $messaging */
 /** @var array<int, array{from_status: string, to_status: string, changed_at: string, changed_by_name: string}> $statusChanges */
+/** @var list<string> $moneyModes */
+/** @var string $today */
 
 $subscriberFields = static function (string $prefix, array $s = []): void {
     $value = static fn (string $key, string $fallback = ''): string => e((string) ($s[$key] ?? $fallback));
@@ -126,7 +128,7 @@ $subscriberFields = static function (string $prefix, array $s = []): void {
     </table>
 </div>
 <div class="panel">
-  <h3 id="invoices"><?= invoice_filters_active($invoiceFilters) ? e(t('ui.invoices_shown', ['shown' => (string) count($invoices), 'total' => (string) $invoiceTotal])) : 'All Invoices (' . count($invoices) . ')' ?><?= help_tip('+ Invoice appears only when this month is not paid and no unpaid invoice exists yet; it creates one invoice and emails the payment link once. If the period is paid or an unpaid invoice already exists, use Send or Resend on that row instead. Paid invoices never get a new payment link. WhatsApp opens WhatsApp Web with the message filled in. After payment the invoice shows Paid, posts to Donations, and a receipt can be emailed from this list.') ?></h3>
+  <h3 id="invoices"><?= invoice_filters_active($invoiceFilters) ? e(t('ui.invoices_shown', ['shown' => (string) count($invoices), 'total' => (string) $invoiceTotal])) : 'All Invoices (' . count($invoices) . ')' ?><?= help_tip('+ Invoice appears only when this month is not paid and no unpaid invoice exists yet; it creates one invoice and emails the payment link once. If the period is paid or an unpaid invoice already exists, use Send or Resend on that row instead. Paid invoices never get a new payment link. WhatsApp opens WhatsApp Web with the message filled in (payment link for unpaid rows; receipt link after a paid receipt is generated). After payment the invoice shows Paid, posts to Donations, and a receipt can be emailed from this list. Record payment is for cash, cheque, or counter UPI: it marks the invoice paid, posts the donation to the cash book, and generates the receipt.') ?></h3>
   <form class="filters" method="GET" action="<?= e(app_script()) ?>#invoices">
     <input type="hidden" name="r" value="subscriptions">
     <div class="form-group"><label for="invoice-q"><?= e(t('ui.invoice_search')) ?></label><input id="invoice-q" type="search" name="q" value="<?= e($invoiceFilters['q']) ?>"></div>
@@ -169,10 +171,10 @@ $subscriberFields = static function (string $prefix, array $s = []): void {
       <button class="btn btn-gold btn-sm" type="submit" id="bulkSendBtn" disabled>📲 Send Selected (<span id="selCount">0</span>)</button>
       <span class="panel-table-hint">Select invoices below, or use the header checkbox to select all unpaid invoices.</span>
     </div>
-    <table class="data-table">
+    <table class="data-table reveal-group">
       <tr>
         <th style="width:36px;"><input type="checkbox" id="selectAll"></th>
-        <th><?= e(t('ui.invoice_no')) ?></th><th><?= e(t('overview.subscriber')) ?></th><th><?= e(t('ui.contact')) ?></th><th><?= e(t('common.period')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('pay.due_date')) ?></th><th><?= e(t('common.status')) ?></th><th><?= e(t('ui.payment_link')) ?></th><th></th>
+        <th><?= e(t('ui.invoice_no')) ?></th><th><?= e(t('overview.subscriber')) ?></th><th><?= e(t('ui.contact')) ?></th><th><?= e(t('common.period')) ?></th><th><?= e(t('common.amount')) ?></th><th><?= e(t('pay.due_date')) ?></th><th><?= e(t('common.status')) ?></th><th><?= e(t('ui.payment_link')) ?></th><th class="col-actions">Actions</th>
       </tr>
       <?php foreach ($invoices as $i): ?>
       <tr>
@@ -193,26 +195,30 @@ $subscriberFields = static function (string $prefix, array $s = []): void {
           <?php elseif ($i['status'] === 'Overdue'): ?><span class="badge badge-red">Overdue</span>
           <?php else: ?><span class="badge badge-amber">Pending</span><?php endif; ?>
         </td>
-        <td>
+        <td class="col-pay-link">
           <?php if ($i['status'] !== 'Paid'): ?>
           <a href="<?= e(url('pay/' . $i['payment_token'])) ?>" target="_blank" class="btn btn-sm btn-outline"><?= e(t('ui.preview_pay')) ?></a>
           <?php else: ?>
-          <span style="color:var(--ink-soft); font-size:12px;">Ref: <?= e($i['payment_reference']) ?></span>
-          <?php if ((int) ($i['receipt_generated'] ?? 0) === 1): ?>
-          <br><?= receipt_link($i['receipt_number']) ?> <?= receipt_cancel_badge($i['receipt_cancelled'] ?? 0, '') ?>
-          <?php endif; ?>
+          <div class="col-pay-meta">
+            <span>Ref: <?= e($i['payment_reference']) ?></span>
+            <?php if ((int) ($i['receipt_generated'] ?? 0) === 1): ?>
+            <div style="margin-top:6px;"><?= receipt_link($i['receipt_number']) ?> <?= receipt_cancel_badge($i['receipt_cancelled'] ?? 0, '') ?></div>
+            <?php endif; ?>
+          </div>
           <?php endif; ?>
         </td>
-        <td>
+        <td class="col-actions">
+          <div class="table-row-actions">
           <?php if ($i['status'] === 'Paid' && !empty($i['linked_donation_id'])): ?>
-          <div class="subscriber-actions">
             <?php if ((int) ($i['receipt_generated'] ?? 0) === 1 && (int) ($i['receipt_cancelled'] ?? 0) !== 1): ?>
             <button class="btn btn-sm btn-gold" type="submit" form="sendReceipt<?= e((string) $i['id']) ?>" data-busy="Sending the receipt"<?= empty($i['email']) ? ' disabled title="No email is saved for this subscriber."' : ' title="' . e('Emails the receipt PDF to ' . $i['email']) . '"' ?>><?= e(t('ui.send_receipt')) ?></button>
             <?php endif; ?>
             <?php if ((int) ($i['receipt_cancelled'] ?? 0) !== 1): ?>
             <button class="btn btn-sm btn-outline" type="submit" form="makeReceipt<?= e((string) $i['id']) ?>" data-busy="Updating the receipt"><?= (int) ($i['receipt_generated'] ?? 0) === 1 ? e(t('ui.update_receipt')) : e(t('ui.generate_receipt')) ?></button>
             <?php endif; ?>
-          </div>
+          <?php endif; ?>
+          <?php if (subscription_invoice_is_unpaid((string) $i['status'])): ?>
+          <button class="btn btn-sm btn-primary" type="button" data-reveal="record-pay-<?= e((string) $i['id']) ?>">Record payment</button>
           <?php endif; ?>
           <?php if (in_array($i['status'], ['Pending', 'Overdue'], true)): ?>
           <button class="btn btn-sm btn-gold" type="submit" form="singleSend<?= e((string) $i['id']) ?>">📲 Send</button>
@@ -220,24 +226,93 @@ $subscriberFields = static function (string $prefix, array $s = []): void {
           <button class="btn btn-sm btn-outline" type="submit" form="singleSend<?= e((string) $i['id']) ?>"><?= e(t('ui.resend')) ?></button>
           <?php endif; ?>
           <?php
-            $waText = fill_message_template($messaging['template'], [
-                'name' => (string) $i['subscriber_name'],
-                'period' => (string) $i['period_label'],
-                'amount' => number_format((float) $i['amount'], 0),
-                'link' => absolute_url('pay/' . $i['payment_token']),
-                'invoice' => (string) $i['invoice_number'],
-            ]);
-            $waUrl = $i['status'] === 'Paid' ? null : whatsapp_web_url((string) $i['mobile'], $waText, $messaging['country_code']);
+            $waUrl = null;
+            if ($i['status'] !== 'Paid') {
+                $waText = fill_message_template($messaging['template'], [
+                    'name' => (string) $i['subscriber_name'],
+                    'period' => (string) $i['period_label'],
+                    'amount' => number_format((float) $i['amount'], 0),
+                    'link' => absolute_url('pay/' . $i['payment_token']),
+                    'invoice' => (string) $i['invoice_number'],
+                ]);
+                $waUrl = whatsapp_web_url((string) $i['mobile'], $waText, $messaging['country_code']);
+            } elseif (
+                (int) ($i['receipt_generated'] ?? 0) === 1
+                && (int) ($i['receipt_cancelled'] ?? 0) !== 1
+                && !empty($i['receipt_number'])
+                && receipt_file_exists((string) $i['receipt_number'])
+            ) {
+                $publicUrl = receipt_public_url((string) ($i['receipt_share_token'] ?? ''));
+                if ($publicUrl !== '') {
+                    $shareText = receipt_share_message([
+                        'donor_name' => (string) ($i['donor_name'] ?? $i['subscriber_name']),
+                        'receipt_number' => (string) $i['receipt_number'],
+                        'donation_date' => (string) ($i['donation_date'] ?? $i['paid_date'] ?? ''),
+                        'amount' => $i['donation_amount'] ?? $i['amount'],
+                        'purpose' => (string) ($i['purpose'] ?? ''),
+                        'payment_mode' => (string) ($i['payment_mode'] ?? ''),
+                    ], $publicUrl);
+                    $waUrl = whatsapp_web_url((string) $i['mobile'], $shareText, $messaging['country_code']);
+                }
+            }
           ?>
           <?php if ($waUrl !== null): ?>
           <a class="btn btn-sm btn-outline" href="<?= e($waUrl) ?>" target="_blank" rel="noopener"><?= e(t('common.whatsapp')) ?></a>
           <?php endif; ?>
+          </div>
         </td>
       </tr>
+      <?php if (subscription_invoice_is_unpaid((string) $i['status'])): ?>
+      <?php $recordPayForm = 'recordPay' . (string) $i['id']; ?>
+      <tr class="reveal-panel" id="record-pay-<?= e((string) $i['id']) ?>" hidden>
+        <td colspan="10">
+          <div class="panel" style="margin:8px 0;">
+            <h4>Record payment · <?= e($i['invoice_number']) ?> · <?= e($i['subscriber_name']) ?></h4>
+            <p style="color:var(--ink-soft); font-size:13px; margin:0 0 12px;">Only for unpaid (due) invoices. Marks paid once, posts to Donations / cash book, and creates the receipt if it does not exist yet. To refresh an existing receipt PDF, use Update receipt on a paid row.</p>
+            <div class="form-grid cols-3">
+              <div class="form-group">
+                <label for="pay-mode-<?= e((string) $i['id']) ?>"><?= e(t('common.payment')) ?></label>
+                <select id="pay-mode-<?= e((string) $i['id']) ?>" name="payment_mode" form="<?= e($recordPayForm) ?>" data-sub-pay-mode>
+                  <?php foreach ($moneyModes as $mode): ?>
+                  <option value="<?= e($mode) ?>"<?= $mode === 'Cash' ? ' selected' : '' ?>><?= e($mode) ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="pay-date-<?= e((string) $i['id']) ?>">Paid on</label>
+                <input id="pay-date-<?= e((string) $i['id']) ?>" type="date" name="paid_date" form="<?= e($recordPayForm) ?>" value="<?= e($today) ?>" required>
+              </div>
+              <div class="form-group">
+                <label for="pay-ref-<?= e((string) $i['id']) ?>">Reference (optional)</label>
+                <input id="pay-ref-<?= e((string) $i['id']) ?>" type="text" name="payment_reference" form="<?= e($recordPayForm) ?>" maxlength="64" placeholder="Counter slip / note">
+              </div>
+              <div class="form-group" data-sub-pay-upi hidden>
+                <label for="pay-upi-<?= e((string) $i['id']) ?>"><?= e(t('ui.upi')) ?></label>
+                <input id="pay-upi-<?= e((string) $i['id']) ?>" type="text" name="upi_reference" form="<?= e($recordPayForm) ?>" maxlength="64" placeholder="UPI transaction id">
+              </div>
+              <div class="form-group" data-sub-pay-cheque hidden>
+                <label for="pay-chq-<?= e((string) $i['id']) ?>"><?= e(t('ui.cheque_no')) ?></label>
+                <input id="pay-chq-<?= e((string) $i['id']) ?>" type="text" name="cheque_number" form="<?= e($recordPayForm) ?>" maxlength="30">
+              </div>
+              <div class="form-group" data-sub-pay-cheque hidden>
+                <label for="pay-chqdt-<?= e((string) $i['id']) ?>"><?= e(t('ui.cheque_date')) ?></label>
+                <input id="pay-chqdt-<?= e((string) $i['id']) ?>" type="date" name="cheque_date" form="<?= e($recordPayForm) ?>">
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit" form="<?= e($recordPayForm) ?>" data-busy="Recording payment">Save as paid &amp; generate receipt</button>
+            </div>
+          </div>
+        </td>
+      </tr>
+      <?php endif; ?>
       <?php endforeach; ?>
     </table>
   </form>
   <?php foreach ($invoices as $i): ?>
+    <?php if (subscription_invoice_is_unpaid((string) $i['status'])): ?>
+    <form method="POST" action="<?= e(url('subscriptions/invoice/' . $i['id'] . '/record_payment')) ?>" id="recordPay<?= e((string) $i['id']) ?>"><?= csrf_field() ?></form>
+    <?php endif; ?>
     <?php if ($i['status'] !== 'Paid'): ?>
     <form method="POST" action="<?= e(url('subscriptions/invoice/' . $i['id'] . '/send')) ?>" id="singleSend<?= e((string) $i['id']) ?>"><?= csrf_field() ?></form>
     <?php elseif (!empty($i['linked_donation_id'])): ?>
@@ -264,4 +339,18 @@ $subscriberFields = static function (string $prefix, array $s = []): void {
     checkboxes().forEach(c => c.addEventListener('change', updateBulkButton));
     updateBulkButton();
   }
+  function syncSubPayFields(row) {
+    if (!row) return;
+    var mode = row.querySelector('[data-sub-pay-mode]');
+  var upiBlocks = row.querySelectorAll('[data-sub-pay-upi]');
+  var chqBlocks = row.querySelectorAll('[data-sub-pay-cheque]');
+    var v = mode ? mode.value : 'Cash';
+    upiBlocks.forEach(function (el) { el.hidden = v !== 'UPI'; });
+    chqBlocks.forEach(function (el) { el.hidden = v !== 'Cheque'; });
+  }
+  document.querySelectorAll('tr.reveal-panel[id^="record-pay-"]').forEach(function (row) {
+    syncSubPayFields(row);
+    var sel = row.querySelector('[data-sub-pay-mode]');
+    if (sel) sel.addEventListener('change', function () { syncSubPayFields(row); });
+  });
 </script>

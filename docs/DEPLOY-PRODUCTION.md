@@ -1,66 +1,157 @@
-# Production deployment (CRM + Booking + Donation + Home)
+# Production deployment (hosting / cPanel)
 
-## No separate data migration
+Deploy the **full stack** under one document root (e.g. `public_html/` for `https://sjtbengaluru.org/`).
 
-Schema updates in this release are **additive only** (new nullable columns / new tables). Existing production data is **not** rewritten.
+## Upload to hosting root (important)
 
-| Change | How it applies on deploy |
-|--------|-------------------------|
-| `subscription_invoices.gateway_order_id` | CRM `migrate_schema()` → `ensure_column` on first CRM request or `php crm/bin/preflight_deploy.php` |
-| `bookings.erp_receipt_emailed_at` | Booking `ErpJournalSync::ensureLinkSchema()` on first paid booking sync (MySQL only) |
-| `online_donation_intents` table | Created on first visit to `Booking/donation/` (`schema.php`) |
+1. On your PC, run:
 
-You do **not** need to run a one-off data migration script. Hit each app once after upload (or run preflight).
+   ```powershell
+   .\scripts\pre-deploy.ps1
+   ```
 
-## Pre-flight (on server or AMPPS before go-live)
+   This syncs `home/` → repo root and runs `verify-deploy-links.ps1`.
 
-```bash
-php crm/bin/preflight_deploy.php
-php crm/tests/subscription_e2e_test.php
-php crm/tests/payments_receipts_readiness_test.php
+2. Upload **everything inside** `jt-temple-blr/` into the host’s **document root** (`public_html/`), keeping the same folder names:
+
+   - `index.html` must sit at `public_html/index.html` (not `public_html/jt-temple-blr/index.html`).
+   - Sibling apps: `public_html/Booking/`, `public_html/crm/`, `public_html/Streaming/`, `public_html/home/`.
+
+3. **Do not** change link paths in the React bundle for production. The first script in `index.html` sets:
+
+   - `SJT_PUBLIC_BASE` from the current URL (works at **domain root** and in a **subfolder** on AMPPS).
+   - `SJT_BOOKING_URL`, `SJT_DONATION_URL`, `SJT_LIVE_DARSHAN_URL`, and gallery/hero/identity APIs from that base.
+   - React Router uses `window.SJT_ROUTER_BASENAME` the same way.
+
+4. `site-links.js` fixes in-page links (`/#about` → `#about`) and wires Booking / Donation / Streaming from the globals above.
+
+## Layout on the server
+
+```
+public_html/
+  index.html              ← Public home (React SPA shell + temple scripts)
+  .htaccess               ← Root rewrite rules (gallery route, home/api)
+  assets/                   ← Built JS/CSS from Vite
+  site-links.js / .css      ← Booking links, services cards, mobile FAB
+  hero-dynamic.js / .css    ← Dynamic hero carousel (photos + mp4/webm)
+  gallery-dynamic.js / .css ← Dynamic gallery + lightbox
+  identity-dynamic.js       ← Name, contact, logo from CRM settings
+  home-renovation.js / .css ← Site-wide temple theme
+  robots.txt, sitemap.xml, favicon.ico
+  home/
+    .htaccess               ← Allow photos/, gallery/, api/
+    photos/                 ← Branding, hero, temple, events images
+    gallery/                ← Auto gallery (+ subfolders = tabs)
+    api/                    ← gallery-images, hero-media, temple-identity PHP
+  Booking/                  ← Online booking + donation (see Booking/docs/)
+  crm/                      ← Staff ERP (see crm/README.md)
+  Streaming/                ← Live darshan page (see Streaming/README.md)
 ```
 
-Optional cron after deploy:
+**Do not** upload `.env` files, `storage/logs`, session files, or local uploads to a public git mirror.
 
-```bash
-php crm/bin/subscription_due.php   # due invoices + email
-```
+---
 
-## Environment (production)
+## Before you upload (on your PC)
 
-| File | Must have |
-|------|-----------|
-| `crm/.env` | `APP_URL=https://sjtbengaluru.org/crm`, DB credentials, **do not** upload repo-root `.env` |
-| `Booking/.env` | `APP_URL=…/Booking`, `ERP_APP_URL=…/crm`, `PAYMENT_GATEWAY=razorpay`, live `RAZORPAY_*`, `GATEWAY_SSL_VERIFY=true`, `APP_ENV=production` |
-| `home/index.html` | `window.SJT_DONATION_URL = 'https://sjtbengaluru.org/Booking/donation/'` (and booking/live URLs as today) |
+1. **Sync home → root** (copies latest `home/index.html`, scripts, assets, photos/gallery/api):
 
-SMTP: CRM **Settings › Messages** (receipts, subscription payment requests, donation receipts).
+   ```powershell
+   .\scripts\sync-home-to-root.ps1
+   ```
 
-## Manual smoke (15 min)
+2. **Optional:** organise dropped-in images:
 
-1. **Home** — Donate nav → `Booking/donation/` form loads; Online Booking / Live Darshan links OK.
-2. **Donation** — test Razorpay amount → thanks → view receipt link → `…/crm/index.php?r=receipts/open/…`; email if configured.
-3. **Booking** — small seva booking → pay → invoice email + ERP receipt email (if email on booking).
-4. **CRM Subscriptions** — open page (auto due invoices if any) → pay link → Razorpay → Paid → donation in **Donations** → one receipt; no second invoice for same month after paid.
-5. **CRM Receipt** — public link opens without login.
+   ```powershell
+   .\scripts\organize-home-photos.ps1
+   ```
 
-## Automated tests run (latest)
+3. Confirm **PHP 8.1+** and **MySQL** on the host (Booking + CRM + home APIs).
 
-- CRM: 27+ `tests/*_test.php` (2 seed-dependent failures in `receipt_share_test` / `install_check_test` on dev DB — not deploy blockers).
-- Subscription: `subscription_e2e_test.php`, `subscription_receipt_test.php`, `subscriber_test.php` — **passed**.
-- Payments/receipts: `payments_receipts_readiness_test.php` — **passed**.
-
-Full Booking HTTP suite (optional, long):
-
-```bash
-cd Booking && php tests/run.php
-```
+---
 
 ## Upload checklist
 
-- [ ] `crm/`, `Booking/`, `Booking/donation/`, `home/`
-- [ ] `crm/storage/` writable (receipts, sessions, uploads)
-- [ ] `Booking/storage/` writable (logs)
-- [ ] PHP **8.1+**, extensions: pdo_mysql, curl, mbstring, gd (optional)
-- [ ] Razorpay live keys; webhook optional
-- [ ] Remove or never upload repo-root `.env` (local overrides only)
+| Step | Action |
+|------|--------|
+| 1 | Upload entire project (or at minimum: root home files, `home/`, `Booking/`, `crm/`, `Streaming/`) — **flat under public_html** |
+| 2 | **Booking:** copy `Booking/.env.example` → `Booking/.env`; set `APP_URL=https://sjtbengaluru.org/Booking` (no trailing slash), `APP_KEY`, `DB_*`, payment/WhatsApp |
+| 3 | **CRM:** copy `crm/env.example` → `crm/.env`; `APP_URL=https://sjtbengaluru.org/crm`, `BOOKING_APP_URL=https://sjtbengaluru.org/Booking`; same database as Booking |
+| 4 | Run **install/migrate** once on server (`crm/install.php`, `Booking/install.php` or CLI migrate). **Existing CRM DB:** uploading new `crm/` code is enough — the next CRM page load runs `migrate_schema()` (e.g. creates `vastra_movements` if missing). No separate SQL migration file; no automatic backfill of movement history. Optional: `php crm/bin/preflight_deploy.php` |
+| 5 | **CRM → Settings → Identity:** temple name, address, phones, email, logo (drives home page + favicon) |
+| 6 | **Streaming:** `Streaming/.streaming` with live `https://…` URL (see `Streaming/README.md`) |
+| 7 | Set folder permissions: `Booking/storage/*`, `crm/storage/*` writable by PHP |
+| 8 | **Delete or block** `install.php` on CRM and Booking after go-live |
+| 9 | Remove `INSTALL_TOKEN` from production `.env` |
+| 10 | Hard-refresh home page after deploy (`Ctrl+Shift+R`) to load new `?v=` script versions |
+| 11 | On PC before upload: `.\scripts\pre-deploy.ps1`, `php crm/bin/preflight_deploy.php`, `php crm/bin/prod_url_smoke.php` |
+
+---
+
+## Public home (no rebuild for content)
+
+| Content | Where to change |
+|---------|-----------------|
+| Hero slideshow | Files in `home/photos/hero/` (jpg, png, webp, **mp4**, **webm**) |
+| Gallery | `home/gallery/` and subfolders (each non-empty folder = tab) |
+| Temple logo / contact / title | CRM **Settings → Identity** (API `home/api/temple-identity.php`) |
+| Hero / events / about images | `home/photos/temple/`, `events/`, etc. |
+
+APIs cache responses for ~2 minutes.
+
+---
+
+## Public website maintenance page
+
+Folder: `maintenance/index.html` — **one self-contained file** (inline CSS + JS), temple logo, English + Hindi + Odia + Kannada text.
+
+**Preview (site still live):**  
+`https://your-domain/maintenance/`
+
+**Maintenance routing** (root `.htaccess`):
+
+- **Automatic:** if `index.html` and `index.php` are both missing in document root but `maintenance/index.html` exists, `/`, `/index.html`, and `/gallery` serve the maintenance page.
+- **Manual (site still has index.html):** uncomment the three `RewriteRule` lines marked “Manual maintenance ON” in `.htaccess`.
+
+Booking, CRM, donation, and Streaming are **not** affected unless you add more rules.
+
+## Apache / `.htaccess`
+
+Root `.htaccess` must stay enabled:
+
+- Serves `home/photos/`, `home/gallery/`, `home/api/` without breaking paths
+- `/gallery` → `index.html` (client-side route)
+
+If the site lives in a **subfolder** (e.g. `/jt_blr/.../`), the inline script in `index.html` sets `SJT_PUBLIC_BASE` automatically.
+
+---
+
+## SEO
+
+- Update `sitemap.xml` and `index.html` canonical/`og:url` if the domain is not `sjtbengaluru.org`
+- `robots.txt` already points to the sitemap URL
+
+---
+
+## Post go-live smoke test
+
+- [ ] `https://your-domain/` — hero slides, identity in header/footer
+- [ ] `https://your-domain/gallery` — images, folder tabs, modal
+- [ ] `https://your-domain/Booking/book` — service list loads
+- [ ] `https://your-domain/Booking/donation/` — donation form
+- [ ] `https://your-domain/Booking/lookup` — lookup form
+- [ ] `https://your-domain/Streaming/` — player or “no stream” message
+- [ ] `https://your-domain/crm/` — staff login
+- [ ] `https://your-domain/crm/manage_data/` — Admin only (after CRM login; or `?key=` if `MANAGE_DATA_KEY` set)
+- [ ] Network tab: **one** call to `temple-identity.php` per page load (not a loop)
+- [ ] Links from home **Book** / **Donate** / **Live Darshan** open `/Booking/...` and `/Streaming/` (not `/jt_blr/...` or wrong host)
+
+---
+
+## Related docs
+
+- [CRM install & schema upgrades](../crm/README.md#schema-upgrades-existing-production-dbs)
+- [Booking hosting (cPanel)](../Booking/docs/DEPLOYMENT-CPANEL.md)
+- [Booking pre-launch](../Booking/docs/TEMPLE-ACTION-ITEMS.md)
+- [Home folder staff notes](../home/README.md)
+- [Photo folders](../home/photos/README.md)

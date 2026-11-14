@@ -80,6 +80,26 @@ foreach ($groups as $keys) {
           <label for="app_place"><?= e(t('settings.place')) ?></label>
           <input id="app_place" type="text" name="app_place" value="<?= e(app_place()) ?>" maxlength="80" required>
         </div>
+        <div class="form-group full">
+          <label for="app_address"><?= e(t('settings.ob_address')) ?></label>
+          <textarea id="app_address" name="app_address" rows="2" maxlength="1000"><?= e(app_temple_address()) ?></textarea>
+        </div>
+        <div class="form-group">
+          <label for="app_phone"><?= e(t('settings.ob_phone')) ?></label>
+          <input id="app_phone" type="text" name="app_phone" value="<?= e(app_temple_phone()) ?>" maxlength="200" autocomplete="tel">
+        </div>
+        <div class="form-group">
+          <label for="app_email"><?= e(t('settings.ob_email')) ?></label>
+          <input id="app_email" type="email" name="app_email" value="<?= e(app_temple_email()) ?>" maxlength="200" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="app_website"><?= e(t('settings.ob_website')) ?></label>
+          <input id="app_website" type="text" name="app_website" value="<?= e(app_temple_website()) ?>" maxlength="200" inputmode="url">
+        </div>
+        <div class="form-group">
+          <label for="app_gstin"><?= e(t('settings.ob_gstin')) ?></label>
+          <input id="app_gstin" type="text" name="app_gstin" value="<?= e(app_temple_gstin()) ?>" maxlength="200">
+        </div>
         <div class="form-group">
           <label for="watermark_receipt"><?= e(t('settings.watermark_receipt')) ?><?= help_tip(t('settings.watermark_hint')) ?></label>
           <input id="watermark_receipt" type="number" name="watermark_receipt" min="0" max="100" step="1" value="<?= e((string) brand_watermark_level('receipt')) ?>" required>
@@ -97,7 +117,7 @@ foreach ($groups as $keys) {
         <label class="settings-check"><input type="checkbox" name="use_default_logo" value="1"> <?= e(t('settings.logo_default')) ?></label>
       <?php endif; ?>
       <div class="identity-actions">
-        <p><?= e(t('settings.identity_scope')) ?></p>
+        <p><?= e(t('settings.identity_scope')) ?> Logo and favicon use the same file. Contact details sync to online booking.</p>
         <button class="btn btn-primary" type="submit"><?= e(t('settings.save_identity')) ?></button>
       </div>
     </section>

@@ -17,6 +17,15 @@ function staff_session_cookie_path(): string
     if ($override !== '') {
         return rtrim(str_replace('\\', '/', $override), '/') ?: '/';
     }
+    if (defined('MANAGE_DATA_BOOT') && MANAGE_DATA_BOOT) {
+        $erpDir = crm_erp_dir_url();
+        $parent = dirname(str_replace('\\', '/', $erpDir));
+        if ($parent === '/' || $parent === '.' || $parent === '') {
+            return '/';
+        }
+
+        return rtrim($parent, '/');
+    }
     $dir = app_dir_url();
     if ($dir === '' || $dir === '/') {
         return '/';

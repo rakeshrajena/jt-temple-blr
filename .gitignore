@@ -67,6 +67,7 @@ booking/storage/install/*
 crm/.env
 crm/.env.*
 !crm/env.example
+!crm/env.local.example
 php/.env
 php/.env.*
 !php/env.example

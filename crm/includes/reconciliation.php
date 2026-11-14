@@ -334,3 +334,127 @@ function reconcile_transactions(PDO $pdo, array $transactionIds): int
     }
     return $matched;
 }
+
+/** @return list<array<string,mixed>> */
+function bank_open_donations_for_match(): array
+{
+    return db_all(
+        'SELECT d.id, don.name, d.amount, d.donation_date FROM donations d
+         JOIN donors don ON d.donor_id = don.id
+         WHERE d.reconciled_bank_txn_id IS NULL AND d.amount IS NOT NULL
+         ORDER BY d.donation_date DESC, d.id DESC'
+    );
+}
+
+/** @return list<array<string,mixed>> */
+function bank_open_expenses_for_match(): array
+{
+    return db_all(
+        "SELECT e.id, e.voucher_number, e.description, e.amount, e.expense_date, e.category, e.paid_to
+         FROM expenses e
+         JOIN approvals a ON a.subject_type = 'expense' AND a.subject_id = e.id AND a.status = 'Approved'
+         WHERE e.reconciled_bank_txn_id IS NULL
+         ORDER BY e.expense_date DESC, e.id DESC"
+    );
+}
+
+/**
+ * Records a bank line typed by staff and links it to an open donation or expense (manual reconciliation).
+ *
+ * @param array{
+ *   txn_date: string,
+ *   description: string,
+ *   amount: float,
+ *   txn_type: string,
+ *   balance: ?float,
+ *   match_id: int,
+ * } $data
+ * @return array{error: ?string}
+ */
+function bank_create_manual_match(array $data, int $userId): array
+{
+    $txnType = $data['txn_type'] === 'Credit' ? 'Credit' : 'Debit';
+    $matchId = (int) $data['match_id'];
+    if ($matchId < 1) {
+        return ['error' => 'Choose a donation or expense to link.'];
+    }
+    if ($data['amount'] <= 0) {
+        return ['error' => 'Enter an amount greater than zero.'];
+    }
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['txn_date'])) {
+        return ['error' => 'Enter a valid transaction date.'];
+    }
+
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        if ($txnType === 'Credit') {
+            $open = db_one(
+                'SELECT id FROM donations WHERE id = ? AND reconciled_bank_txn_id IS NULL AND amount IS NOT NULL',
+                [$matchId]
+            );
+            if ($open === null) {
+                throw new RuntimeException('Choose an open donation that is not already reconciled.');
+            }
+            $batchId = db_exec(
+                'INSERT INTO bank_statement_uploads (filename, uploaded_by, total_transactions, matched_count) VALUES (?,?,1,1)',
+                ['Manual entry ' . $data['txn_date'], $userId > 0 ? $userId : null]
+            );
+            $txnId = db_exec(
+                "INSERT INTO bank_transactions (upload_batch_id, txn_date, description, amount, txn_type, balance, reconciled_status, matched_donation_id)
+                 VALUES (?,?,?,?,?,?, 'Manual', ?)",
+                [
+                    $batchId,
+                    $data['txn_date'],
+                    $data['description'] !== '' ? $data['description'] : null,
+                    round($data['amount'], 2),
+                    $txnType,
+                    $data['balance'],
+                    $matchId,
+                ]
+            );
+            db_exec('UPDATE donations SET reconciled_bank_txn_id = ? WHERE id = ?', [$txnId, $matchId]);
+        } else {
+            $open = db_one(
+                "SELECT e.id FROM expenses e
+                 JOIN approvals a ON a.subject_type = 'expense' AND a.subject_id = e.id AND a.status = 'Approved'
+                 WHERE e.id = ? AND e.reconciled_bank_txn_id IS NULL",
+                [$matchId]
+            );
+            if ($open === null) {
+                throw new RuntimeException('Choose an approved expense that is not already reconciled.');
+            }
+            $batchId = db_exec(
+                'INSERT INTO bank_statement_uploads (filename, uploaded_by, total_transactions, matched_count) VALUES (?,?,1,1)',
+                ['Manual entry ' . $data['txn_date'], $userId > 0 ? $userId : null]
+            );
+            $txnId = db_exec(
+                "INSERT INTO bank_transactions (upload_batch_id, txn_date, description, amount, txn_type, balance, reconciled_status, matched_expense_id)
+                 VALUES (?,?,?,?,?,?, 'Manual', ?)",
+                [
+                    $batchId,
+                    $data['txn_date'],
+                    $data['description'] !== '' ? $data['description'] : null,
+                    round($data['amount'], 2),
+                    $txnType,
+                    $data['balance'],
+                    $matchId,
+                ]
+            );
+            db_exec('UPDATE expenses SET reconciled_bank_txn_id = ? WHERE id = ?', [$txnId, $matchId]);
+        }
+        $pdo->commit();
+        return ['error' => null];
+    } catch (RuntimeException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        return ['error' => $e->getMessage()];
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('[jt_blr] bank manual entry: ' . $e->getMessage());
+        return ['error' => 'Could not save the manual bank match.'];
+    }
+}

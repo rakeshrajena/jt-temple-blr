@@ -217,19 +217,19 @@ function import_books_snapshot(PDO $pdo, ?string $path = null): int
  * When devotees are not there yet, loads the saved books from this copy, or the demo data if that copy is missing.
  * A database that already has devotees is left in place unless $replaceBooks is set.
  *
- * @return array{tables:int,users:int,donors:int,seeded:bool,imported:bool}
+ * @return array{tables:int,users:int,donors:int,seeded:bool,imported:bool,schema_only:bool}
  */
-function install_database(bool $replaceBooks = false): array
+function install_database(bool $replaceBooks = false, bool $schemaOnly = false): array
 {
-    return install_into(db_connect(), $replaceBooks);
+    return install_into(db_connect(), $replaceBooks, null, $schemaOnly);
 }
 
 /**
  * The same setup as install_database, against any connection and books copy.
  *
- * @return array{tables:int,users:int,donors:int,seeded:bool,imported:bool}
+ * @return array{tables:int,users:int,donors:int,seeded:bool,imported:bool,schema_only:bool}
  */
-function install_into(PDO $pdo, bool $replaceBooks = false, ?string $snapshotPath = null): array
+function install_into(PDO $pdo, bool $replaceBooks = false, ?string $snapshotPath = null, bool $schemaOnly = false): array
 {
     $snapshotPath ??= books_snapshot_path();
     $exists = $pdo->query("SHOW TABLES LIKE 'users'")->fetchColumn();
@@ -242,14 +242,16 @@ function install_into(PDO $pdo, bool $replaceBooks = false, ?string $snapshotPat
     }
     $seeded = false;
     $imported = false;
-    $snapshot = is_file($snapshotPath);
-    if ($snapshot && ($replaceBooks || demo_data_is_pending($pdo))) {
-        import_books_snapshot($pdo, $snapshotPath);
-        backfill_receipt_pdfs($pdo);
-        $imported = true;
-    } elseif (demo_data_is_pending($pdo)) {
-        Seed::run($pdo);
-        $seeded = true;
+    if (!$schemaOnly) {
+        $snapshot = is_file($snapshotPath);
+        if ($snapshot && ($replaceBooks || demo_data_is_pending($pdo))) {
+            import_books_snapshot($pdo, $snapshotPath);
+            backfill_receipt_pdfs($pdo);
+            $imported = true;
+        } elseif (demo_data_is_pending($pdo)) {
+            Seed::run($pdo);
+            $seeded = true;
+        }
     }
     $users = (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
     $donors = (int) $pdo->query('SELECT COUNT(*) FROM donors')->fetchColumn();
@@ -260,6 +262,7 @@ function install_into(PDO $pdo, bool $replaceBooks = false, ?string $snapshotPat
         'donors' => $donors,
         'seeded' => $seeded,
         'imported' => $imported,
+        'schema_only' => $schemaOnly,
     ];
 }
 
@@ -272,6 +275,7 @@ function migrate_schema(PDO $pdo): void
     ensure_donation_edit_schema($pdo);
     ensure_donor_schema($pdo);
     ensure_stock_schema($pdo);
+    ensure_vastra_schema($pdo);
     ensure_messaging_schema($pdo);
     ensure_receipt_share_schema($pdo);
     ensure_coupon_schema($pdo);

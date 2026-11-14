@@ -4,6 +4,7 @@ $path = \SJT\Core\App::request()->path;
 $nav = [
     '/admin' => 'Dashboard',
     '/admin/bookings' => 'Bookings',
+    '/admin/prasad' => 'Food / Prasad',
     '/admin/notifications' => 'Notifications',
     '/admin/reports' => 'Reports',
 ];
@@ -16,7 +17,8 @@ $isActive = fn (string $p) => $p === '/admin' ? $path === '/admin' : str_starts_
 <meta name="robots" content="noindex, nofollow">
 <title><?= e(($title ?? 'Admin') . ' · Temple booking admin') ?></title>
 <link rel="icon" href="<?= e(temple_logo_url()) ?>" type="<?= e(temple_logo_icon_type()) ?>">
-<link rel="stylesheet" href="<?= e(asset('css/admin.css')) ?>?v=2">
+<link rel="apple-touch-icon" href="<?= e(temple_logo_url()) ?>">
+<link rel="stylesheet" href="<?= e(asset('css/admin.css')) ?>?v=3">
 <script src="<?= e(asset('js/busy.js')) ?>" defer></script>
 <script src="<?= e(asset('js/app.js')) ?>" defer></script>
 </head>

@@ -4,7 +4,17 @@
 /** @var string $financialYear */
 /** @var list<array<string, mixed>> $heads */
 /** @var array<string, mixed>|null $selected */
+/** @var int|null $selectedIndex */
 $received = 0.0;
+$selectedIndex = null;
+if ($selected !== null) {
+    foreach ($heads as $idx => $head) {
+        if ((string) $head['head'] === (string) $selected['head']) {
+            $selectedIndex = $idx;
+            break;
+        }
+    }
+}
 $spent = 0.0;
 foreach ($heads as $head) {
     $received += (float) $head['received'];
@@ -43,9 +53,10 @@ foreach ($heads as $head) {
       <th class="text-right"><?= e(t('ui.spent')) ?></th>
       <th class="text-right"><?= e(t('ui.balance')) ?></th>
     </tr>
-    <?php foreach ($heads as $head): ?>
-    <tr>
-      <td><a class="row-link" href="<?= e(url('ledger', ['from' => $from, 'to' => $to, 'head' => (string) $head['head']])) ?>"><?= e((string) $head['head']) ?></a></td>
+    <?php foreach ($heads as $idx => $head): ?>
+    <?php $isSelected = $selectedIndex !== null && $idx === $selectedIndex; ?>
+    <tr<?= $isSelected ? ' class="ledger-head-selected"' : '' ?>>
+      <td><a class="row-link" href="<?= e(url('ledger', ['from' => $from, 'to' => $to, 'h' => (string) $idx])) ?>#ledger-detail"><?= e((string) $head['head']) ?></a></td>
       <td class="text-right"><?= e(money($head['opening'], 2)) ?></td>
       <td class="text-right"><?= e(money($head['received'], 2)) ?></td>
       <td class="text-right"><?= e(money($head['spent'], 2)) ?></td>
@@ -56,7 +67,7 @@ foreach ($heads as $head) {
   <?php endif; ?>
 </div>
 <?php if ($selected !== null): ?>
-<div class="panel">
+<div class="panel" id="ledger-detail">
   <h3><?= e((string) $selected['head']) ?></h3>
   <p style="color:var(--ink-soft); font-size:13px; margin-top:0;">
     Opening <?= e(money($selected['opening'], 2)) ?> · Balance <?= e(money($selected['balance'], 2)) ?>

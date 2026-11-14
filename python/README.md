@@ -7,6 +7,8 @@ monthly subscription billing with SMS/email payment links.
 This is the **real, working application** - a database, a Flask backend,
 and full templates - not a static mockup.
 
+**Production temple operations use `../crm/` (PHP + MySQL).** This Flask app is a local reference: features such as vastra **movements** and report **CSV/Excel** exports exist in CRM only unless ported here.
+
 ---
 
 ## Quick Start (local, SQLite - zero setup)
@@ -39,7 +41,7 @@ for a single-page summary of everything the system tracks.
 | **Dashboard** | Live KPIs across every module |
 | **Inventory** | Hardware/equipment tracking, condition, location, source |
 | **Food Stock** | Raw food items with add/use logging, plus a Food Coupon Generator (cost-tracked, sequential serial numbers, print-ready PDF) |
-| **Deity Vastra** | Cloth inventory per deity, in-store/in-use/retired |
+| **Deity Vastra** | Cloth inventory per deity, in-store/in-use/retired (status on add; no movement ledger in Flask) |
 | **Donations** | Cash + in-kind donations, PDF receipt generation on button press |
 | **Subscriptions** | Recurring seva plans, invoice generation, bulk SMS/email sending with secure payment links, public pay page, auto-reconciliation into Donations |
 | **Expenses** | Categorized expense tracking |

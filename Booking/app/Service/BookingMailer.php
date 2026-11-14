@@ -57,7 +57,7 @@ final class BookingMailer
                 Logger::warning('Invoice PDF for email failed', ['booking' => $b['booking_no'], 'error' => $e->getMessage()]);
             }
         }
-        $temple = trim($this->settings->get('temple_name', 'Shree Jagannatha Temple Bengaluru'));
+        $temple = trim(TempleIdentity::name());
         // Booking-local SMTP (plain + optional PDF). ERP send_smtp_message() needs ERP db helpers and nested MIME some hosts reject.
         $err = SmtpMail::send($smtp, $to, $subject, $body, $temple, $attachment, null);
         if ($err === null || $attachment === null) {

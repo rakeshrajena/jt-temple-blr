@@ -119,6 +119,7 @@ $obServiceCount = count($bookingServices);
           <article class="settings-card settings-ob-card">
             <header class="settings-ob-card-head">
               <h5><?= e(t('settings.ob_contact')) ?><?= help_tip(t('settings.ob_contact_hint')) ?></h5>
+              <p class="muted small">Name, address, phone, and logo are kept in sync with <strong>Settings → Identity</strong>. Saving here updates Identity too.</p>
             </header>
             <div class="form-grid cols-2">
               <div class="form-group full"><label><?= e(t('settings.ob_temple_name')) ?></label><input type="text" name="temple_name" value="<?= $v('temple_name') ?>" maxlength="200" required<?= $bsCanEdit ? '' : ' readonly' ?>></div>

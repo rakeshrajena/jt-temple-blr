@@ -61,6 +61,9 @@ function booking_settings_save_contact(array $post, string $actor): array
     foreach ($keys as $k => $v) {
         booking_setting_set($k, $v, $actor);
     }
+    if (function_exists('temple_identity_sync_brand_from_booking_contact')) {
+        temple_identity_sync_brand_from_booking_contact($actor);
+    }
     return ['error' => null];
 }
 

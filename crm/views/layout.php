@@ -80,7 +80,8 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title><?= e($title) ?> — <?= e(app_display_name()) ?></title>
-  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=48">
+  <?php app_favicon_link(); ?>
+  <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=59">
 </head>
 <body data-table-filter-label="<?= e(t('ui.table_filter')) ?>" data-table-filter-count="<?= e(t('ui.table_filter_count')) ?>">
   <div class="app-shell">
@@ -110,6 +111,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
         <a class="nav-link<?= $active === 'users' ? ' active' : '' ?>" href="<?= e(url('users')) ?>"><?= $icon('users') ?> <?= e(t('nav.users')) ?></a>
         <a class="nav-link<?= $active === 'settings' ? ' active' : '' ?>" href="<?= e(url('settings')) ?>"><?= $icon('gear') ?> <?= e(t('nav.settings')) ?></a>
         <a class="nav-link<?= $active === 'localization' ? ' active' : '' ?>" href="<?= e(url('localization')) ?>"><?= $icon('globe') ?> <?= e(t('nav.localization')) ?></a>
+        <a class="nav-link" href="<?= e(manage_data_url()) ?>"><?= $icon('gear') ?> Manage data</a>
       <?php endif; ?>
       <div class="sidebar-footer"><?= e(t('shell.signed_in')) ?><br><strong><?= e($fullName) ?></strong><br><?= e(t_fixed('role', $role)) ?></div>
     </aside>

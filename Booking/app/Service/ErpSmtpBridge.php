@@ -30,10 +30,10 @@ final class ErpSmtpBridge
             return;
         }
         if (!defined('APP_NAME')) {
-            define('APP_NAME', $fromDisplayName !== '' ? $fromDisplayName : 'Shree Jagannath Temple');
+            define('APP_NAME', $fromDisplayName !== '' ? $fromDisplayName : TempleIdentity::DEFAULT_NAME);
         }
         if (!defined('APP_PLACE')) {
-            define('APP_PLACE', 'Sarjapura, Bengaluru');
+            define('APP_PLACE', TempleIdentity::DEFAULT_PLACE);
         }
         if (!function_exists('db_one')) {
             /** @param array<int, mixed> $params */

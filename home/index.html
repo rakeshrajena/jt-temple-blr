@@ -2,6 +2,32 @@
 <!DOCTYPE html>
 <html lang="en-IN">
   <head>
+    <script>
+      (function () {
+        var path = window.location.pathname.replace(/\/?index\.html$/i, '');
+        path = path.replace(/\/gallery\/?$/i, '/');
+        if (!path.endsWith('/')) {
+          path = path + '/';
+        }
+        if (path === '') {
+          path = '/';
+        }
+        window.SJT_PUBLIC_BASE = path;
+        window.SJT_ROUTER_BASENAME = path === '/' ? '/' : path.replace(/\/$/, '');
+        var base = document.createElement('base');
+        base.href = path;
+        document.head.appendChild(base);
+        var origin = window.location.origin;
+        window.SJT_BOOKING_URL = origin + path + 'Booking/book';
+        window.SJT_BOOKING_LOOKUP_URL = origin + path + 'Booking/lookup';
+        window.SJT_BOOKING_FOOD_URL = origin + path + 'Booking/book?service=food-only';
+        window.SJT_LIVE_DARSHAN_URL = origin + path + 'Streaming';
+        window.SJT_DONATION_URL = origin + path + 'Booking/donation/';
+        window.SJT_GALLERY_API = origin + path + 'home/api/gallery-images.php';
+        window.SJT_HERO_API = origin + path + 'home/api/hero-media.php';
+        window.SJT_IDENTITY_API = origin + path + 'home/api/temple-identity.php';
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Shree Jagannath Temple Sarjapura Bengaluru | Puja, Rituals &amp; Online Booking</title>
@@ -19,7 +45,7 @@
     <meta name="geo.region" content="IN-KA" />
     <meta name="geo.placename" content="Sarjapura, Bengaluru" />
     <link rel="canonical" href="https://sjtbengaluru.org/" />
-    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="sitemap.xml" />
 
     <meta property="og:site_name" content="Shree Jagannath Temple, Sarjapura, Bengaluru" />
     <meta property="og:locale" content="en_IN" />
@@ -41,7 +67,8 @@
     />
     <meta name="twitter:image" content="https://sjtbengaluru.org/wallpaper.jpg" />
 
-    <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+    <link rel="icon" href="home/api/favicon.php" type="image/png" />
+    <link rel="apple-touch-icon" href="home/api/favicon.php" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -104,16 +131,18 @@
         ]
       }
     </script>
-    <script type="module" crossorigin src="/assets/index-BDrgWUSW.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BtO4mJeM.css">
-    <link rel="stylesheet" href="/site-links.css?v=2">
-    <script>
-      window.SJT_BOOKING_URL = 'https://sjtbengaluru.org/Booking/book';
-      window.SJT_BOOKING_LOOKUP_URL = 'https://sjtbengaluru.org/Booking/lookup';
-      window.SJT_BOOKING_FOOD_URL = 'https://sjtbengaluru.org/Booking/book?service=food-only';
-      window.SJT_LIVE_DARSHAN_URL = 'https://sjtbengaluru.org/Streaming';
-      window.SJT_DONATION_URL = 'https://sjtbengaluru.org/Booking/donation/';
-    </script>
+    <script type="module" crossorigin src="assets/index-BDrgWUSW.js?v=20260314b"></script>
+    <link rel="stylesheet" crossorigin href="assets/index-BtO4mJeM.css">
+    <link rel="stylesheet" href="site-links.css?v=7">
+    <link rel="stylesheet" href="hero-dynamic.css?v=3">
+    <link rel="stylesheet" href="home-renovation.css?v=4">
+    <link rel="stylesheet" href="gallery-dynamic.css?v=3">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
 
   <body>
@@ -125,13 +154,17 @@
         Sarjapur for families seeking a dharmik gathering place in Bengaluru.
       </p>
       <p>
-        <a href="https://sjtbengaluru.org/Booking/book">Book puja and temple services online</a> |
-        <a href="https://sjtbengaluru.org/Booking/lookup">Find an existing booking</a>
+        <a href="Booking/book">Book puja and temple services online</a> |
+        <a href="Booking/lookup">Find an existing booking</a>
       </p>
     </noscript>
     <div id="root"></div>
     <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
-    <script src="/site-links.js" defer></script>
+    <script src="identity-dynamic.js?v=3" defer></script>
+    <script src="hero-dynamic.js?v=3" defer></script>
+    <script src="gallery-dynamic.js?v=6" defer></script>
+    <script src="home-renovation.js?v=3" defer></script>
+    <script src="site-links.js?v=13" defer></script>
   </body>
 </html>

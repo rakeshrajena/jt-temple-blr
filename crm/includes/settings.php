@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const DEFAULT_MESSAGE_TEMPLATE = 'Namaskar {name}, your {period} seva contribution of Rs.{amount} is due. Pay here: {link} — Shree Jagannath Temple, invoice {invoice}.';
+const DEFAULT_MESSAGE_TEMPLATE = 'Namaskar {name}, your {period} seva contribution of Rs.{amount} is due. Pay here: {link} — {temple}, invoice {invoice}.';
 
 function ensure_messaging_schema(PDO $pdo): void
 {
@@ -185,6 +185,7 @@ function invoice_notice_text(array $invoice, string $payUrl, array $settings): s
         'amount' => number_format((float) ($invoice['amount'] ?? 0), 0),
         'link' => $payUrl,
         'invoice' => (string) ($invoice['invoice_number'] ?? ''),
+        'temple' => app_display_name(),
     ]);
 }
 
@@ -792,6 +793,79 @@ function app_logo_url(): string
     return url('brand/logo', ['v' => (string) filemtime($path)]);
 }
 
+/**
+ * Brand logo file on disk only (no DB). Safe for manage_data and other minimal bootstraps.
+ * Order matches Booking {@see TempleLogo} / receipt branding.
+ */
+function brand_logo_disk_path(): ?string
+{
+    $dir = APP_ROOT . '/storage/brand';
+    $print = $dir . DIRECTORY_SEPARATOR . 'logo-print.png';
+    if (is_file($print)) {
+        return $print;
+    }
+    foreach (['logo.png', 'logo.jpg', 'logo.jpeg', 'logo.webp', 'logo.gif'] as $name) {
+        $candidate = $dir . DIRECTORY_SEPARATOR . $name;
+        if (!is_file($candidate)) {
+            continue;
+        }
+        $real = realpath($candidate);
+        $root = realpath($dir);
+        if ($real === false || $root === false || !str_starts_with($real, $root . DIRECTORY_SEPARATOR)) {
+            continue;
+        }
+        return $real;
+    }
+
+    return null;
+}
+
+function app_favicon_href(): string
+{
+    $path = brand_logo_path();
+    if ($path === null) {
+        $path = brand_logo_disk_path();
+    }
+    if ($path === null) {
+        $fallback = APP_ROOT . '/static/logo.svg';
+        $version = is_file($fallback) ? (string) filemtime($fallback) : '1';
+
+        return crm_asset_url('logo.svg') . '?v=' . rawurlencode($version);
+    }
+
+    return crm_route_url('brand/logo', ['v' => (string) filemtime($path)]);
+}
+
+function app_favicon_type(): string
+{
+    $path = brand_logo_path() ?? brand_logo_disk_path();
+
+    return app_favicon_mime_for_path($path);
+}
+
+function app_favicon_mime_for_path(?string $path): string
+{
+    if ($path === null) {
+        return 'image/svg+xml';
+    }
+
+    return match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+        'png' => 'image/png',
+        'jpg', 'jpeg' => 'image/jpeg',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+        default => 'image/svg+xml',
+    };
+}
+
+function app_favicon_link(): void
+{
+    $href = app_favicon_href();
+    $type = app_favicon_type();
+    echo '<link rel="icon" href="' . e($href) . '" type="' . e($type) . '">' . "\n";
+    echo '<link rel="apple-touch-icon" href="' . e($href) . '">' . "\n";
+}
+
 function brand_has_custom_logo(): bool
 {
     return brand_logo_path() !== null;
@@ -879,7 +953,8 @@ function save_brand_identity(
     bool $useDefaultLogo,
     ?string $receiptWatermark = null,
     ?string $couponWatermark = null,
-    ?string $place = null
+    ?string $place = null,
+    ?array $contact = null
 ): ?string
 {
     $name = trim($name);
@@ -906,6 +981,13 @@ function save_brand_identity(
         }
         if (brand_watermark_error((string) $couponWatermark) !== null) {
             return 'Enter a coupon watermark from 0 to 100.';
+        }
+    }
+
+    if ($contact !== null) {
+        $contactError = temple_identity_contact_error($contact);
+        if ($contactError !== null) {
+            return $contactError;
         }
     }
 
@@ -950,27 +1032,29 @@ function save_brand_identity(
             brand_clear_print_png();
             db_exec('DELETE FROM app_settings WHERE setting_key = ?', [BRAND_LOGO_KEY]);
         }
+        if ($contact !== null) {
+            temple_identity_persist_contact($contact);
+        }
         if ($own) {
             $pdo->commit();
         }
-        return null;
-    } catch (Throwable $e) {
-        if ($written !== null && is_file($written)) {
-            unlink($written);
+        if (function_exists('temple_identity_sync_to_booking_settings')) {
+            $actor = (string) ($_SESSION['username'] ?? 'settings');
+            temple_identity_sync_to_booking_settings($actor);
         }
+    } catch (Throwable $e) {
         if ($own && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        if ($e->getMessage() === 'The logo could not be prepared for receipts.') {
-            return 'This server could not prepare that logo for receipts and coupons. Upload a PNG or JPG image.';
-        }
         throw $e;
     }
+
+    return null;
 }
 
 function serve_brand_logo(): void
 {
-    $path = brand_logo_path();
+    $path = brand_logo_disk_path() ?? brand_logo_path();
     if ($path === null) {
         http_response_code(404);
         echo 'Logo not found.';
