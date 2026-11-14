@@ -106,13 +106,19 @@ function site_install_http_inner(array $opts): void
                 $runBooking = isset($_POST['run_booking']) && $bookingReady;
 
                 if ($runErp) {
-                    $erpResult = install_database(isset($_POST['replace_books']));
-                    if (function_exists('online_booking_migrate_puja_purposes_from_choices')) {
-                        online_booking_migrate_puja_purposes_from_choices();
-                    }
-                    if (function_exists('online_booking_normalize_service_food_rules')) {
-                        online_booking_normalize_service_food_rules();
-                        online_booking_normalize_service_slot_rules();
+                    $schemaOnly = isset($_POST['schema_only']) || env_value('INSTALL_SCHEMA_ONLY') === '1';
+                    $erpResult = install_database(
+                        isset($_POST['replace_books']) && !$schemaOnly,
+                        $schemaOnly
+                    );
+                    if (!$schemaOnly) {
+                        if (function_exists('online_booking_migrate_puja_purposes_from_choices')) {
+                            online_booking_migrate_puja_purposes_from_choices();
+                        }
+                        if (function_exists('online_booking_normalize_service_food_rules')) {
+                            online_booking_normalize_service_food_rules();
+                            online_booking_normalize_service_slot_rules();
+                        }
                     }
                 }
 
@@ -423,7 +429,8 @@ function site_install_render_page(array $ctx): void
   <?php if (is_array($ctx['erpResult'])): ?>
     <div class="ok">
       <p><strong>ERP:</strong> <?= e(DB_NAME) ?> on <?= e(DB_HOST) ?>, <?= e((string) $ctx['erpResult']['tables']) ?> tables,
-        <?= e((string) $ctx['erpResult']['users']) ?> users, <?= e((string) $ctx['erpResult']['donors']) ?> devotees.</p>
+        <?= e((string) $ctx['erpResult']['users']) ?> users, <?= e((string) $ctx['erpResult']['donors']) ?> devotees.
+        <?php if (!empty($ctx['erpResult']['schema_only'])): ?> (schema only — no demo or snapshot data loaded.)<?php endif; ?></p>
     </div>
   <?php endif; ?>
 
@@ -476,8 +483,10 @@ function site_install_render_page(array $ctx): void
     <form method="post" action="">
       <?= csrf_field() ?>
       <h2>Temple books (ERP)</h2>
+      <label class="check"><input type="checkbox" name="schema_only" value="1" checked> Schema only — create/update tables and columns only (no demo data, no books snapshot).</label>
+      <p style="font-size:0.9rem">For production: leave this checked. Optionally create the first admin below, or use ERP after install.</p>
       <?php if ($ctx['booksReady'] && $ctx['existingDonors'] !== null && $ctx['existingDonors'] > 0): ?>
-        <label class="check"><input type="checkbox" name="replace_books" value="1"> Replace existing devotees/books with the bundled snapshot.</label>
+        <label class="check"><input type="checkbox" name="replace_books" value="1"> Replace existing devotees/books with the bundled snapshot (only when schema only is off).</label>
       <?php endif; ?>
 
       <?php if ($ctx['bookingReady']): ?>

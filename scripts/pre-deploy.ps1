@@ -1,9 +1,17 @@
-# Pre-deploy: sync public home to repo root and print a short checklist.
+﻿# Pre-deploy: sync public home to repo root and print a short checklist.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 
 & (Join-Path $PSScriptRoot 'sync-home-to-root.ps1')
 & (Join-Path $PSScriptRoot 'verify-deploy-links.ps1')
+
+$php = (Get-Command php -ErrorAction SilentlyContinue).Source
+if ($php) {
+    & $php (Join-Path $root 'crm\bin\verify_env_sync.php')
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+} else {
+    Write-Host 'WARN: php not in PATH — run crm/bin/verify_env_sync.php manually' -ForegroundColor Yellow
+}
 
 Write-Host ''
 Write-Host '=== Pre-deploy checklist ===' -ForegroundColor Cyan

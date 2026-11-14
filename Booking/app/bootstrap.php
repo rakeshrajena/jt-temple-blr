@@ -13,26 +13,7 @@ if (PHP_VERSION_ID < 80100) {
 }
 require_once APP_ROOT . '/app/autoload.php';
 
-$bookingRoot = sjt_booking_root();
-SJT\Core\Env::load($bookingRoot . '/.env');
-$localEnv = dirname($bookingRoot) . '/.env';
-$skipRepoEnv = in_array(getenv('SJT_TEST') ?: '', ['1', 'true', 'yes'], true)
-    || in_array(getenv('APP_ENV') ?: '', ['testing', 'test'], true);
-if (!$skipRepoEnv && is_file($localEnv)) {
-    SJT\Core\Env::load($localEnv, [
-        'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_PASSWORD',
-        'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE',
-        'APP_ENV', 'APP_DEBUG', 'APP_URL', 'ERP_APP_URL', 'GATEWAY_SSL_VERIFY', 'INSTALL_TOKEN',
-        'SMTP_ONLY_LOCAL_MTA', 'SMTP_PREFER_LOCAL_MTA', 'SMTP_SKIP_LOCAL_MTA', 'SMTP_DISABLE_PHP_MAIL',
-    ]);
-}
-$bookingLocal = $bookingRoot . '/.env.local';
-if (!$skipRepoEnv && is_file($bookingLocal)) {
-    SJT\Core\Env::load($bookingLocal, [
-        'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_PASSWORD',
-        'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE',
-    ]);
-}
+sjt_booking_load_env();
 date_default_timezone_set(SJT\Core\Env::get('APP_TIMEZONE', 'Asia/Kolkata'));
 mb_internal_encoding('UTF-8');
 SJT\Core\Logger::init($bookingRoot . '/storage/logs');

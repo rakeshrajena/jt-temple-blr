@@ -1,6 +1,23 @@
 <?php
 declare(strict_types=1);
 
+/** True on AMPPS/localhost — parent public_html/.env and crm/.env.local may override DB_*. */
+function env_local_dev_host(): bool
+{
+    if (PHP_SAPI === 'cli') {
+        $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+        if ($host !== '' && !preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', $host)) {
+            return false;
+        }
+        $app = dirname(__DIR__);
+        return str_contains(strtolower($app), 'ampps')
+            || str_contains(strtolower($app), 'xampp')
+            || is_file($app . '/.env.local');
+    }
+    $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+    return $host === '' || preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', $host) === 1;
+}
+
 /** @return array<string, string> */
 function env_values(): array
 {
@@ -10,10 +27,13 @@ function env_values(): array
     }
     $app = dirname(__DIR__);
     $values = [];
-    // The file next to index.php is the one uploaded to the server.
-    // A .env one folder above it, on this computer only, overrides that file.
+    $paths = [$app . '/.env'];
+    // Parent public_html/.env is AMPPS-only — on sjtbengaluru.org it must not replace cPanel DB creds.
     $parent = $app . '/../.env';
-    foreach ([$app . '/.env', $parent] as $path) {
+    if (env_local_dev_host()) {
+        $paths[] = $parent;
+    }
+    foreach ($paths as $path) {
         if (!is_file($path)) {
             continue;
         }
@@ -27,9 +47,8 @@ function env_values(): array
         }
         $values = array_merge($values, $parsed);
     }
-    // Same folder as index.php — used when AMPPS cannot read ../.env (open_basedir). Do not upload.
     $localApp = $app . '/.env.local';
-    if (is_file($localApp)) {
+    if (env_local_dev_host() && is_file($localApp)) {
         $raw = file_get_contents($localApp);
         if (is_string($raw)) {
             $parsed = env_parse($raw);

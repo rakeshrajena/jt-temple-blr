@@ -29,6 +29,53 @@ if (!function_exists('sjt_booking_root')) {
     }
 }
 
+/** True on AMPPS/localhost — allows .env.local and parent public_html/.env DB overrides. */
+if (!function_exists('sjt_booking_local_dev_host')) {
+    function sjt_booking_local_dev_host(): bool
+    {
+        if (PHP_SAPI === 'cli') {
+            $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+            if ($host !== '' && !preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', $host)) {
+                return false;
+            }
+            $root = sjt_booking_root();
+            return str_contains(strtolower($root), 'ampps')
+                || str_contains(strtolower($root), 'xampp')
+                || is_file($root . '/.env.local');
+        }
+        $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+        return $host === '' || preg_match('/^(localhost|127\.0\.0\.1)(:\d+)?$/', $host) === 1;
+    }
+}
+
+/** Load Booking/.env; parent and .env.local only on AMPPS/localhost (shared by bootstrap, donation workers). */
+if (!function_exists('sjt_booking_load_env')) {
+    function sjt_booking_load_env(): void
+    {
+        require_once sjt_booking_root() . '/app/Core/Env.php';
+        $bookingRoot = sjt_booking_root();
+        \SJT\Core\Env::load($bookingRoot . '/.env');
+        $localEnv = dirname($bookingRoot) . '/.env';
+        $skipRepoEnv = in_array(getenv('SJT_TEST') ?: '', ['1', 'true', 'yes'], true)
+            || in_array(getenv('APP_ENV') ?: '', ['testing', 'test'], true);
+        if (!$skipRepoEnv && sjt_booking_local_dev_host() && is_file($localEnv)) {
+            \SJT\Core\Env::load($localEnv, [
+                'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_PASSWORD',
+                'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE',
+                'APP_ENV', 'APP_DEBUG', 'APP_URL', 'ERP_APP_URL', 'GATEWAY_SSL_VERIFY', 'INSTALL_TOKEN',
+                'SMTP_ONLY_LOCAL_MTA', 'SMTP_PREFER_LOCAL_MTA', 'SMTP_SKIP_LOCAL_MTA', 'SMTP_DISABLE_PHP_MAIL',
+            ]);
+        }
+        $bookingLocal = $bookingRoot . '/.env.local';
+        if (!$skipRepoEnv && sjt_booking_local_dev_host() && is_file($bookingLocal)) {
+            \SJT\Core\Env::load($bookingLocal, [
+                'DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_PASSWORD',
+                'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE',
+            ]);
+        }
+    }
+}
+
 if (!defined('APP_ROOT')) {
     define('APP_ROOT', BOOKING_ROOT);
 }

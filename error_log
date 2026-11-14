@@ -1,0 +1,364 @@
+[14-Nov-2026 23:35:15 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:15 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:35:18 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:18 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:35:31 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:31 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:35:32 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:32 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:35:33 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:33 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:35:34 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:34 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:35:34 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:34 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:35:35 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:35 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:35:35 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:35 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:35:35 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:35 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:35:36 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:36 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:35:36 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:36 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:35:36 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:36 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:35:36 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:36 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:35:38 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:38 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:35:38 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:35:38 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:36:50 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:36:50 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:37:03 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:37:03 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:37:04 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:37:04 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:37:15 Asia/Kolkata] [jt_blr] site_install: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:37:25 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:37:25 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:37:26 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:37:26 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:38:03 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:38:03 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:39:44 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:39:44 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:39:45 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:39:45 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:39:45 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:39:45 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:39:45 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:39:45 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:41:22 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:41:22 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:41:22 Asia/Kolkata] [jt_blr] site_install: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:41:23 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:41:23 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:41:38 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:41:38 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:42:00 Asia/Kolkata] [jt_blr] food_coupon_catalog: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:42:00 Asia/Kolkata] PHP Fatal error:  Uncaught PDOException: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES) in /home/enk8ac0d8308/public_html/crm/includes/db.php:36
+Stack trace:
+#0 /home/enk8ac0d8308/public_html/crm/includes/db.php(36): PDO->__construct()
+#1 /home/enk8ac0d8308/public_html/crm/includes/db.php(53): db_connect()
+#2 /home/enk8ac0d8308/public_html/crm/includes/db.php(382): db()
+#3 /home/enk8ac0d8308/public_html/crm/includes/settings.php(750): db_one()
+#4 /home/enk8ac0d8308/public_html/crm/includes/online_booking_migrate.php(152): brand_setting()
+#5 /home/enk8ac0d8308/public_html/crm/includes/bootstrap.php(67): online_booking_migrate_puja_purposes_from_choices()
+#6 /home/enk8ac0d8308/public_html/crm/index.php(4): require('/home/enk8ac0d8...')
+#7 {main}
+  thrown in /home/enk8ac0d8308/public_html/crm/includes/db.php on line 36
+[14-Nov-2026 23:42:39 Asia/Kolkata] [jt_blr] site_install: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
+[14-Nov-2026 23:44:59 Asia/Kolkata] [jt_blr] site_install: SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost' (using password: YES)
