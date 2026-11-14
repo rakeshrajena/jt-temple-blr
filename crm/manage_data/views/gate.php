@@ -18,14 +18,17 @@
         <p class="flash flash-bad">Your account is <?= e($gateRole) ?>. This module is for <strong>Admin</strong> only.</p>
       <?php endif; ?>
       <p>Log in as <strong>Admin</strong> in the temple CRM, then open this page again.</p>
-      <p class="muted">This tool is not linked from the ERP menu. Bookmark the URL after you sign in.</p>
+      <p class="muted">After login you can use <strong>Administration → Manage data</strong> in the CRM sidebar.</p>
       <?php
-        $crmLogin = rtrim(str_replace('\\', '/', dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/crm/manage_data'))), '/');
-        if ($crmLogin === '' || $crmLogin === '.') {
-            $crmLogin = '/crm';
+        $returnPath = (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: manage_data_url());
+        $returnQuery = parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_QUERY);
+        if (is_string($returnQuery) && $returnQuery !== '') {
+            $returnPath .= '?' . $returnQuery;
         }
+        $loginHref = crm_route_url('login', ['next' => $returnPath]);
       ?>
-      <p><a class="btn btn-primary" href="<?= e($crmLogin) ?>/index.php?r=login">Go to CRM login</a></p>
+      <p><a class="btn btn-primary" href="<?= e($loginHref) ?>">Go to CRM login</a></p>
+      <p class="muted">Correct URL: <code><?= e(manage_data_url()) ?></code> — not <code>?r=manage_data</code> on the main CRM page.</p>
     </div>
   </div>
 </body>

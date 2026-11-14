@@ -81,6 +81,20 @@ if (is_file($donationIndex)) {
     $fail('Booking/donation/index.php missing');
 }
 
+$manageData = APP_ROOT . '/manage_data/index.php';
+if (is_file($manageData)) {
+    $ok('crm/manage_data module present');
+} else {
+    $fail('crm/manage_data/index.php missing — upload manage_data/ with crm/');
+}
+
+$vastraMovements = $pdo->query("SHOW TABLES LIKE 'vastra_movements'")->fetchColumn();
+if ($vastraMovements !== false) {
+    $ok('table vastra_movements present');
+} else {
+    $warn('vastra_movements missing — open /crm/ once after upload to run migrate_schema()');
+}
+
 if (subscription_gateway_enabled()) {
     $ok('Subscription Razorpay keys loaded from Booking/.env');
 } else {

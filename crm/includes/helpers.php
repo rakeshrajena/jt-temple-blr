@@ -57,12 +57,61 @@ function crm_public_index_script(): string
 /** CRM static files; always under the ERP front controller, not nested apps (e.g. manage_data). */
 function crm_asset_url(string $path): string
 {
-    $dir = rtrim(dirname(crm_public_index_script()), '/');
-    if ($dir === '' || $dir === '.') {
-        $dir = '/crm';
+    return crm_erp_dir_url() . '/static/' . ltrim($path, '/');
+}
+
+/** Web path to the CRM folder (directory containing index.php), with no trailing slash. */
+function crm_erp_dir_url(): string
+{
+    if (defined('MANAGE_DATA_BOOT') && MANAGE_DATA_BOOT) {
+        $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        if ($script !== '' && str_contains($script, '/manage_data/')) {
+            $erp = rtrim(dirname(dirname($script)), '/');
+            if ($erp !== '' && $erp !== '.') {
+                return $erp;
+            }
+        }
+    }
+    $script = app_script();
+    if (str_ends_with($script, '/index.php')) {
+        $dir = rtrim(dirname($script), '/');
+        if ($dir !== '' && $dir !== '.') {
+            return $dir;
+        }
+    }
+    $configured = rtrim(env_value('APP_URL'), '/');
+    if ($configured !== '' && preg_match('#^https?://#i', $configured) === 1) {
+        $path = parse_url($configured, PHP_URL_PATH);
+        if (is_string($path) && $path !== '' && $path !== '/') {
+            return rtrim($path, '/');
+        }
     }
 
-    return $dir . '/static/' . ltrim($path, '/');
+    $booking = rtrim(env_value('BOOKING_APP_URL'), '/');
+    if ($booking !== '' && preg_match('#^https?://#i', $booking) === 1) {
+        $path = rtrim((string) (parse_url($booking, PHP_URL_PATH) ?? ''), '/');
+        if (str_ends_with(strtolower($path), '/booking')) {
+            return preg_replace('#/Booking$#i', '', $path) . '/crm';
+        }
+    }
+
+    $dir = rtrim(dirname(crm_public_index_script()), '/');
+    if ($dir === '' || $dir === '.') {
+        return '/crm';
+    }
+
+    return $dir;
+}
+
+/** Standalone Admin tool at crm/manage_data/ (not an index.php route). */
+function manage_data_url(array $query = []): string
+{
+    $base = crm_erp_dir_url() . '/manage_data/';
+    if ($query === []) {
+        return $base;
+    }
+
+    return $base . '?' . http_build_query($query);
 }
 
 /** Route URLs on CRM index.php (receipts, brand/logo, etc.) from any subdirectory script. */
@@ -72,7 +121,7 @@ function crm_route_url(string $path = '', array $query = []): string
     if ($path !== '') {
         $query = ['r' => $path] + $query;
     }
-    $base = crm_public_index_script();
+    $base = crm_erp_dir_url() . '/index.php';
     if ($query === []) {
         return $base;
     }

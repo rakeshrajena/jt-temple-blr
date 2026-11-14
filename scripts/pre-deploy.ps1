@@ -12,6 +12,7 @@ Write-Host '  [ ] CRM Settings -> Identity (logo, phones, address)'
 Write-Host '  [ ] Streaming/.streaming live URL if using Live Darshan'
 Write-Host '  [ ] home/photos/hero and home/gallery media uploaded'
 Write-Host '  [ ] Delete install.php + remove INSTALL_TOKEN after migrate'
-Write-Host '  [ ] Smoke test: /, /gallery, /Booking/book, /Booking/donation/, /Streaming/'
+Write-Host '  [ ] php crm/bin/preflight_deploy.php && php crm/bin/prod_url_smoke.php'
+Write-Host '  [ ] Smoke test: /, /gallery, /Booking/book, /Booking/donation/, /crm/, /crm/manage_data/, /Streaming/'
 Write-Host ''
 Write-Host "Deploy guide: $root\docs\DEPLOY-PRODUCTION.md" -ForegroundColor Green

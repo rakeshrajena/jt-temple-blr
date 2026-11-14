@@ -6,11 +6,11 @@ Standalone maintenance UI — **not linked** from CRM menus and **no changes** t
 
 After logging into CRM as **Admin**:
 
-`https://your-site/crm/manage_data/`
+`https://your-site/crm/manage_data/` (or your subfolder path, e.g. `.../jt-temple-blr/crm/manage_data/`)
 
-Optional: set `MANAGE_DATA_KEY` in `crm/.env` and open:
+**Administration → Manage data** in the CRM sidebar opens the same page. Do **not** use `crm/index.php?r=manage_data` — that route redirects to the folder above.
 
-`https://your-site/crm/manage_data/?key=YOUR_SECRET`
+Optional: set `MANAGE_DATA_KEY` in `crm/.env` and add `?key=YOUR_SECRET` to every visit (required when the key is set).
 
 ## Access
 

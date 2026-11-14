@@ -18,7 +18,10 @@ $required = @(
     'home\api\hero-media.php',
     'home\api\temple-identity.php',
     'Booking\.env.example',
-    'crm\env.example'
+    'crm\env.example',
+    'crm\manage_data\index.php',
+    'Booking\donation\index.php',
+    'Streaming\index.php'
 )
 $missing = @()
 foreach ($rel in $required) {
@@ -74,6 +77,8 @@ Write-Host '  public_html/crm/'
 Write-Host '  public_html/Streaming/'
 Write-Host '  public_html/home/'
 Write-Host '  public_html/assets/'
+Write-Host '  public_html/crm/manage_data/   (Admin data tool — upload with crm/)'
+Write-Host '  public_html/Booking/donation/'
 Write-Host ''
 
 Write-Host '=== Production .env URLs (required) ===' -ForegroundColor Cyan

@@ -111,6 +111,7 @@ $returnTo = (string) ($_SERVER['REQUEST_URI'] ?? '');
         <a class="nav-link<?= $active === 'users' ? ' active' : '' ?>" href="<?= e(url('users')) ?>"><?= $icon('users') ?> <?= e(t('nav.users')) ?></a>
         <a class="nav-link<?= $active === 'settings' ? ' active' : '' ?>" href="<?= e(url('settings')) ?>"><?= $icon('gear') ?> <?= e(t('nav.settings')) ?></a>
         <a class="nav-link<?= $active === 'localization' ? ' active' : '' ?>" href="<?= e(url('localization')) ?>"><?= $icon('globe') ?> <?= e(t('nav.localization')) ?></a>
+        <a class="nav-link" href="<?= e(manage_data_url()) ?>"><?= $icon('gear') ?> Manage data</a>
       <?php endif; ?>
       <div class="sidebar-footer"><?= e(t('shell.signed_in')) ?><br><strong><?= e($fullName) ?></strong><br><?= e(t_fixed('role', $role)) ?></div>
     </aside>

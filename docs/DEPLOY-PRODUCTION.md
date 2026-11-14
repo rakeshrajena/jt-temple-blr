@@ -84,6 +84,7 @@ public_html/
 | 8 | **Delete or block** `install.php` on CRM and Booking after go-live |
 | 9 | Remove `INSTALL_TOKEN` from production `.env` |
 | 10 | Hard-refresh home page after deploy (`Ctrl+Shift+R`) to load new `?v=` script versions |
+| 11 | On PC before upload: `.\scripts\pre-deploy.ps1`, `php crm/bin/preflight_deploy.php`, `php crm/bin/prod_url_smoke.php` |
 
 ---
 
@@ -127,7 +128,9 @@ If the site lives in a **subfolder** (e.g. `/jt_blr/.../`), the inline script in
 - [ ] `https://your-domain/Booking/lookup` — lookup form
 - [ ] `https://your-domain/Streaming/` — player or “no stream” message
 - [ ] `https://your-domain/crm/` — staff login
+- [ ] `https://your-domain/crm/manage_data/` — Admin only (after CRM login; or `?key=` if `MANAGE_DATA_KEY` set)
 - [ ] Network tab: **one** call to `temple-identity.php` per page load (not a loop)
+- [ ] Links from home **Book** / **Donate** / **Live Darshan** open `/Booking/...` and `/Streaming/` (not `/jt_blr/...` or wrong host)
 
 ---
 

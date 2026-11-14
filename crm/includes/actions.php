@@ -339,6 +339,9 @@ function dispatch_request(): void
         action_donor_search();
         return;
     }
+    if ($path === 'manage_data' || str_starts_with($path, 'manage_data/')) {
+        redirect(manage_data_url());
+    }
 
     http_response_code(404);
     echo 'Page not found.';
