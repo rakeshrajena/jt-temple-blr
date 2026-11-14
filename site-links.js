@@ -41,11 +41,23 @@
     before.parentNode.insertBefore(li, before);
   }
 
+  function navHasLabel(ul, pattern) {
+    return Array.prototype.some.call(ul.querySelectorAll('a'), function (a) {
+      return pattern.test((a.textContent || '').trim());
+    });
+  }
+
+  function navHasHrefPart(ul, part) {
+    return Array.prototype.some.call(ul.querySelectorAll('a'), function (a) {
+      return (a.getAttribute('href') || '').indexOf(part) !== -1;
+    });
+  }
+
   function patchNavList(ul) {
     if (!ul) {
       return;
     }
-    var donateLi = null;
+    var anchorLi = null;
     var template = null;
     ul.querySelectorAll('li').forEach(function (li) {
       var a = li.querySelector('a');
@@ -54,25 +66,75 @@
       }
       var href = a.getAttribute('href') || '';
       if (href === '#donate' || /^donate$/i.test((a.textContent || '').trim())) {
-        donateLi = li;
+        anchorLi = li;
         template = a;
       }
     });
-    if (!donateLi || !template) {
+    if (!anchorLi || !template) {
+      ul.querySelectorAll('li').forEach(function (li) {
+        var a = li.querySelector('a');
+        if (!a || template) {
+          return;
+        }
+        var href = a.getAttribute('href') || '';
+        var label = (a.textContent || '').trim();
+        if (/online booking/i.test(label) || href.indexOf('Booking/book') !== -1) {
+          anchorLi = li;
+          template = a;
+        }
+      });
+    }
+    if (!anchorLi || !template) {
+      var lis = ul.querySelectorAll('li');
+      if (lis.length) {
+        anchorLi = lis[lis.length - 1];
+        template = anchorLi.querySelector('a');
+      }
+    }
+    if (!anchorLi || !template) {
       return;
     }
-    var donateA = donateLi.querySelector('a');
+    var donateA = ul.querySelector('a[href="#donate"], a[href="/#donate"]');
     if (donateA && !donateA.getAttribute('data-sjt-donation-nav')) {
       donateA.href = DONATION;
       donateA.setAttribute('data-sjt-donation-nav', '1');
     }
-    insertNavLink(ul, donateLi, template, DONATION, 'Donate online', 'data-sjt-donate-nav');
-    insertNavLink(ul, donateLi, template, BOOKING, 'Online Booking', 'data-sjt-booking-nav');
-    insertNavLink(ul, donateLi, template, LIVE, 'Live Darshan', 'data-sjt-live-nav');
+    if (!ul.querySelector('[data-sjt-donate-nav]') && !navHasHrefPart(ul, 'Booking/donation')) {
+      insertNavLink(ul, anchorLi, template, DONATION, 'Donate online', 'data-sjt-donate-nav');
+    }
+    if (!ul.querySelector('[data-sjt-booking-nav]') && !navHasHrefPart(ul, 'Booking/book')) {
+      insertNavLink(ul, anchorLi, template, BOOKING, 'Online Booking', 'data-sjt-booking-nav');
+    }
+    if (!ul.querySelector('[data-sjt-live-nav]') && !navHasLabel(ul, /live darshan/i)) {
+      insertNavLink(ul, anchorLi, template, LIVE, 'Live Darshan', 'data-sjt-live-nav');
+    }
   }
 
   function patchHeaderNav() {
-    document.querySelectorAll('header ul').forEach(patchNavList);
+    var seen = new Set();
+    document.querySelectorAll('header ul, nav ul').forEach(function (ul) {
+      if (seen.has(ul)) {
+        return;
+      }
+      seen.add(ul);
+      patchNavList(ul);
+    });
+  }
+
+  /** `/#section` ignores <base> and breaks in subfolders; use `#section` so base applies. */
+  function patchInPageHashLinks() {
+    document.querySelectorAll('a[href^="/#"]').forEach(function (a) {
+      var raw = a.getAttribute('href') || '';
+      if (raw.indexOf('/#') !== 0 || raw.length < 3) {
+        return;
+      }
+      var next = raw.slice(1);
+      if (a.getAttribute('href') === next && a.getAttribute('data-sjt-nav-hash') === '1') {
+        return;
+      }
+      a.setAttribute('href', next);
+      a.setAttribute('data-sjt-nav-hash', '1');
+    });
   }
 
   function patchHeroButtons() {
@@ -92,7 +154,7 @@
     if (document.querySelector('[data-sjt-hero-live]')) {
       return;
     }
-    document.querySelectorAll('a[href="#about"]').forEach(function (learn) {
+    document.querySelectorAll('a[href="#about"], a[href="/#about"]').forEach(function (learn) {
       if (!/learn more/i.test((learn.textContent || '').trim())) {
         return;
       }
@@ -159,6 +221,87 @@
       '">Look up an existing booking</a>';
 
     container.appendChild(box);
+    patchDonateSupportUI();
+  }
+
+  function sevaIconSvg(kind) {
+    var attrs =
+      'class="sjt-seva-icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-hidden="true" focusable="false"';
+    if (kind === 'anna') {
+      return (
+        '<svg ' +
+        attrs +
+        '><path fill="currentColor" d="M16 6c-3.5 2.5-7 5.5-7 9.5a7 7 0 0 0 14 0C23 11.5 19.5 8.5 16 6zm-1 3.2L18.5 13H13.5L15 9.2zM8 18h16v1.5H8V18z"/></svg>'
+      );
+    }
+    if (kind === 'education') {
+      return (
+        '<svg ' +
+        attrs +
+        '><path fill="currentColor" d="M16 4 5 10.5V12h22v-1.5L16 4zm-9 4.2 9 5.6 9-5.6v7.3l-9 5.6-9-5.6V8.2zM7 21v7h18v-7H7zm2 2h14v3H9v-3z"/></svg>'
+      );
+    }
+    return (
+      '<svg ' +
+      attrs +
+      '><path fill="currentColor" d="M16 2 7 7.5V11h18V7.5L16 2zm-8 11v15h16V13H8zm2 2h12v11H10V15zm4 2v7h4v-7h-4z"/></svg>'
+    );
+  }
+
+  function patchDonateSupportUI() {
+    var sec = document.getElementById('donate');
+    if (!sec) {
+      return;
+    }
+    var grid = sec.querySelector('.grid');
+    if (!grid) {
+      return;
+    }
+    if (sec.dataset.sjtDonateUi !== '1') {
+      sec.dataset.sjtDonateUi = '1';
+      sec.classList.add('sjt-donate-section');
+      grid.classList.add('sjt-donate-layout');
+      var left = grid.children[0];
+      if (left) {
+        left.classList.add('sjt-donate-support-col');
+        var list = left.querySelector('.mt-6');
+        if (list) {
+          list.classList.add('sjt-donate-seva-list');
+          list.classList.remove('space-y-4', 'space-y-3', 'space-y-6');
+        }
+      }
+      if (grid.children[1]) {
+        grid.children[1].classList.add('sjt-donate-action-col');
+      }
+    }
+
+    sec.querySelectorAll('.flex.items-center').forEach(function (row) {
+      if (!sec.contains(row) || row.closest('[data-sjt-donation-cta]')) {
+        return;
+      }
+      var h4 = row.querySelector('h4');
+      if (!h4) {
+        return;
+      }
+      row.classList.add('sjt-donate-seva-row');
+      var iconWrap = row.querySelector('.rounded-full');
+      if (!iconWrap) {
+        return;
+      }
+      var kind = 'temple';
+      var title = h4.textContent || '';
+      if (/anna daan/i.test(title)) {
+        kind = 'anna';
+      } else if (/educational/i.test(title)) {
+        kind = 'education';
+      }
+      if (iconWrap.getAttribute('data-sjt-seva-icon') === kind) {
+        return;
+      }
+      iconWrap.setAttribute('data-sjt-seva-icon', kind);
+      iconWrap.className = 'sjt-donate-seva-icon sjt-donate-seva-icon--' + kind;
+      iconWrap.innerHTML = sevaIconSvg(kind);
+    });
   }
 
   var SERVICE_CARDS = [
@@ -371,6 +514,7 @@
   }
 
   function run() {
+    patchInPageHashLinks();
     patchHeaderNav();
     patchHeroButtons();
     patchHeroLiveButton();
@@ -379,6 +523,7 @@
     hideDuplicateServiceGrids();
     patchFooterDonateLinks();
     patchBottomCta();
+    patchDonateSupportUI();
   }
 
   run();

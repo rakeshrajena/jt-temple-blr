@@ -8,8 +8,8 @@ function e(mixed $value): string
 
 function app_script(): string
 {
-    $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? '/jt_blr/jt-temple-blr/php/index.php'));
-    return $script === '' ? '/jt_blr/jt-temple-blr/php/index.php' : $script;
+    $script = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_NAME'] ?? '/crm/index.php'));
+    return $script === '' ? '/crm/index.php' : $script;
 }
 
 function app_dir_url(): string
@@ -44,9 +44,10 @@ function crm_public_index_script(): string
     }
 
     $root = str_replace('\\', '/', defined('APP_ROOT') ? APP_ROOT : '');
-    foreach (['/jt_blr/jt-temple-blr/crm', '/jt_blr/jt-temple-blr/php'] as $local) {
-        if ($root !== '' && str_ends_with($root, $local)) {
-            return $local . '/index.php';
+    $rootNorm = str_replace('\\', '/', $root);
+    foreach (['/crm', '/php'] as $erpPath) {
+        if ($rootNorm !== '' && str_ends_with($rootNorm, $erpPath)) {
+            return $erpPath . '/index.php';
         }
     }
 

@@ -12,8 +12,10 @@ Originally developed for **Shree Jagannath Temple, Sarjapura, Bengaluru**; the c
 
 | Application | Folder | Stack | Role |
 |---|---|---|---|
+| **Public website** | [`home/`](home/README.md) + root `index.html` | Static SPA + PHP APIs | Home, gallery, hero; identity from CRM |
 | **Temple ERP** | [`crm/`](crm/README.md) | PHP 8.1+, MySQL | Staff sign-in: donations, books, inventory, coupons, approvals, reports |
 | **Online booking** | [`Booking/`](Booking/README.md) | PHP 8.1+, MySQL | Public site: book services & prasadam, pay, track status |
+| **Live darshan** | [`Streaming/`](Streaming/README.md) | PHP | Single URL live stream page |
 | Prototype (Flask) | [`python/`](python/README.md) | Flask, SQLite | Local reference app |
 
 Both **ERP** and **Booking** can share one MySQL database (e.g. `sjt_temple_blr`): one set of staff users, unified catalog pricing, and donations that flow into the cash book, day book, and ledger when payments are verified.
@@ -211,6 +213,20 @@ Plan and test matrix: [`Booking/ERP-INTEGRATION-PLAN.md`](Booking/ERP-INTEGRATIO
 
 ---
 
+## Production deployment (hosting)
+
+**→ [docs/DEPLOY-PRODUCTION.md](docs/DEPLOY-PRODUCTION.md)** — upload layout, `.env`, install cleanup, smoke tests.
+
+Before upload from this repo:
+
+```powershell
+.\scripts\sync-home-to-root.ps1
+```
+
+Then upload document root, `home/`, `Booking/`, `crm/`, and `Streaming/` as described in the deploy guide.
+
+---
+
 ## Quick start (local, AMPPS)
 
 ### 1. Temple ERP
@@ -251,11 +267,15 @@ Staff can use every module except **Users**. Treasurers approve within configure
 ## Repository layout
 
 ```
-crm/ Temple ERP (registers, finance, coupons, settings)
-Booking/ Public online booking + admin
-python/ Flask prototype
-docs/ User guide images and temple documentation
-bookingPreview.html Standalone HTML prototype of booking UX (no database)
+index.html, assets/     Public home (synced from home/)
+home/                   Source for home page, photos, gallery, APIs
+crm/                    Temple ERP (registers, finance, coupons, settings)
+Booking/                Public online booking + admin + donation
+Streaming/              Live darshan landing page
+python/                 Flask prototype
+docs/                   User guide, DEPLOY-PRODUCTION.md
+scripts/                sync-home-to-root.ps1, organize-home-photos.ps1
+bookingPreview.html     Standalone HTML prototype of booking UX (no database)
 ```
 
 ---

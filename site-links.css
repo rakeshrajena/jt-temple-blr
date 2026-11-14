@@ -3,6 +3,165 @@
   display: none !important;
 }
 
+/* —— Support the Temple (#donate) —— */
+#donate.sjt-donate-section .container {
+  max-width: 72rem;
+}
+
+#donate.sjt-donate-section .temple-title,
+#donate.sjt-donate-section h2.temple-title {
+  text-align: center;
+  width: 100%;
+}
+
+#donate.sjt-donate-section .sjt-donate-layout {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 2rem !important;
+  width: 100%;
+  grid-template-columns: none !important;
+}
+
+#donate.sjt-donate-section .sjt-donate-support-col {
+  width: 100%;
+  max-width: 48rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  #donate.sjt-donate-section .sjt-donate-support-col {
+    max-width: 100%;
+  }
+}
+
+#donate.sjt-donate-section .sjt-donate-support-col h3 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+}
+
+#donate.sjt-donate-section .sjt-donate-support-col > p {
+  color: #5c4e42;
+  line-height: 1.65;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 40rem;
+}
+
+#donate.sjt-donate-section .sjt-donate-seva-list {
+  margin-top: 1.75rem !important;
+  display: grid !important;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+#donate.sjt-donate-section .sjt-donate-seva-list > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+@media (min-width: 768px) {
+  #donate.sjt-donate-section .sjt-donate-seva-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.15rem;
+  }
+}
+
+#donate.sjt-donate-section .sjt-donate-seva-row {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start;
+  height: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  gap: 0.65rem !important;
+  padding: 1.2rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(212, 175, 55, 0.38);
+  background: rgba(255, 253, 248, 0.96);
+  box-shadow: 0 8px 22px rgba(42, 27, 18, 0.07);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#donate.sjt-donate-section .sjt-donate-seva-row:hover {
+  border-color: rgba(217, 112, 26, 0.45);
+  box-shadow: 0 12px 28px rgba(122, 29, 29, 0.1);
+}
+
+#donate .sjt-donate-seva-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.35rem;
+  height: 3.35rem;
+  border-radius: 50%;
+  border: 2px solid rgba(212, 175, 55, 0.5);
+  background: linear-gradient(160deg, rgba(249, 244, 235, 0.95), rgba(217, 112, 26, 0.14));
+  color: #7a1d1d;
+}
+
+#donate .sjt-seva-icon-svg {
+  width: 1.7rem;
+  height: 1.7rem;
+}
+
+#donate .sjt-donate-seva-row h4 {
+  color: #7a1d1d;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.12rem;
+  margin: 0 0 0.25rem;
+  width: 100%;
+  min-height: 2.85em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.35;
+}
+
+#donate .sjt-donate-seva-row p {
+  color: #5c4e42 !important;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  margin: 0;
+  width: 100%;
+  flex: 1 1 auto;
+}
+
+@media (min-width: 768px) {
+  #donate .sjt-donate-seva-row p {
+    min-height: 4.6em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  #donate.sjt-donate-section .sjt-donate-seva-row {
+    min-height: 15.5rem;
+  }
+}
+
+#donate.sjt-donate-section .sjt-donate-action-col {
+  width: 100%;
+  max-width: 36rem;
+  margin: 0 auto;
+}
+
+#donate.sjt-donate-section .sjt-donation-cta {
+  background: rgba(255, 253, 248, 0.97);
+  border: 1px solid rgba(212, 175, 55, 0.42);
+  color: #2a1b12;
+  box-shadow: 0 10px 28px rgba(42, 27, 18, 0.08);
+}
+
+#donate.sjt-donate-section .sjt-donation-cta-link {
+  color: #7a1d1d;
+  opacity: 1;
+}
+
 /* Hero: Live Darshan beside Learn More (injected by site-links.js) */
 a[data-sjt-hero-live] {
   text-decoration: none;
