@@ -77,7 +77,7 @@ public_html/
 | 1 | Upload entire project (or at minimum: root home files, `home/`, `Booking/`, `crm/`, `Streaming/`) — **flat under public_html** |
 | 2 | **Booking:** copy `Booking/.env.example` → `Booking/.env`; set `APP_URL=https://sjtbengaluru.org/Booking` (no trailing slash), `APP_KEY`, `DB_*`, payment/WhatsApp |
 | 3 | **CRM:** copy `crm/env.example` → `crm/.env`; `APP_URL=https://sjtbengaluru.org/crm`, `BOOKING_APP_URL=https://sjtbengaluru.org/Booking`; same database as Booking |
-| 4 | Run **install/migrate** once on server (`crm/install.php`, `Booking/install.php` or CLI migrate) |
+| 4 | Run **install/migrate** once on server (`crm/install.php`, `Booking/install.php` or CLI migrate). **Existing CRM DB:** uploading new `crm/` code is enough — the next CRM page load runs `migrate_schema()` (e.g. creates `vastra_movements` if missing). No separate SQL migration file; no automatic backfill of movement history. Optional: `php crm/bin/preflight_deploy.php` |
 | 5 | **CRM → Settings → Identity:** temple name, address, phones, email, logo (drives home page + favicon) |
 | 6 | **Streaming:** `Streaming/.streaming` with live `https://…` URL (see `Streaming/README.md`) |
 | 7 | Set folder permissions: `Booking/storage/*`, `crm/storage/*` writable by PHP |
@@ -133,6 +133,7 @@ If the site lives in a **subfolder** (e.g. `/jt_blr/.../`), the inline script in
 
 ## Related docs
 
+- [CRM install & schema upgrades](../crm/README.md#schema-upgrades-existing-production-dbs)
 - [Booking hosting (cPanel)](../Booking/docs/DEPLOYMENT-CPANEL.md)
 - [Booking pre-launch](../Booking/docs/TEMPLE-ACTION-ITEMS.md)
 - [Home folder staff notes](../home/README.md)

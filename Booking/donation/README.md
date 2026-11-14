@@ -27,3 +27,5 @@ Uses `Booking/.env` (and repo root `.env` overrides): `PAYMENT_GATEWAY`, `RAZORP
 ## Home page link
 
 Set `window.SJT_DONATION_URL` in `home/index.html`; `home/site-links.js` wires the Donate section and navigation.
+
+Deploy with the rest of the monorepo: [docs/DEPLOY-PRODUCTION.md](../../docs/DEPLOY-PRODUCTION.md). ERP schema (donations, receipts) lives in `crm/` — share the same MySQL database as Booking.

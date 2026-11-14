@@ -48,7 +48,7 @@ More UI captures: [`docs/images/`](docs/images/) (ERP user guide) and [`Booking/
 
 ## Why this helps temples end to end
 
-1. **Front desk & counter** - Record cash and in-kind donations, print receipt PDFs, issue food coupons, manage inventory and kitchen stock, track deity vastra.
+1. **Front desk & counter** - Record cash and in-kind donations, print receipt PDFs, issue food coupons, manage inventory and kitchen stock, track deity vastra (stock, issue/return/retire, movement history).
 2. **Finance & compliance** - Cash book (April-March), day book, ledger by purpose/category, expense vouchers, corrections, and bank reconciliation against uploaded statements.
 3. **Governance** - Treasurer and Admin approval chains for expenses, large batches, stock write-offs, donation edits, and receipt cancellations; preparer cannot approve their own item.
 4. **Devotee outreach** - Recurring seva subscriptions with invoice and pay links; invitation designs; optional localization (English / Hindi / Odia labels).
@@ -146,7 +146,7 @@ Detailed module list and install notes: [`crm/README.md`](crm/README.md) · Full
 | **Dashboard & overview** | Totals, alerts (low stock, unmatched bank lines, due subscriptions), recent donations |
 | **Inventory** | Quantity, value, condition, location; issue/return; damage/loss/retired with approval when above threshold |
 | **Food stock** | Stock in/out, minimum levels; large kitchen issues wait for approval |
-| **Deity vastra** | Cloths by deity - In Store, In Use, Retired |
+| **Deity vastra** | Add stock (always In Store); **Record a movement** (Issue, Return, Retire); summary by deity/item; ledger lines and recent movements |
 | **Donations & donors** | Cash and in-kind; PAN; donor ledger and yearly statement; pledges vs received |
 | **Receipts** | PDF receipts (`RCPT-…`); list, reprint, zip export (admin); cancellation with approval |
 | **Subscriptions** | Recurring seva plans, invoices, email/WhatsApp pay links, paid invoice → donation + receipt |
@@ -171,7 +171,7 @@ Detailed module list and install notes: [`crm/README.md`](crm/README.md) · Full
 - **Bank reconciliation** - CSV/Excel upload; auto-match by reference or amount/date window; manual link for remainder
 - **Corrections** - keep original line, add adjusting entry after approval
 - **Approvals** queue - expenses, purchases, write-offs, coupon batches, donation edits, receipt cancellations, opening balance
-- **Reports** - donations, expenses, inventory, food, vastra, reconciliation (printable)
+- **Reports** - donations, expenses, inventory, food, vastra, reconciliation; default **last calendar month**; refine filters and on-screen search; export **PDF**, **CSV**, and **Excel** (`.xlsx` when PHP Zip is available, else `.xls`)
 
 ### Administration
 
@@ -225,6 +225,17 @@ Before upload from this repo:
 
 Then upload document root, `home/`, `Booking/`, `crm/`, and `Streaming/` as described in the deploy guide.
 
+### CRM schema on an existing database
+
+After you upload new `crm/` code, **no separate SQL migration script** is required. The first CRM page load runs `migrate_schema()` (additive only). Recent examples:
+
+| Change | Manual data backfill? |
+|--------|------------------------|
+| New table `vastra_movements` (Issue / Return / Retire log) | No — table is created empty; movements recorded from go-live forward |
+| `vastra_items` | Unchanged — existing stock lines stay as they are |
+
+Optional check: `php crm/bin/preflight_deploy.php` or `SHOW TABLES LIKE 'vastra_movements';` in MySQL. Details: [`crm/README.md` — Schema upgrades](crm/README.md#schema-upgrades-existing-production-dbs).
+
 ---
 
 ## Quick start (local, AMPPS)
@@ -246,8 +257,8 @@ First run creates schema and demo data on this machine only.
 ### 3. Live darshan (`Streaming/`)
 
 1. Upload `Streaming/` to `public_html/Streaming/`.
-2. Copy `Streaming/.streaming.example` → `Streaming/.streaming` and put **one** `https://` stream URL on a line (YouTube live, etc.).
-3. Home page **Live Darshan** opens `/Streaming/`. If the file is missing or empty, devotees see the message in English, Hindi, Odia, and Kannada.
+2. Copy `Streaming/.env.example` → `Streaming/.env`, set `STREAM_SAVE_TOKEN`, then use **Live darshan → gear** on the page to save **one** `https://` stream URL (or maintain `Streaming/.streaming` on the server).
+3. Home page **Live Darshan** opens `/Streaming/`. If no URL is configured, devotees see the message in English, Hindi, Odia, and Kannada.
 
 ### 4. Demo accounts (local install only)
 

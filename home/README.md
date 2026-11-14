@@ -41,7 +41,7 @@ Details for photo folders: [photos/README.md](photos/README.md).
 1. Add or replace media under `photos/hero/` or `gallery/`.
 2. Run `sync-home-to-root.ps1` before FTP/cPanel upload (or upload both `home/` and synced root files).
 3. Update temple contact in **CRM → Settings → Identity** (not in website HTML).
-4. Wait ~2 minutes or hard-refresh browsers after API-side changes.
+4. Wait ~2 minutes or hard-refresh browsers after API-side changes (`Ctrl+F5`). After CRM deploy, staff hard-refresh ERP pages so updated `static/css/style.css?v=…` loads.
 
 ---
 

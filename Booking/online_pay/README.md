@@ -41,3 +41,5 @@ HTTP routes and admin booking screens stay unchanged; they use `gateway_order_id
 4. **Webhook** (`POST …/webhooks/payment`) - recommended on production when `RAZORPAY_WEBHOOK_SECRET` is set.
 
 Staff can still verify/record payment in admin if all automated paths fail.
+
+Configuration and deploy: [`Booking/.env`](../.env.example), [`Booking/docs/CONFIGURATION.md`](../docs/CONFIGURATION.md), [`docs/DEPLOY-PRODUCTION.md`](../../docs/DEPLOY-PRODUCTION.md).

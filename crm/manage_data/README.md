@@ -28,3 +28,5 @@ Optional: set `MANAGE_DATA_KEY` in `crm/.env` and open:
 ## Deploy
 
 Upload the whole `crm/manage_data/` folder. No `install.php` step.
+
+Schema for the main CRM (including `vastra_movements`) is applied by normal CRM `migrate_schema()` on page load — not by this tool. See [`../README.md`](../README.md#schema-upgrades-existing-production-dbs).
